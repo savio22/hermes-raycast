@@ -34,6 +34,14 @@ import { readJson, StorageKeys, writeJson } from "./storage";
 import type { HealthResponse } from "./types";
 
 export const DEFAULT_PORT = 8642;
+/**
+ * UX-SPEC §5.2 E1 / §10.3 — frase canônica, "usar sem variação". Toda falha de conexão
+ * originada aqui usa exatamente este texto: `HermesErrorEmptyView` e os Toasts exibem
+ * `userMessage` cru, então uma variante local vaza para a tela.
+ */
+const E1_MESSAGE =
+  "Não foi possível conectar ao Hermes. Verifique se o Hermes API Server está ativo e se a URL e a chave estão corretas.";
+
 /** Adaptador de webhook: responde `/health` com `platform: "webhook"`. */
 const WEBHOOK_PORT = 8644;
 const PROBE_TIMEOUT_MS = 1500;
@@ -354,10 +362,13 @@ export async function resolveBaseUrl(options?: { force?: boolean; deps?: Discove
       });
     }
     throw new HermesConnectionError({
-      userMessage: "Não foi possível conectar ao Hermes no endereço configurado.",
+      // §10.3: E1 é frase canônica, "usar sem variação". Quem renderiza `userMessage`
+      // cru (`HermesErrorEmptyView`) mostraria uma variante encurtada.
+      userMessage: E1_MESSAGE,
       technical: `GET ${apiUrl}/health não respondeu em ${PROBE_TIMEOUT_MS} ms.`,
       recovery: "open_preferences",
       retryable: true,
+      uxId: "E1",
     });
   }
 
@@ -412,10 +423,14 @@ export async function resolveBaseUrl(options?: { force?: boolean; deps?: Discove
   }
 
   throw new HermesConnectionError({
-    userMessage: "Não foi possível conectar ao Hermes. Verifique se o Hermes API Server está ativo.",
+    // §10.3: frase canônica de E1, sem variação. Este é o caminho NORMAL com o gateway
+    // fora do ar (`rawRequest` resolve o endereço antes do `fetch`), então uma versão
+    // truncada aqui seria o texto que o usuário mais lê.
+    userMessage: E1_MESSAGE,
     technical: `HERMES_HOME=${hermesHome}. Portas testadas: ${describeCandidates(candidates)}.`,
     recovery: "start_hermes",
     retryable: true,
+    uxId: "E1",
   });
 }
 

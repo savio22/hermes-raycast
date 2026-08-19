@@ -33,16 +33,17 @@ import {
   openExtensionPreferences,
   showHUD,
   showToast,
+  useNavigation,
 } from "@raycast/api";
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 
 import { ApprovalView, isDestructive } from "./components/approval-view";
-import { confirmStopRun } from "./components/common";
 import { NotConfigured } from "./components/first-run";
 import {
   RUN_POLL_MS,
   RunProgressView,
   approvalFields,
+  effectiveRunStatus,
   readRunOutput,
   shorten,
   statusImage,
@@ -66,7 +67,7 @@ import {
   listStoredRuns,
   loadApprovalRequest,
   pruneLocalData,
-  updateStoredRun,
+  updateStoredRuns,
   type StoredApproval,
   type StoredRun,
 } from "./lib/storage";
@@ -103,7 +104,7 @@ interface RunRow {
  */
 function displayStatus(row: RunRow): { label: string; appearance: StatusAppearance; expired: boolean } {
   if (!row.expired) {
-    const status = row.live?.status ?? row.stored.lastKnownStatus;
+    const status = effectiveStatus(row);
     return { label: runStatusLabel(status), appearance: runStatusAppearance(status), expired: false };
   }
   if (isTerminalRunStatus(row.stored.lastKnownStatus)) {
@@ -113,8 +114,14 @@ function displayStatus(row: RunRow): { label: string; appearance: StatusAppearan
   return { label: RUN_EXPIRED.label, appearance: RUN_EXPIRED, expired: true };
 }
 
+/**
+ * Armadilha 19: `waiting_for_approval` gruda no `GET /v1/runs/{id}` depois de a aprovação
+ * ter sido respondida em outro aplicativo (o Hermes Desktop, tipicamente). O desempate é o
+ * `last_event` — sem ele a linha ficava presa em "Precisa de você" para sempre e
+ * `Responder pedido de aprovação` devolvia E12 a cada tentativa.
+ */
 function effectiveStatus(row: RunRow): string {
-  return row.live?.status ?? row.stored.lastKnownStatus;
+  return row.live === undefined ? row.stored.lastKnownStatus : effectiveRunStatus(row.live);
 }
 
 function isRowTerminal(row: RunRow): boolean {
@@ -170,7 +177,10 @@ export default function Command(): ReactElement {
     return () => {
       cancelled = true;
     };
-  }, []);
+    // `nonce`: `NotConfigured` chama `refresh` quando a detecção automática termina. Com
+    // `[]` aqui a tela de primeiro uso virava beco sem saída — `configured` continuava
+    // `false` até o usuário fechar e reabrir o comando.
+  }, [nonce]);
 
   /* ── Carga inicial: poda os dados vencidos e monta a lista a partir do índice local ── */
   useEffect(() => {
@@ -186,7 +196,13 @@ export default function Command(): ReactElement {
         stored
           .slice()
           .sort((a, b) => b.createdAt - a.createdAt)
-          .map((run) => ({ stored: run, expired: false, sessionTitle: titles.current.get(run.sessionId ?? "") })),
+          // `expired` vem do índice: o 404 é permanente (o servidor descartou o registro),
+          // então reconsultá-lo a cada abertura só queima requisições do teto da §2.5.
+          .map((run) => ({
+            stored: run,
+            expired: run.expired === true,
+            sessionTitle: titles.current.get(run.sessionId ?? ""),
+          })),
       );
       setIsLoading(false);
     })();
@@ -205,17 +221,21 @@ export default function Command(): ReactElement {
     let timer: ReturnType<typeof setTimeout> | undefined;
     /** No primeiro ciclo tudo é consultado; depois, só o que ainda pode mudar. */
     let firstCycle = true;
+    /** §5.3: só o PRIMEIRO erro de uma sequência vira Toast (a guarda de `sessions.tsx`). */
+    let pollFailing = false;
 
     const cycle = async (): Promise<void> => {
       const current = rowsRef.current;
-      const targets = current
-        .filter((row) => firstCycle || !isRowTerminal(row))
-        .slice(0, firstCycle ? current.length : MAX_REQUESTS_PER_CYCLE);
+      // O teto da §2.5 ("cada ciclo faz no máximo 10 requisições") vale também na abertura:
+      // com o índice cheio, isentar o primeiro ciclo disparava 20 GETs de uma vez.
+      const targets = current.filter((row) => firstCycle || !isRowTerminal(row)).slice(0, MAX_REQUESTS_PER_CYCLE);
 
       if (targets.length === 0) return; // tudo terminal: o polling para de vez (§8.5)
 
       try {
-        const results = await Promise.all(
+        // `allSettled`, não `all`: com `all`, UMA execução respondendo 500 descartava as
+        // outras 9 respostas boas e nenhuma linha era atualizada naquele ciclo.
+        const settled = await Promise.allSettled(
           targets.map(async (row) => {
             const outcome = await reconcileRun(row.stored.runId, controller.signal);
             return { runId: row.stored.runId, outcome };
@@ -223,23 +243,45 @@ export default function Command(): ReactElement {
         );
         if (cancelled) return;
 
-        const byId = new Map(results.map((result) => [result.runId, result.outcome]));
-        setRows((current) =>
-          current.map((row) => {
+        const byId = new Map<string, Run | "expired">();
+        let failure: unknown;
+        for (const result of settled) {
+          if (result.status === "fulfilled") byId.set(result.value.runId, result.value.outcome);
+          else if (!isAbort(result.reason)) failure ??= result.reason;
+        }
+
+        // UMA gravação por ciclo: `updateStoredRun` é read-modify-write sobre a mesma
+        // chave, e N chamadas concorrentes se sobrescrevem (a última apaga as demais).
+        const patches = new Map<string, Partial<StoredRun>>();
+        for (const [runId, outcome] of byId) {
+          patches.set(
+            runId,
+            outcome === "expired"
+              ? { expired: true }
+              : { lastKnownStatus: outcome.status, lastKnownEvent: outcome.last_event, expired: false },
+          );
+        }
+        void updateStoredRuns(patches).catch(() => undefined);
+
+        setRows((rows) =>
+          rows.map((row) => {
             const outcome = byId.get(row.stored.runId);
             if (outcome === undefined) return row;
             if (outcome === "expired") return { ...row, expired: true };
-            void updateStoredRun(row.stored.runId, {
-              lastKnownStatus: outcome.status,
-              lastKnownEvent: outcome.last_event,
-            });
             return { ...row, live: outcome, expired: false };
           }),
         );
-        setError(undefined);
-      } catch (err) {
-        if (cancelled || isAbort(err)) return;
-        setError(toHermesError(err, "active-runs"));
+
+        if (failure === undefined) {
+          pollFailing = false;
+          setError(undefined);
+        } else if (!pollFailing) {
+          // Sem esta guarda o Hermes fora do ar produzia um Toast vermelho a cada 2 s,
+          // para sempre: `toHermesError` devolve um objeto NOVO por ciclo e o efeito do
+          // Toast depende da identidade de `error`.
+          pollFailing = true;
+          setError(toHermesError(failure, "active-runs"));
+        }
       } finally {
         firstCycle = false;
         if (!cancelled) timer = setTimeout(() => void cycle(), RUN_POLL_MS);
@@ -331,8 +373,8 @@ export default function Command(): ReactElement {
   /* ── Ações ── */
 
   async function handleStop(row: RunRow): Promise<void> {
-    if (!(await confirmStopRun())) return;
-
+    // Sem `confirmAlert` (UX-SPEC §6.6 item 6): parar não destrói nada e a confirmação
+    // atrasaria a única saída de emergência do usuário.
     const toast = await showToast({ style: Toast.Style.Animated, title: "Parando a tarefa…" });
     try {
       await stopRun(row.stored.runId);
@@ -483,6 +525,7 @@ function RunListItem(props: {
   onCopyResult: () => void;
 }): ReactElement {
   const { row } = props;
+  const { push } = useNavigation();
   const { label, appearance, expired } = displayStatus(row);
   const status = effectiveStatus(row);
   const terminal = isRowTerminal(row);
@@ -493,6 +536,20 @@ function RunListItem(props: {
   // §7.3: item aguardando aprovação de um padrão destrutivo ganha marcação vermelha.
   const dangerous = waitingApproval && isDestructive(row.approval?.patternKeys ?? []);
 
+  const stepsView = (
+    <RunProgressView
+      runId={row.stored.runId}
+      prompt={prompt}
+      sessionId={row.stored.sessionId}
+      sessionTitle={row.sessionTitle}
+      model={row.live?.model}
+      createdAt={row.stored.createdAt}
+      status={effectiveStatus(row)}
+      attachStream={false}
+      initialMode="etapas"
+    />
+  );
+
   const progressView = (
     <RunProgressView
       runId={row.stored.runId}
@@ -501,6 +558,10 @@ function RunListItem(props: {
       sessionTitle={row.sessionTitle}
       model={row.live?.model}
       createdAt={row.stored.createdAt}
+      // O desfecho já conhecido, para a tela não abrir em `Estado: Desconhecido` — e para
+      // que um 404 sobre uma execução que NÓS vimos terminar continue dizendo `Concluído`,
+      // igual à linha da lista, em vez de `Execução expirada` um Enter depois.
+      status={effectiveStatus(row)}
       // Armadilha 14: o stream de eventos não é retomável. Reabrir acompanha por polling.
       attachStream={false}
     />
@@ -538,6 +599,9 @@ function RunListItem(props: {
                     conversationTitle={row.sessionTitle ?? "Sem título"}
                     sessionId={row.stored.sessionId}
                     onResolved={props.onRefresh}
+                    // §7.4 `Ver etapas da tarefa`: aqui a aprovação foi aberta a partir da
+                    // LISTA, então as etapas são uma tela nova, empilhada por cima.
+                    onShowSteps={() => push(stepsView)}
                   />
                 }
               />

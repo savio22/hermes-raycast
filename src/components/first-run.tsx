@@ -47,6 +47,7 @@ import {
   toHermesError,
 } from "../lib/errors";
 import { health, listModels } from "../lib/hermes-api";
+import { resolveApiKey } from "../lib/preferences";
 import { forgetDetectedApiKey, saveDetectedApiKey } from "../lib/storage";
 import { OpenPreferencesAction } from "./common";
 import { SHORTCUTS } from "./shortcuts";
@@ -246,7 +247,15 @@ export function NotConfigured({ commandTitle, onRetry }: NotConfiguredProps): Re
 /* ───────────────── Tela 3: detecção automática (§3.1, §3.5, §3.6) ─────────── */
 
 type DetectionResult =
-  | { kind: "sucesso"; hermesHome: string; baseUrl: string; version: string; technical: string }
+  | {
+      kind: "sucesso";
+      hermesHome: string;
+      baseUrl: string;
+      version: string;
+      technical: string;
+      /** §3.3: existe uma preferência preenchida, e é ELA que os comandos vão usar. */
+      preferenceWins: boolean;
+    }
   | { kind: "semArquivo"; hermesHome: string; folderExists: boolean; technical: string }
   | { kind: "semChave"; hermesHome: string; envPath: string; technical: string }
   | { kind: "semLeitura"; hermesHome: string; envPath: string; technical: string }
@@ -307,9 +316,6 @@ async function detectConfiguration(): Promise<DetectionResult> {
     };
   }
 
-  // Único destino permitido do valor: o LocalStorage criptografado do Raycast.
-  await saveDetectedApiKey(key);
-
   let baseUrl: string | undefined;
   try {
     const endpoint = await resolveBaseUrl({ force: true });
@@ -322,12 +328,24 @@ async function detectConfiguration(): Promise<DetectionResult> {
         recovery: "open_preferences",
       });
     }
-    await listModels();
+    // A chave vai EXPLÍCITA: sem isso `listModels()` usaria a chave resolvida pela §3.3,
+    // em que a PREFERÊNCIA vence — a tela validaria uma credencial e diria "encontrada e
+    // guardada em segurança" sobre outra, e um 401 da preferência velha apagaria a chave
+    // detectada, que era justamente a correta.
+    await listModels(undefined, key);
+
+    // Só depois de provada. Único destino permitido: o LocalStorage criptografado.
+    await saveDetectedApiKey(key);
+    // §3.3: a preferência continua vencendo. Se houver uma, é ela que os comandos usam, e
+    // a tela precisa dizer isso em vez de prometer que a detecção passou a valer.
+    const { source } = await resolveApiKey();
+
     return {
       kind: "sucesso",
       hermesHome,
       baseUrl: endpoint.baseUrl,
       version: info.version,
+      preferenceWins: source === "preference",
       // `[key]` aqui é a segunda passada de redação: garante que nem um eco do valor
       // sobreviva no texto copiável.
       technical: sanitizeTechnical(
@@ -349,11 +367,9 @@ async function detectConfiguration(): Promise<DetectionResult> {
       ].join("\n"),
       [key],
     );
-    if (error instanceof HermesAuthError) {
-      // §3.3: a chave detectada que o Hermes recusou não fica guardada.
-      await forgetDetectedApiKey();
-      return { kind: "recusada", hermesHome, technical };
-    }
+    // §3.3: a chave recusada não fica guardada — e como só gravamos DEPOIS de validar,
+    // não há nada a desfazer aqui: a chave anterior (se existia) segue intacta.
+    if (error instanceof HermesAuthError) return { kind: "recusada", hermesHome, technical };
     return { kind: "offline", hermesHome, text: errorCopy(error).text, technical };
   }
 }
@@ -368,9 +384,18 @@ function detectionMarkdown(result: DetectionResult): string {
         "",
         `- Endereço: ${hostOf(result.baseUrl)}`,
         `- Versão do Hermes: ${result.version}`,
-        "- Chave de acesso: encontrada e guardada em segurança",
+        "- Chave de acesso: encontrada, testada e guardada em segurança",
         "",
         "A chave ficou guardada no armazenamento protegido do Raycast e não é exibida em nenhuma tela.",
+        ...(result.preferenceWins
+          ? [
+              "",
+              // §3.3: dizer a verdade sobre QUAL chave vai ser usada. Sem isto o usuário
+              // veria "conectado" e continuaria tomando erro, porque a preferência antiga
+              // é que segue valendo.
+              'Atenção: existe uma chave preenchida em "Chave do Hermes" nas configurações, e é ela que os comandos vão usar. Apague o campo se quiser que a chave detectada valha.',
+            ]
+          : []),
         "",
         "Suas conversas do Raycast vão aparecer também no Hermes Desktop.",
       ].join("\n");

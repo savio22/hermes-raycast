@@ -58,12 +58,28 @@
       "keywords": ["hermes", "execucoes", "andamento", "aprovacao", "status"]
     },
     {
+      "name": "models",
+      "title": "Modelos do Hermes",
+      "subtitle": "Hermes",
+      "description": "Veja os modelos disponíveis no seu Hermes e escolha qual usar por padrão.",
+      "mode": "view",
+      "keywords": ["hermes", "modelos", "modelo", "provider", "ia"]
+    },
+    {
       "name": "check-connection",
       "title": "Verificar conexão com Hermes",
       "subtitle": "Hermes",
       "description": "Verifique se o Hermes está ligado e se a conexão da extensão está funcionando.",
       "mode": "view",
       "keywords": ["hermes", "conexao", "diagnostico", "testar", "status"]
+    },
+    {
+      "name": "configure-hermes",
+      "title": "Configurar Hermes",
+      "subtitle": "Hermes",
+      "description": "Conecte a extensão ao Hermes instalado neste computador, sem precisar de terminal.",
+      "mode": "view",
+      "keywords": ["hermes", "configurar", "conectar", "chave", "ajustes"]
     }
   ],
   "preferences": [

@@ -43,8 +43,7 @@ import {
 import { useForm, usePromise } from "@raycast/utils";
 import { useEffect, useRef, useState } from "react";
 import { ApprovalView } from "./components/approval-view";
-import { confirmStopRun } from "./components/common";
-import { NotConfigured } from "./components/first-run";
+import { AutoDetectAction, NotConfigured } from "./components/first-run";
 import { RenameSessionForm } from "./components/rename-session-form";
 import { SHORTCUTS } from "./components/shortcuts";
 import { SteerForm } from "./components/steer-form";
@@ -183,7 +182,13 @@ function AskForm(props: AskFormProps) {
     { onError: () => undefined },
   );
   const { data: runningCount } = usePromise(
-    async () => (await listStoredRuns()).filter((run) => !isTerminalRunStatus(run.lastKnownStatus)).length,
+    async () =>
+      (await listStoredRuns()).filter(
+        // `expired` é o 404 já observado (§4.3): a execução sumiu do servidor e não está
+        // "em andamento". Sem este filtro o banner mentiria por até 7 dias, porque
+        // `lastKnownStatus` fica congelado no último estado não terminal que vimos.
+        (run) => run.expired !== true && !isTerminalRunStatus(run.lastKnownStatus),
+      ).length,
     [],
     { onError: () => undefined },
   );
@@ -501,6 +506,9 @@ function AnswerView(props: AnswerViewProps) {
         }`}
         actions={
           <ActionPanel>
+            {/* §5.2 E2: com a chave recusada, a PRIMEIRA ação é redetectar. `Tentar
+                novamente` com a mesma chave só repetiria o 401. */}
+            {state.fatalError.uxId === "E2" ? <AutoDetectAction onDone={retry} /> : null}
             <Action title="Tentar novamente" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={retry} />
             <Action
               title="Abrir configurações"
@@ -571,6 +579,9 @@ function AnswerView(props: AnswerViewProps) {
                     conversationTitle={title ?? "Sem título"}
                     sessionId={state.sessionId}
                     onResolved={(_choice, resolved) => approvalResolved(resolved)}
+                    // §7.4 `Ver etapas da tarefa`: esta tela É a tarefa; trocar o modo faz
+                    // o `Esc` do usuário voltar direto para as etapas.
+                    onShowSteps={() => setMode("etapas")}
                   />
                 }
               />
@@ -592,7 +603,9 @@ function AnswerView(props: AnswerViewProps) {
                 icon={Icon.Stop}
                 style={Action.Style.Destructive}
                 shortcut={SHORTCUTS.stop}
-                onAction={() => void confirmStopRun().then((ok) => (ok ? stop() : undefined))}
+                // §6.6 item 6: sem `confirmAlert` — nada é destruído e a confirmação
+                // atrasaria a única saída de emergência do usuário.
+                onAction={() => void stop()}
               />
             ) : null}
 
@@ -653,7 +666,10 @@ function AnswerView(props: AnswerViewProps) {
               />
             ) : null}
 
-            {state.sessionId !== undefined ? (
+            {/* R9: no máximo UM turno vivo por `session_id` — não há trava entre
+                superfícies e duas escritas concorrentes se intercalam no `state.db`. A
+                §6.4 lista esta ação só em "Depois (Concluído)". */}
+            {terminal && state.sessionId !== undefined ? (
               <Action.Push
                 title="Continuar esta conversa"
                 icon={Icon.SpeechBubble}

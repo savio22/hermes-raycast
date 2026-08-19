@@ -34,6 +34,7 @@ import {
   RECOVERY_LABEL,
   REDACTED_SECRET,
   isAbort,
+  registerSecret,
   mapHttpError,
   parseErrorBody,
   sanitizeTechnical,
@@ -577,4 +578,50 @@ test("nenhuma mensagem de usuário carrega jargão de HTTP ou de código", () =>
   for (const e of amostras) {
     assert.doesNotMatch(e.userMessage, /HTTP|\b\d{3}\b|error\.|_[a-z]+_|null|undefined/, e.userMessage);
   }
+});
+
+/* ═══════════════ Passada LITERAL do segredo (UX-SPEC §5.1 regra 5) ═══════════════ */
+
+/**
+ * A regra 5 manda substituir "qualquer ocorrência da chave", não só as que vêm num formato
+ * reconhecível. `BEARER_RE` e `CREDENTIAL_ASSIGNMENT_RE` cobrem `Bearer …` e `chave=…`; um
+ * eco CRU do valor (`KeyError: '9f3a…'`, `unknown credential 9f3a…`) não casa com nenhum
+ * dos dois. Quem monta o bloco em render síncrono não pode aguardar `resolveApiKey()`, e
+ * era exatamente por isso que três telas chamavam `sanitizeTechnical(text)` sem `secrets`.
+ */
+
+/** Valor sentinela: não é uma chave real. */
+const SEGREDO_REGISTRADO = "NAO_E_UMA_CHAVE_REAL_registro_9f3a1c";
+
+test("segurança: um segredo registrado é apagado mesmo sem passar `secrets`", () => {
+  registerSecret(SEGREDO_REGISTRADO);
+
+  const ecos = [
+    `KeyError: '${SEGREDO_REGISTRADO}'`,
+    `{"detail":"unknown credential ${SEGREDO_REGISTRADO}"}`,
+    `Traceback: gateway rejeitou ${SEGREDO_REGISTRADO} na porta 8642`,
+  ];
+
+  for (const eco of ecos) {
+    const limpo = sanitizeTechnical(eco);
+    assert.ok(!limpo.includes(SEGREDO_REGISTRADO), `sobrou a chave em: ${limpo}`);
+    assert.ok(limpo.includes(REDACTED_SECRET), `faltou o marcador em: ${limpo}`);
+  }
+});
+
+test("segurança: o registro alcança o `technical` do construtor de HermesError", () => {
+  registerSecret(SEGREDO_REGISTRADO);
+
+  const e = mapHttpError(
+    ctx({ status: 401, body: `{"error":{"message":"unknown credential ${SEGREDO_REGISTRADO}"}}` }),
+  );
+
+  assert.ok(!e.technical.includes(SEGREDO_REGISTRADO), e.technical);
+  assert.ok(!JSON.stringify(e.userMessage).includes(SEGREDO_REGISTRADO));
+});
+
+test("segurança: valores curtos NÃO são registrados — casariam com texto legítimo", () => {
+  registerSecret("abc");
+  const texto = "o id abc123 continua legível";
+  assert.equal(sanitizeTechnical(texto), texto);
 });

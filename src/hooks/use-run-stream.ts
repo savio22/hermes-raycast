@@ -346,12 +346,18 @@ export function useRunStream(request: AskRequest): RunStreamController {
       approvalsPendingRef.current += 1;
       const receivedAt = Date.now();
       // Persistir NA HORA: não existe rota que devolva um pedido de aprovação perdido.
+      // `patternKey`, `patternKeys` e `smartDenied` são obrigatórios aqui: são eles que
+      // decidem o bloco de risco da §7.3 e o ícone vermelho de `Execuções do Hermes`.
+      // Sem eles, um `rm -rf` reaberto em outra tela viraria "⚠️ Ação sensível".
       void saveApprovalRequest({
         runId,
         command: fields.command,
         description: fields.description,
         choices: fields.choices ?? [],
         requestId: fields.request_id,
+        patternKey: fields.pattern_key,
+        patternKeys: fields.pattern_keys,
+        smartDenied: fields.smart_denied,
         receivedAt,
       }).catch(() => undefined);
 
@@ -453,6 +459,11 @@ export function useRunStream(request: AskRequest): RunStreamController {
               description: stored?.description,
               choices: (stored?.choices ?? ["deny"]) as ApprovalChoice[],
               request_id: stored?.requestId,
+              // §7.3: sem estes três a tela reabre um comando destrutivo com o aviso
+              // fraco ("Ação sensível") e sem o 🛑 de `smart_denied`.
+              pattern_key: stored?.patternKey,
+              pattern_keys: stored?.patternKeys,
+              smart_denied: stored?.smartDenied,
             },
             pendingCount: 1,
             receivedAt: stored?.receivedAt ?? Date.now(),
@@ -476,7 +487,7 @@ export function useRunStream(request: AskRequest): RunStreamController {
         if (run.output !== undefined) buffer.cancel();
         await persistTerminal(run.run_id, status, run.output, run.error);
       } else {
-        await updateStoredRun(run.run_id, { lastKnownStatus: status, lastKnownEvent: run.last_event });
+        await updateStoredRun(run.run_id, { lastKnownStatus: status, lastKnownEvent: run.last_event, expired: false });
       }
     }
 
@@ -564,7 +575,12 @@ export function useRunStream(request: AskRequest): RunStreamController {
             technical: hermes.technical,
           },
         }));
-        return "halt";
+        // `poll`, não `halt`: a regra do cabeçalho ("a recuperação é consulta a
+        // `GET /v1/runs/{id}` a cada 2 s") vale para QUALQUER queda do stream. Parar aqui
+        // deixava a barra de progresso girando para sempre com o texto congelado, e a
+        // única saída era `Acompanhar de novo` — que reassina e toma 404 (armadilha 14)
+        // antes de finalmente cair no polling. A ação E23 continua oferecida.
+        return "poll";
       } finally {
         streamingRef.current = false;
         patch((s) => ({ ...s, liveStream: false }));
@@ -578,7 +594,10 @@ export function useRunStream(request: AskRequest): RunStreamController {
         try {
           const run = await reconcileRun(runId, controller.signal);
           if (run === "expired") {
-            // 404 = expirada. NUNCA "Falhou" (§4.3).
+            // 404 = expirada. NUNCA "Falhou" (§4.3). Gravar no índice: sem isso o
+            // `lastKnownStatus` fica em `running` por até 7 dias e o banner
+            // "Você tem N tarefas em andamento" mente sobre uma execução que sumiu.
+            await updateStoredRun(runId, { expired: true });
             patch((s) => ({ ...s, expired: true, thinking: false }));
             return;
           }

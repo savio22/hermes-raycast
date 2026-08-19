@@ -10,7 +10,7 @@
  * é um literal que vai divergir na primeira revisão de texto: aqui ele tem um dono só.
  */
 
-import { Action, Alert, Icon, confirmAlert, openExtensionPreferences } from "@raycast/api";
+import { Action, Icon, openExtensionPreferences } from "@raycast/api";
 import type { ReactElement } from "react";
 import { SHORTCUTS } from "./shortcuts";
 
@@ -32,20 +32,13 @@ export function OpenPreferencesAction(): ReactElement {
   );
 }
 
-/**
- * `Parar` é a única ação da extensão que cancela trabalho no servidor e não tem desfazer.
- * A UX-SPEC §6.6.6 dispensava a confirmação; a regra deste projeto exige `confirmAlert` em
- * toda ação irreversível, e ela vale igual nas três telas que oferecem `Parar` — por isso
- * o alerta mora aqui, e não copiado em cada uma com uma frase um pouco diferente.
+/*
+ * NÃO adicione um `confirmAlert` a `Parar`.
+ *
+ * A UX-SPEC §6.6 item 6 é explícita: "Sem `confirmAlert`: parar é reversível no sentido em
+ * que nada é destruído, e exigir confirmação atrasaria a única saída de emergência do
+ * usuário." A regra geral do projeto ("confirmar toda ação irreversível") não se aplica
+ * porque a spec declara que `Parar` não é destrutiva: o que já foi produzido continua
+ * disponível e o estado terminal fica gravado. As três telas que oferecem `Parar`
+ * (`ask`, `run-progress`, `active-runs`) chamam `stopRun()` direto.
  */
-export async function confirmStopRun(): Promise<boolean> {
-  return confirmAlert({
-    icon: Icon.Stop,
-    title: "Parar esta tarefa?",
-    message: "O Hermes encerra o que está fazendo agora. O que já foi produzido continua disponível.",
-    primaryAction: { title: "Parar", style: Alert.ActionStyle.Destructive },
-    dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
-    // Uma confirmação lembrada transformaria um destrutivo em um destrutivo silencioso.
-    rememberUserChoice: false,
-  });
-}

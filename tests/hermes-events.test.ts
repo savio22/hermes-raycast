@@ -783,3 +783,32 @@ test("createTextBuffer: janelas seguintes voltam a agendar", async () => {
 
   assert.deepEqual(flushes, ["um", "um dois"]);
 });
+
+/**
+ * §6.2, último item: com "Mostrar a resposta enquanto o Hermes escreve" desligado, o
+ * chamador NÃO passa `onText` — e a resposta final não pode se perder por causa disso. Duas
+ * telas dependiam desta propriedade e só uma a respeitava: `run-progress.tsx` ligava
+ * `onText` incondicionalmente, então a preferência não tinha efeito em `Executar tarefa`.
+ */
+test("consumeRunEventStream: sem `onText`, o texto e o `output` continuam completos", async () => {
+  const comHandler = await consumeRunEventStream(makeResponse(RUN_EVENTS_STREAM, 1).response, "run_aa83", {
+    onText: () => undefined,
+  });
+  const semHandler = await consumeRunEventStream(makeResponse(RUN_EVENTS_STREAM, 1).response, "run_aa83", {
+    onText: undefined,
+  });
+
+  assert.equal(semHandler.text, comHandler.text);
+  assert.equal(semHandler.output, comHandler.output);
+  assert.equal(semHandler.terminalEvent, "run.completed");
+  assert.equal(semHandler.output, "pronto");
+});
+
+test("consumeRunEventStream: sem `onText`, os demais handlers seguem recebendo eventos", async () => {
+  const eventNames: string[] = [];
+  await consumeRunEventStream(makeResponse(RUN_EVENTS_STREAM, 1).response, "run_aa83", {
+    onEvent: (event) => eventNames.push(event.event),
+  });
+
+  assert.ok(eventNames.includes("run.completed"), "desligar o texto não pode silenciar o desfecho");
+});

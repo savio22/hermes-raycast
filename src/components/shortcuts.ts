@@ -57,6 +57,8 @@ export const SHORTCUTS = {
   rename: Keyboard.Shortcut.Common.Edit,
   /** `Ramificar conversa`. */
   branch: { modifiers: ["ctrl", "shift"], key: "b" },
+  /** `Usar só na próxima pergunta` — §2.6. `Usar como modelo padrão` é o `Enter` da lista. */
+  nextTurnModel: { modifiers: ["ctrl", "shift"], key: "m" },
   /** `Ver tarefas em andamento`. */
   activeRuns: { modifiers: ["ctrl", "shift"], key: "e" },
   /** `Negar` (aprovação). */

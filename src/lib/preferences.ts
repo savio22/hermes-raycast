@@ -13,7 +13,7 @@
  */
 
 import { getPreferenceValues } from "@raycast/api";
-import { HermesNotConfiguredError } from "./errors";
+import { HermesNotConfiguredError, registerSecret } from "./errors";
 import { readDetectedApiKey } from "./storage";
 import type { EndpointSource } from "./discovery";
 
@@ -95,13 +95,23 @@ export interface ResolvedApiKey {
 /**
  * Ordem de resolução (UX-SPEC §3.3): preferência > chave detectada > nada.
  * A preferência sempre vence — se o usuário digitou algo, é a intenção mais recente.
+ *
+ * Toda chave resolvida é registrada em `registerSecret()`, que é o que garante a
+ * passada LITERAL da §5.1 regra 5 nos blocos de detalhes técnicos montados em render
+ * síncrono. O registro é só para APAGAR o valor: nada o lê de volta.
  */
 export async function resolveApiKey(): Promise<ResolvedApiKey> {
   const fromPreference = (getPreferenceValues<RawPreferences>().apiServerKey ?? "").trim();
-  if (fromPreference !== "") return { key: fromPreference, source: "preference" };
+  if (fromPreference !== "") {
+    registerSecret(fromPreference);
+    return { key: fromPreference, source: "preference" };
+  }
 
   const detected = await readDetectedApiKey();
-  if (detected !== undefined) return { key: detected, source: "detected" };
+  if (detected !== undefined) {
+    registerSecret(detected);
+    return { key: detected, source: "detected" };
+  }
 
   return { key: "", source: "none" };
 }

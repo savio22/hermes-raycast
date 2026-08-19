@@ -152,6 +152,14 @@ export interface StoredRun {
   lastKnownStatus: string;
   lastKnownEvent?: string;
   baseUrl: string;
+  /**
+   * `GET /v1/runs/{id}` devolveu 404: o gateway reiniciou ou passou o TTL de 1 h.
+   * É CONDIÇÃO, nunca o estado `Falhou` (UX-SPEC §4.3) — e precisa morar no índice,
+   * porque `lastKnownStatus` fica congelado em `queued`/`running` para sempre e o
+   * banner "Você tem N tarefas em andamento" continuaria contando a execução por
+   * até 7 dias depois de ela ter sumido do servidor.
+   */
+  expired?: boolean;
 }
 
 const MAX_STORED_RUNS = 20;
@@ -169,12 +177,29 @@ export async function rememberRun(run: StoredRun): Promise<void> {
   await writeJson(StorageKeys.runIndex, next);
 }
 
-export async function updateStoredRun(runId: string, patch: Partial<StoredRun>): Promise<void> {
+/**
+ * Aplica VÁRIAS correções num único read-modify-write.
+ *
+ * Existe porque `updateStoredRun` é read-modify-write sobre uma chave só: N chamadas
+ * concorrentes (o ciclo de `Execuções do Hermes` dispara uma por execução) leem o mesmo
+ * array de partida e a última a gravar apaga as mudanças das outras. Como a linha já
+ * está terminal em memória, o ciclo seguinte não a reconsulta e o `lastKnownStatus`
+ * perdido nunca é reparado.
+ */
+export async function updateStoredRuns(patches: ReadonlyMap<string, Partial<StoredRun>>): Promise<void> {
+  if (patches.size === 0) return;
   const runs = await listStoredRuns();
   await writeJson(
     StorageKeys.runIndex,
-    runs.map((run) => (run.runId === runId ? { ...run, ...patch } : run)),
+    runs.map((run) => {
+      const patch = patches.get(run.runId);
+      return patch === undefined ? run : { ...run, ...patch };
+    }),
   );
+}
+
+export function updateStoredRun(runId: string, patch: Partial<StoredRun>): Promise<void> {
+  return updateStoredRuns(new Map([[runId, patch]]));
 }
 
 export async function forgetRun(runId: string): Promise<void> {

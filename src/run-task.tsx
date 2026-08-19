@@ -14,9 +14,9 @@
  * sobreviver ao fechamento da janela do Raycast (D-02, princípio 8 do brief).
  * `/v1/chat/completions` fica de fora de propósito (D-05).
  *
- * O caminho simples é curto de propósito: um campo. Instruções extras, modelo e conversa
- * ficam atrás de "Mostrar opções avançadas" — a escolha de modelo aqui vale SÓ para esta
- * tarefa e não toca o padrão global da extensão (brief §5, "override por tarefa").
+ * O formulário traz os cinco componentes da UX-SPEC §2.4.1 na ordem da spec, sem divulgação
+ * progressiva: a escolha de modelo aqui vale SÓ para esta tarefa e não toca o padrão global
+ * da extensão (brief §5, "override por tarefa").
  */
 
 import {
@@ -60,7 +60,6 @@ interface TaskFormValues {
   instrucoes: string;
   modelo: string;
   conversa: string;
-  avancado: boolean;
 }
 
 type RunTaskArguments = { tarefa?: string };
@@ -129,16 +128,12 @@ export function TaskForm(props: TaskFormProps): ReactElement {
       instrucoes: props.draftValues?.instrucoes ?? "",
       modelo: props.draftValues?.modelo ?? DEFAULT_MODEL_VALUE,
       conversa: props.draftValues?.conversa ?? NEW_CONVERSATION_VALUE,
-      avancado: props.draftValues?.avancado ?? false,
     },
     validation: {
       // Mensagem própria em vez de `FormValidation.Required`, que responde em inglês.
       tarefa: (value) => (value === undefined || value.trim() === "" ? "Descreva a tarefa." : undefined),
     },
   });
-
-  /** Estado do checkbox, lido do próprio formulário para o rascunho não se perder. */
-  const advanced = itemProps.avancado.value === true;
 
   /* ── Modelos e conversas carregam em segundo plano e NUNCA bloqueiam o envio ── */
   useEffect(() => {
@@ -172,7 +167,7 @@ export function TaskForm(props: TaskFormProps): ReactElement {
 
     try {
       let sessionId: string;
-      let sessionTitle: string;
+      let sessionTitle: string | undefined;
       let runId: string;
 
       if (formValues.conversa === NEW_CONVERSATION_VALUE) {
@@ -209,6 +204,9 @@ export function TaskForm(props: TaskFormProps): ReactElement {
           sessionId={sessionId}
           sessionTitle={sessionTitle}
           model={model}
+          // §2.1.4 / §6.1: **Preparando** desde o primeiro quadro. Sem semente a tela
+          // mostraria `Estado: Desconhecido` até a primeira resposta do polling.
+          status="queued"
           attachStream
           // UX-SPEC §2.4.2: a tarefa longa abre nas Etapas, não na Resposta.
           initialMode="etapas"
@@ -270,51 +268,45 @@ export function TaskForm(props: TaskFormProps): ReactElement {
       <Form.Separator />
 
       {/*
-        Divulgação progressiva: o caminho simples é um campo só. Sem `storeValue` — o campo
-        já é controlado por `useForm`, e as duas coisas juntas disputam o mesmo valor; quem
-        preserva a escolha entre aberturas é o rascunho do próprio `Form`.
+        Os cinco componentes da UX-SPEC §2.4.1, NESTA ordem e todos visíveis. A versão
+        anterior escondia `Instruções extras`, `Modelo` e `Conversa` atrás de um checkbox
+        "Mostrar opções avançadas" que a spec não prevê: as instruções que alimentam
+        `instructions` de `POST /v1/runs` e a opção de rodar dentro de uma conversa
+        existente ficavam invisíveis para quem abre a tela pela primeira vez.
       */}
-      <Form.Checkbox {...itemProps.avancado} title="Opções" label="Mostrar opções avançadas" />
+      <Form.TextArea
+        {...itemProps.instrucoes}
+        title="Instruções extras"
+        info="Opcional. Regras que valem só para esta tarefa, como tom, formato ou limites."
+      />
 
-      {advanced && (
-        <Form.TextArea
-          {...itemProps.instrucoes}
-          title="Instruções extras"
-          info="Opcional. Regras que valem só para esta tarefa, como tom, formato ou limites."
-        />
-      )}
+      <Form.Dropdown
+        {...itemProps.modelo}
+        title="Modelo"
+        info="Vale só para esta tarefa. O modelo padrão da extensão não muda."
+      >
+        <Form.Dropdown.Item value={DEFAULT_MODEL_VALUE} title="Padrão do Hermes" icon={Icon.Wand} />
+        {models.map((option) => (
+          <Form.Dropdown.Item
+            key={`${option.provider}::${option.model}`}
+            value={`${option.provider}::${option.model}`}
+            title={option.model}
+            keywords={[option.providerName]}
+          />
+        ))}
+      </Form.Dropdown>
 
-      {advanced && (
-        <Form.Dropdown
-          {...itemProps.modelo}
-          title="Modelo"
-          info="Vale só para esta tarefa. O modelo padrão da extensão não muda."
-        >
-          <Form.Dropdown.Item value={DEFAULT_MODEL_VALUE} title="Padrão do Hermes" icon={Icon.Wand} />
-          {models.map((option) => (
-            <Form.Dropdown.Item
-              key={`${option.provider}::${option.model}`}
-              value={`${option.provider}::${option.model}`}
-              title={option.model}
-              keywords={[option.providerName]}
-            />
-          ))}
-        </Form.Dropdown>
-      )}
-
-      {advanced && (
-        <Form.Dropdown {...itemProps.conversa} title="Conversa">
-          <Form.Dropdown.Item value={NEW_CONVERSATION_VALUE} title="Nova conversa" icon={Icon.Plus} />
-          {sessions.map((session) => (
-            <Form.Dropdown.Item
-              key={session.id}
-              value={session.id}
-              title={shorten(session.title ?? "Sem título", 48)}
-              icon={Icon.SpeechBubble}
-            />
-          ))}
-        </Form.Dropdown>
-      )}
+      <Form.Dropdown {...itemProps.conversa} title="Conversa">
+        <Form.Dropdown.Item value={NEW_CONVERSATION_VALUE} title="Nova conversa" icon={Icon.Plus} />
+        {sessions.map((session) => (
+          <Form.Dropdown.Item
+            key={session.id}
+            value={session.id}
+            title={shorten(session.title ?? "Sem título", 48)}
+            icon={Icon.SpeechBubble}
+          />
+        ))}
+      </Form.Dropdown>
 
       <Form.Description
         title="Sobre esta tarefa"

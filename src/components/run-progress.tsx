@@ -42,8 +42,9 @@ import { useEffect, useReducer, useRef, useState, type ReactElement } from "reac
 import { APPROVAL_CHOICE_LABEL } from "../hooks/use-run-stream";
 import { hermesDesktopSessionUrl } from "../lib/discovery";
 import { HermesError, isAbort, sanitizeTechnical, toHermesError } from "../lib/errors";
-import { getRun, openRunEventStream, reconcileRun, stopRun } from "../lib/hermes-api";
+import { forkSession, getRun, openRunEventStream, reconcileRun, stopRun } from "../lib/hermes-api";
 import { consumeRunEventStream, createTextBuffer, type RunStreamResult } from "../lib/hermes-events";
+import { getHermesPreferences } from "../lib/preferences";
 import {
   RUN_EXPIRED,
   RUN_EXPIRED_DETAIL,
@@ -63,7 +64,7 @@ import {
 } from "../lib/storage";
 import type { ApprovalChoice, ApprovalRequestFields, HermesUsage, Run } from "../lib/types";
 import { ApprovalView } from "./approval-view";
-import { confirmStopRun } from "./common";
+import { RenameSessionForm } from "./rename-session-form";
 import { SteerForm, steerAndReport } from "./steer-form";
 import { SHORTCUTS } from "./shortcuts";
 
@@ -95,6 +96,22 @@ export function shorten(text: string, max: number): string {
 /** UX-SPEC §10.1: número com vírgula decimal. */
 function decimal(value: number, digits = 1): string {
   return value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+/**
+ * Armadilha 19 / UX-SPEC §4.4: `waiting_for_approval` GRUDA no `GET /v1/runs/{id}` depois
+ * de a aprovação ter sido respondida em outro aplicativo. O desempate é o `last_event` do
+ * próprio servidor — quando o último evento já não é o pedido, o run está andando.
+ *
+ * Não usar um trinco local ("já vi um evento posterior"): sem stream (`attachStream`
+ * `false`) nenhum evento chega, o trinco nunca destrava e o segundo pedido de aprovação da
+ * mesma tarefa fica invisível para sempre, com a run bloqueada até o timeout de 300 s.
+ */
+export function effectiveRunStatus(run: Run): string {
+  if (run.status === "waiting_for_approval" && run.last_event !== undefined && run.last_event !== "approval.request") {
+    return "running";
+  }
+  return run.status;
 }
 
 /**
@@ -224,11 +241,6 @@ interface RunViewState {
   approval?: StoredApproval;
   approvalLoaded: boolean;
   pendingApprovals: number;
-  /**
-   * UX-SPEC §4.4: `waiting_for_approval` gruda no polling quando a aprovação é respondida
-   * em outro aplicativo. A partir do primeiro evento posterior, o stream vence o polling.
-   */
-  eventsBeatPolling: boolean;
   runError?: string;
   pendingSteer?: string;
   usage?: HermesUsage;
@@ -278,7 +290,7 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
     case "tool-started": {
       const line = action.preview ? `🔧 Usando ${action.tool} — ${action.preview}` : `🔧 Usando ${action.tool}`;
       const tools = state.tools.includes(action.tool) ? state.tools : [...state.tools, action.tool];
-      return withStep({ ...state, currentTool: action.tool, tools, eventsBeatPolling: true }, line);
+      return withStep({ ...state, currentTool: action.tool, tools }, line);
     }
 
     case "tool-completed": {
@@ -287,7 +299,7 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
         ? `⚠️ ${action.tool} falhou depois de ${decimal(action.duration)} s`
         : `✅ ${action.tool} concluído em ${decimal(action.duration)} s`;
       const currentTool = state.currentTool === action.tool ? undefined : state.currentTool;
-      return withStep({ ...state, currentTool, eventsBeatPolling: true }, line);
+      return withStep({ ...state, currentTool }, line);
     }
 
     case "reasoning":
@@ -304,7 +316,6 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
           approvalLoaded: true,
           pendingApprovals: state.pendingApprovals + 1,
           status: "waiting_for_approval",
-          eventsBeatPolling: false,
         },
         "🔐 O Hermes pediu sua aprovação",
       );
@@ -325,9 +336,8 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
           approval: undefined,
           approvalLoaded: false,
           pendingApprovals: Math.max(state.pendingApprovals - resolved, 0),
-          // Evento posterior ao pedido: daqui em diante o polling não pode reinstalar
-          // "Aguardando aprovação" (UX-SPEC §4.4).
-          eventsBeatPolling: true,
+          // Destrava a UI na hora; o polling seguinte confirma pelo `last_event` do
+          // servidor, que é o desempate da armadilha 19.
           status: "running",
         },
         `🔐 Aprovação respondida: ${APPROVAL_CHOICE_LABEL[action.choice]}`,
@@ -339,12 +349,11 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
 
     case "polled": {
       const run = action.run;
-      const sticky = run.status === "waiting_for_approval" && state.eventsBeatPolling;
       const terminal = isTerminalRunStatus(run.status);
       return {
         ...state,
         expired: false,
-        status: sticky ? state.status : run.status,
+        status: effectiveRunStatus(run),
         model: run.model ?? state.model,
         sessionId: run.session_id ?? state.sessionId,
         usage: run.usage ?? state.usage,
@@ -361,6 +370,14 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
     }
 
     case "expired":
+      // O 404 depois de um desfecho JÁ OBSERVADO não é "não sei o que aconteceu": é o
+      // servidor tendo descartado (TTL de 1 h, §8.7) o registro de uma tarefa que nós vimos
+      // terminar. Continuar mostrando `Concluído` com o resultado é a verdade — e é o que
+      // `Execuções do Hermes` já faz, então sem esta linha a MESMA execução dizia
+      // "Concluído" na lista e "Execução expirada" um Enter depois.
+      if (state.status !== undefined && isTerminalRunStatus(state.status)) {
+        return { ...state, currentTool: undefined, stopping: false, isLoading: false };
+      }
       return { ...state, expired: true, currentTool: undefined, stopping: false, isLoading: false };
 
     case "stream-result": {
@@ -412,7 +429,11 @@ function initialState(props: RunProgressViewProps): RunViewState {
     tools: [],
     approvalLoaded: false,
     pendingApprovals: 0,
-    eventsBeatPolling: false,
+    // Sem semente, `runStatusLabel(undefined)` pinta "Desconhecido" — um oitavo rótulo, que
+    // a §4.1 não permite — até a primeira resposta do polling, e PARA SEMPRE com o Hermes
+    // fora do ar. §2.1.4 e §6.1 mandam **Preparando** antes do primeiro token; quem reabre
+    // uma execução já sabe o desfecho por `StoredRun.lastKnownStatus`.
+    status: props.status,
     startedAt: props.createdAt ?? Date.now(),
     model: props.model,
     sessionId: props.sessionId,
@@ -433,6 +454,12 @@ export interface RunProgressViewProps {
   model?: string;
   createdAt?: number;
   /**
+   * Estado conhecido no momento da abertura: `"queued"` para quem acabou de disparar a
+   * tarefa, `StoredRun.lastKnownStatus` para quem reabre. Sem ele a tela mostra
+   * `Estado: Desconhecido` (§4.1 só admite 7 rótulos).
+   */
+  status?: string;
+  /**
    * `true` SOMENTE quando esta tela acabou de disparar a run. O stream de eventos tem
    * consumidor único e não é retomável: reconectar devolve 404 enquanto a run segue viva
    * (armadilhas 14 e 15). Ao REABRIR uma execução, a recuperação é o polling de 2 s.
@@ -450,14 +477,27 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
   const [showTechnical, setShowTechnical] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const [renamedTitle, setRenamedTitle] = useState<string | undefined>(undefined);
+
+  const title = renamedTitle ?? props.sessionTitle;
 
   const terminal = state.expired || isTerminalRunStatus(state.status);
   const sessionId = state.sessionId ?? props.sessionId;
   const desktopUrl = hermesDesktopSessionUrl(sessionId);
+  /** §6.2, último item: desligado, nada é pintado até o desfecho. */
+  const { streamResponses } = getHermesPreferences();
 
   /** Lido dentro do polling sem entrar nas dependências: só decide ONDE o erro aparece. */
   const hasContentRef = useRef(false);
   hasContentRef.current = state.text !== "" || state.steps.length > 0;
+
+  /**
+   * O texto entra na gravação do resultado, mas NÃO nas dependências do efeito: com
+   * `state.text` lá, cada descarga do buffer (80 ms) refazia o read-modify-write do índice
+   * inteiro — ~12 reescritas por segundo, por toda a tarefa, sem nada ter mudado.
+   */
+  const textRef = useRef("");
+  textRef.current = state.text;
 
   /* ── Stream de eventos: só na execução recém-criada ── */
   useEffect(() => {
@@ -478,7 +518,9 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
           response,
           runId,
           {
-            onText: buffer.push,
+            // §6.2: com "Mostrar a resposta enquanto o Hermes escreve" desligado, o texto
+            // só aparece no desfecho — que chega pelo `stream-result`/`polled`.
+            onText: streamResponses ? buffer.push : undefined,
             onToolStarted: (tool, preview) => {
               if (!cancelled) dispatch({ type: "tool-started", tool, preview });
             },
@@ -562,8 +604,12 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
         const run = await reconcileRun(runId, controller.signal);
         if (cancelled) return;
         // Armadilha 17: 404 é "expirado/perdido", jamais "falhou".
-        if (run === "expired") dispatch({ type: "expired" });
-        else dispatch({ type: "polled", run });
+        if (run === "expired") {
+          // Marcar no índice: `lastKnownStatus` ficaria em `running` por até 7 dias e o
+          // banner "Você tem N tarefas em andamento" contaria uma execução que sumiu.
+          void updateStoredRun(runId, { expired: true });
+          dispatch({ type: "expired" });
+        } else dispatch({ type: "polled", run });
       } catch (err) {
         if (cancelled || isAbort(err)) return;
         const error = toHermesError(err, "getRun");
@@ -602,14 +648,18 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
     if (state.status === undefined) return;
     void updateStoredRun(runId, { lastKnownStatus: state.status });
     if (!isTerminalRunStatus(state.status)) return;
+    // Nada a registrar ainda (execução reaberta antes de o resultado gravado carregar):
+    // gravar aqui apagaria com `undefined` o `output` que já estava no LocalStorage.
+    if (textRef.current === "" && state.runError === undefined) return;
     void saveRunResult({
       runId,
       status: state.status,
-      output: state.text !== "" ? state.text : undefined,
+      // Do ref, não do estado: ver `textRef`. O valor lido aqui é o mesmo que está na tela.
+      output: textRef.current !== "" ? textRef.current : undefined,
       error: state.runError,
       savedAt: Date.now(),
     });
-  }, [runId, state.status, state.text, state.runError]);
+  }, [runId, state.status, state.runError]);
 
   /* ── Execução reaberta: mostra o resultado que já tínhamos, sem esperar o servidor ── */
   useEffect(() => {
@@ -643,11 +693,50 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
     setNonce((value) => value + 1);
   }
 
-  async function handleStop(): Promise<void> {
-    // DESVIO consciente da UX-SPEC §6.6.6, que dispensa a confirmação: a regra geral do
-    // projeto manda `confirmAlert` em toda ação que o usuário não consegue desfazer.
-    if (!(await confirmStopRun())) return;
+  /**
+   * §6.4 item 3 — `Continuar esta conversa`. Vai por `launchCommand` com o `session_id` no
+   * contexto (o mesmo caminho de `session-detail.tsx`): a continuação entra no MESMO
+   * histórico que o Hermes Desktop mostra, em vez de abrir uma conversa nova.
+   */
+  async function continueConversation(): Promise<void> {
+    if (sessionId === undefined) return;
+    try {
+      await launchCommand({
+        name: "ask-hermes",
+        type: LaunchType.UserInitiated,
+        context: { sessionId, sessionTitle: title },
+      });
+    } catch {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Não foi possível abrir a tela de perguntas.",
+        message: 'Procure por "Perguntar ao Hermes" na busca do Raycast.',
+      });
+    }
+  }
 
+  /** §6.4 item 7 — `Ramificar conversa`. */
+  async function branch(): Promise<void> {
+    if (sessionId === undefined) return;
+    try {
+      await forkSession(sessionId);
+      await showToast({
+        style: Toast.Style.Success,
+        title: "Nova conversa criada a partir desta",
+        // O filho é carimbado `source: "api_server"` pelo servidor e não é patchável (R7).
+        message: "Esta nova conversa não aparece na lista principal do Hermes Desktop.",
+      });
+    } catch (err) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: toHermesError(err, `POST /api/sessions/${sessionId}/fork`).userMessage,
+      });
+    }
+  }
+
+  async function handleStop(): Promise<void> {
+    // Sem `confirmAlert`: a UX-SPEC §6.6 item 6 é explícita — nada é destruído e a
+    // confirmação atrasaria a única saída de emergência do usuário.
     const toast = await showToast({ style: Toast.Style.Animated, title: "Parando a tarefa…" });
     try {
       await stopRun(runId);
@@ -699,7 +788,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
       metadata={
         <Detail.Metadata>
           <Detail.Metadata.Label title="Estado" text={label} icon={statusImage(appearance)} />
-          <Detail.Metadata.Label title="Conversa" text={props.sessionTitle ?? "Sem título"} />
+          <Detail.Metadata.Label title="Conversa" text={title ?? "Sem título"} />
           <Detail.Metadata.Label title="Modelo" text={state.model ?? "Padrão do Hermes"} />
           {sessionId !== undefined && <Detail.Metadata.Label title="Sincronização" text="Aparece no Hermes Desktop" />}
           {state.durationSeconds !== undefined && (
@@ -728,9 +817,12 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
                     pendingCount={Math.max(state.pendingApprovals, 1)}
                     detailsLost={state.approvalLoaded && state.approval === undefined}
                     taskPreview={shorten(prompt, 60)}
-                    conversationTitle={props.sessionTitle ?? "Sem título"}
+                    conversationTitle={title ?? "Sem título"}
                     sessionId={sessionId}
                     onResolved={(choice, resolved) => dispatch({ type: "approval-responded", choice, resolved })}
+                    // §7.4: `Ver etapas da tarefa` — esta tela JÁ é a tarefa, então basta
+                    // trocar o modo; o `Esc` do usuário volta para cá com as etapas à vista.
+                    onShowSteps={() => setMode("etapas")}
                   />
                 }
               />
@@ -800,12 +892,45 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
           </ActionPanel.Section>
 
           <ActionPanel.Section>
+            {/* §6.4 "Depois": itens 3, 7 e 8 da tabela — esta tela é a mesma `Detail` de
+                §2.1.3 por força da §2.4.2, então as ações pós-conclusão valem aqui igual. */}
+            {sessionId !== undefined && (
+              <Action
+                title="Continuar esta conversa"
+                icon={Icon.SpeechBubble}
+                shortcut={SHORTCUTS.continueConversation}
+                onAction={() => void continueConversation()}
+              />
+            )}
             <Action
-              title="Nova tarefa"
+              // §10.3: a frase canônica é `Nova conversa`. `Nova tarefa` era um segundo
+              // nome para o mesmo `Ctrl+N` que `ask.tsx` já chamava de `Nova conversa`.
+              title="Nova conversa"
               icon={Icon.Plus}
               shortcut={SHORTCUTS.newConversation}
               onAction={() => void launchCommand({ name: "run-task", type: LaunchType.UserInitiated })}
             />
+            {terminal && sessionId !== undefined && (
+              <Action
+                title="Ramificar conversa"
+                icon={Icon.Repeat}
+                shortcut={SHORTCUTS.branch}
+                onAction={() => void branch()}
+              />
+            )}
+            {sessionId !== undefined && (
+              <Action.Push
+                title="Renomear conversa"
+                icon={Icon.Pencil}
+                shortcut={SHORTCUTS.rename}
+                target={
+                  <RenameSessionForm
+                    session={{ id: sessionId, title: title ?? null }}
+                    onRenamed={(updated) => setRenamedTitle(updated.title ?? undefined)}
+                  />
+                }
+              />
+            )}
             <Action
               title="Ver tarefas em andamento"
               icon={Icon.List}

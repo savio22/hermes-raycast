@@ -26,15 +26,16 @@ import {
   confirmAlert,
   Detail,
   Icon,
+  openExtensionPreferences,
   showToast,
   Toast,
   useNavigation,
   type Keyboard,
 } from "@raycast/api";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { hermesDesktopSessionUrl } from "../lib/discovery";
 import { toHermesError } from "../lib/errors";
-import { respondToApproval } from "../lib/hermes-api";
+import { respondToApproval, stopRun } from "../lib/hermes-api";
 import { runStatusLabel } from "../lib/status";
 import type { ApprovalChoice, ApprovalRequestFields } from "../lib/types";
 import { SHORTCUTS } from "./shortcuts";
@@ -68,6 +69,30 @@ const RISK_SENSITIVE =
   "> ⚠️ **Ação sensível.** Este comando pode alterar arquivos ou executar programas no seu computador.";
 const RISK_SMART_DENIED = "> 🛑 **O Hermes recomendou negar esta ação.** Aprovar vale só para esta única vez.";
 
+/**
+ * Cerca de código maior que a maior sequência de crases do conteúdo.
+ *
+ * `command` é texto escolhido pelo modelo e influenciável por injeção no material que o
+ * agente leu. Com uma cerca fixa de três crases, um comando contendo ``` fecha o bloco e o
+ * resto vira Markdown vivo — na ÚNICA tela cuja função é o usuário julgar o que autoriza.
+ * Daria para empurrar o bloco de risco real para fora da dobra, forjar um `> ✅` no mesmo
+ * estilo e inserir um link clicável dentro do diálogo de permissão.
+ */
+function codeFence(content: string): string {
+  let longest = 0;
+  for (const run of content.match(/`+/g) ?? []) longest = Math.max(longest, run.length);
+  return "`".repeat(Math.max(3, longest + 1));
+}
+
+/**
+ * `description` vai em PROSA, então não há cerca protegendo-a: uma quebra de linha sai do
+ * parágrafo e `#`, `>` ou `[texto](url)` viram estrutura. Colapsamos para uma linha e
+ * escapamos os marcadores de início de linha; o texto continua legível e literal.
+ */
+function inlineText(value: string): string {
+  return value.replace(/\s*[\r\n]+\s*/g, " ").replace(/^([#>\-*+])/, "\\$1");
+}
+
 const TIMEOUT_NOTE =
   "O Hermes está parado esperando sua resposta. Se ninguém responder, ele desiste sozinho depois de alguns minutos.";
 
@@ -91,6 +116,12 @@ export interface ApprovalViewProps {
   sessionId?: string;
   /** Chamado depois do POST, com quantos pedidos o servidor resolveu de uma vez. */
   onResolved: (choice: ApprovalChoice, resolved: number) => void;
+  /**
+   * `Ver etapas da tarefa` (`Ctrl+T`, §7.4). Quem chama decide o que "ver as etapas"
+   * significa na sua pilha de navegação: voltar para a tela da execução em modo Etapas
+   * (`ask`, `run-progress`) ou abri-la por cima (`Execuções do Hermes`).
+   */
+  onShowSteps?: () => void;
 }
 
 interface ChoiceSpec {
@@ -155,15 +186,20 @@ function buildMarkdown(props: ApprovalViewProps): string {
   const risk =
     fields.smart_denied === true ? RISK_SMART_DENIED : isDestructive(patternKeys) ? RISK_DESTRUCTIVE : RISK_SENSITIVE;
 
+  const command = fields.command ?? "(o Hermes não informou o comando)";
+  const fence = codeFence(command);
+  const description =
+    fields.description === undefined ? "o Hermes não explicou o motivo." : inlineText(fields.description);
+
   return `# O Hermes precisa da sua permissão
 
 Ele quer executar este comando no seu computador:
 
-\`\`\`
-${fields.command ?? "(o Hermes não informou o comando)"}
-\`\`\`
+${fence}
+${command}
+${fence}
 
-**Por que estamos perguntando:** ${fields.description ?? "o Hermes não explicou o motivo."}
+**Por que estamos perguntando:** ${description}
 
 ${risk}
 
@@ -174,17 +210,24 @@ ${TIMEOUT_NOTE}
 }
 
 export function ApprovalView(props: ApprovalViewProps) {
-  const { runId, fields, detailsLost, taskPreview, conversationTitle, sessionId, onResolved } = props;
+  const { runId, fields, detailsLost, taskPreview, conversationTitle, sessionId, onResolved, onShowSteps } = props;
   const { pop } = useNavigation();
+  /**
+   * Trava SÍNCRONA. `useState` só valeria no render seguinte, e a fila de aprovações é
+   * FIFO e não endereçável (armadilha 23): dois Enter rápidos mandariam dois POST e o
+   * segundo resolveria o PRÓXIMO pedido, que o usuário nunca viu.
+   */
+  const responding = useRef(false);
   const [isResponding, setIsResponding] = useState(false);
 
   const desktopUrl = hermesDesktopSessionUrl(sessionId);
   const patternKey = fields.pattern_key ?? fields.pattern_keys?.[0];
 
   async function respond(choice: ApprovalChoice, confirmation?: Alert.Options): Promise<void> {
-    if (isResponding) return;
+    if (responding.current) return;
     if (confirmation && !(await confirmAlert(confirmation))) return;
 
+    responding.current = true;
     setIsResponding(true);
     try {
       const response = await respondToApproval(runId, choice);
@@ -200,13 +243,40 @@ export function ApprovalView(props: ApprovalViewProps) {
       const hermes = toHermesError(err, `POST /v1/runs/${runId}/approval`);
       // E12: já respondido em outro aplicativo — a tela volta, não insiste.
       await showToast({ style: Toast.Style.Failure, title: hermes.userMessage });
+      responding.current = false;
       setIsResponding(false);
     }
   }
 
+  /** §6.6 item 6: `Parar` não tem `confirmAlert` — é a saída de emergência. */
+  async function stop(): Promise<void> {
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Parando a tarefa…" });
+    try {
+      await stopRun(runId);
+      toast.style = Toast.Style.Success;
+      toast.title = "Tarefa parada";
+      pop();
+    } catch (err) {
+      const hermes = toHermesError(err, `POST /v1/runs/${runId}/stop`);
+      // Armadilha 21: 404 aqui significa "a tarefa já tinha terminado", nunca erro.
+      if (hermes.httpStatus === 404) {
+        toast.style = Toast.Style.Success;
+        toast.title = "Tarefa parada";
+        pop();
+        return;
+      }
+      toast.style = Toast.Style.Failure;
+      toast.title = hermes.userMessage;
+    }
+  }
+
   // Exatamente o array do servidor, na ordem recebida (armadilha 25). Um `choice` que não
-  // conhecemos é ignorado: sem rótulo confiável, botão nenhum.
-  const offered = detailsLost ? (["deny"] as ApprovalChoice[]) : fields.choices.filter((c) => c in CHOICE_SPECS);
+  // conhecemos é ignorado: sem rótulo confiável, botão nenhum. O `?? []` é defesa contra o
+  // fio: `choices` chega de um cast do frame do stream, sem validação de forma, e um
+  // `undefined` aqui derrubaria a tela — deixando o usuário sem conseguir nem negar.
+  const offered = detailsLost
+    ? (["deny"] as ApprovalChoice[])
+    : (fields.choices ?? []).filter((c) => c in CHOICE_SPECS);
 
   return (
     <Detail
@@ -266,6 +336,25 @@ export function ApprovalView(props: ApprovalViewProps) {
             {fields.command ? (
               <Action.CopyToClipboard title="Copiar comando" content={fields.command} shortcut={SHORTCUTS.copy} />
             ) : null}
+            {/* §7.4: `Ver etapas da tarefa` faz parte da tabela de ações desta tela. */}
+            {onShowSteps !== undefined ? (
+              <Action
+                title="Ver etapas da tarefa"
+                icon={Icon.List}
+                shortcut={SHORTCUTS.toggleSteps}
+                onAction={onShowSteps}
+              />
+            ) : null}
+            {/* §7.6: com os detalhes perdidos, parar a tarefa é uma das saídas oferecidas. */}
+            {detailsLost ? (
+              <Action
+                title="Parar tarefa"
+                icon={Icon.Stop}
+                style={Action.Style.Destructive}
+                shortcut={SHORTCUTS.stop}
+                onAction={() => void stop()}
+              />
+            ) : null}
             {desktopUrl ? (
               <Action.Open
                 title="Abrir no Hermes Desktop"
@@ -274,6 +363,13 @@ export function ApprovalView(props: ApprovalViewProps) {
                 shortcut={SHORTCUTS.openInDesktop}
               />
             ) : null}
+            {/* §5.1 regra 3 / §9.2: `Abrir configurações` existe em TODA tela. */}
+            <Action
+              title="Abrir configurações"
+              icon={Icon.Gear}
+              shortcut={SHORTCUTS.preferences}
+              onAction={openExtensionPreferences}
+            />
           </ActionPanel.Section>
         </ActionPanel>
       }

@@ -31,7 +31,8 @@ import {
   mapHttpError,
   toHermesError,
 } from "./errors";
-import { getHermesPreferences, requireApiKey } from "./preferences";
+import { getHermesPreferences, requireApiKey, resolveApiKey } from "./preferences";
+import { forgetDetectedApiKey } from "./storage";
 import type * as T from "./types";
 
 /* ────────────────────────────── Transporte ────────────────────────────── */
@@ -62,6 +63,13 @@ export interface RequestOptions {
   withSessionKey?: boolean;
   /** Omite o Authorization. Só `/health`, que é público, usa isto. */
   anonymous?: boolean;
+  /**
+   * Chave explícita, em vez da resolvida por `requireApiKey()`. Existe para UM caso:
+   * validar uma credencial recém-lida ANTES de persisti-la (UX-SPEC §3.5). Sem isto a
+   * detecção automática validaria a preferência (que vence na §3.3) e diria "encontrada
+   * e guardada" sobre uma chave que nunca foi testada.
+   */
+  apiKey?: string;
 }
 
 function buildUrl(baseUrl: string, path: string, query?: RequestOptions["query"]): string {
@@ -86,7 +94,7 @@ function safeSessionKey(raw: string): string {
  */
 async function buildHeaders(options: RequestOptions, accept: string): Promise<Headers> {
   const headers = new Headers();
-  if (!options.anonymous) headers.set("Authorization", `Bearer ${await requireApiKey()}`);
+  if (!options.anonymous) headers.set("Authorization", `Bearer ${options.apiKey ?? (await requireApiKey())}`);
   headers.set("Accept", accept);
   if (options.body !== undefined) headers.set("Content-Type", "application/json");
   if (options.withSessionKey) {
@@ -121,6 +129,18 @@ function retryDelayMs(err: unknown): number {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * UX-SPEC §3.3, para TODOS os comandos: um 401 invalida a chave DETECTADA na hora, para
+ * que a próxima tela ofereça `Detectar configuração automaticamente` em vez de repetir E2
+ * para sempre. A preferência nunca é apagada — é intenção explícita do usuário — e uma
+ * chave passada em `options.apiKey` pertence a quem a passou (a detecção da §3.5).
+ */
+async function forgetDetectedKeyAfterAuthFailure(options: RequestOptions): Promise<void> {
+  if (options.anonymous || options.apiKey !== undefined) return;
+  const { source } = await resolveApiKey();
+  if (source === "detected") await forgetDetectedApiKey();
 }
 
 interface RawResponse {
@@ -183,13 +203,15 @@ async function rawRequest(
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     release();
-    throw mapHttpError({
+    const mapped = mapHttpError({
       method,
       path: options.path,
       status: response.status,
       retryAfter: response.headers.get("Retry-After"),
       body,
     });
+    if (response.status === 401) await forgetDetectedKeyAfterAuthFailure(options);
+    throw mapped;
   }
 
   return { response, release };
@@ -283,8 +305,12 @@ export function hasEndpoint(caps: T.Capabilities | undefined, name: string): boo
 
 /* ──────────────────────────────  Modelos  ─────────────────────────────── */
 
-export function listModels(signal?: AbortSignal): Promise<T.ModelListResponse> {
-  return requestJson<T.ModelListResponse>({ path: "/v1/models", signal });
+/**
+ * `apiKey` só é usado pela detecção automática (§3.5), para provar a chave que ela
+ * acabou de ler ANTES de gravá-la. Todo o resto omite e usa a chave resolvida.
+ */
+export function listModels(signal?: AbortSignal, apiKey?: string): Promise<T.ModelListResponse> {
+  return requestJson<T.ModelListResponse>({ path: "/v1/models", signal, apiKey });
 }
 
 /** `refresh=true` re-sonda TODOS os provedores: é lento, use só sob ação explícita. */
@@ -326,8 +352,10 @@ export function flattenModelOptions(payload: T.ModelOptionsResponse): T.ModelOpt
  * conversa dos "Recentes" do Hermes Desktop. */
 export const RAYCAST_SESSION_SOURCE: T.SessionSourceInput = "desktop";
 
-const MAX_TITLE_LENGTH = 100;
-const TITLE_SUFFIX_LENGTH = 6;
+/** UX-SPEC §0.3: "título = primeiros 60 caracteres da pergunta". */
+const MAX_TITLE_LENGTH = 60;
+/** §0.3: colisão ⇒ `" (2)"`, `" (3)"`; na terceira falha, criar SEM título. */
+const TITLE_COLLISION_SUFFIXES = [" (2)", " (3)"] as const;
 
 /** Id legível, sem "/", "\", ":" nem "..", compatível com o deep link do Desktop (R7). */
 export function newSessionId(): string {
@@ -335,9 +363,13 @@ export function newSessionId(): string {
 }
 
 /**
- * Título derivado do prompt. Títulos são ÚNICOS no banco inteiro e limitados a
- * 100 chars: colisão faz rollback do create e devolve 400 `invalid_title`
- * (armadilha 6). O sufixo aleatório é o que torna a colisão improvável.
+ * Título derivado do prompt: os primeiros 60 caracteres da pergunta (UX-SPEC §0.3).
+ *
+ * Sem sufixo aleatório de propósito. Títulos são ÚNICOS no banco inteiro e a colisão
+ * devolve 400 `invalid_title` (armadilha 6), mas a resposta a ela é
+ * `conversationTitleAttempt()` — `" (2)"`, `" (3)"`, depois nenhum título. Um sufixo
+ * hexadecimal deixaria "Resuma este relatório · a3f9c1" na lista do Raycast, na metadata
+ * `Conversa` e nos Recentes do Hermes Desktop, que é justamente o que a §0.3 evita.
  */
 export function conversationTitle(prompt: string): string {
   // `\p{Cc}` é a categoria Unicode dos caracteres de controle (U+0000–U+001F e
@@ -347,15 +379,21 @@ export function conversationTitle(prompt: string): string {
     .replace(/\p{Cc}+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-  const suffix = randomUUID().replace(/-/g, "").slice(0, TITLE_SUFFIX_LENGTH);
-  const room = MAX_TITLE_LENGTH - TITLE_SUFFIX_LENGTH - 3; // " · "
-  let base = cleaned === "" ? "Conversa do Raycast" : cleaned;
-  if (base.length > room) {
-    base = base.slice(0, room);
-    const lastSpace = base.lastIndexOf(" ");
-    if (lastSpace > room / 2) base = base.slice(0, lastSpace);
-  }
-  return `${base.trim()} · ${suffix}`;
+  const base = cleaned === "" ? "Conversa do Raycast" : cleaned;
+  return base.length > MAX_TITLE_LENGTH ? base.slice(0, MAX_TITLE_LENGTH).trimEnd() : base;
+}
+
+/**
+ * §0.3 — o título da tentativa `attempt` (0-based) de criar a conversa.
+ * `undefined` significa "já esgotamos os sufixos: criar SEM título".
+ */
+export function conversationTitleAttempt(prompt: string, attempt: number): string | undefined {
+  const base = conversationTitle(prompt);
+  if (attempt === 0) return base;
+  const suffix = TITLE_COLLISION_SUFFIXES[attempt - 1];
+  if (suffix === undefined) return undefined;
+  const room = MAX_TITLE_LENGTH - suffix.length;
+  return `${base.length > room ? base.slice(0, room).trimEnd() : base}${suffix}`;
 }
 
 export interface ListSessionsParams {
@@ -718,7 +756,8 @@ export interface StartedConversation {
   sessionId: string;
   /** Persista ANTES de renderizar: não há rota que liste runs. */
   runId: string;
-  title: string;
+  /** `undefined` quando a §0.3 esgotou os sufixos e a conversa nasceu sem título. */
+  title?: string;
 }
 
 /**
@@ -744,10 +783,14 @@ export async function startConversation(
   signal?: AbortSignal,
 ): Promise<StartedConversation> {
   const titleIsOurs = input.title === undefined;
-  let title = input.title ?? conversationTitle(input.input);
+  let title = input.title ?? conversationTitleAttempt(input.input, 0);
   let session: T.Session;
+  /** R7: id duplicado (409) é retentado UMA vez, com outro id. */
+  let idRetried = false;
+  /** §0.3: 0 = título puro, 1 = `" (2)"`, 2 = `" (3)"`, 3 = sem título. */
+  let titleAttempt = 0;
 
-  for (let attempt = 0; ; attempt++) {
+  for (;;) {
     try {
       const created = await createSession(
         {
@@ -763,12 +806,20 @@ export async function startConversation(
       break;
     } catch (err) {
       const code = (err as { code?: string | null }).code;
-      // R7: id duplicado (409) ⇒ gerar outro e tentar UMA vez. Título duplicado
-      // (400) só é reescrito quando fomos nós que o derivamos; se veio do usuário,
-      // o erro sobe para o formulário pedir outro título.
-      const canRetry = attempt === 0 && (code === "session_exists" || (code === "invalid_title" && titleIsOurs));
-      if (!canRetry) throw err;
-      if (code === "invalid_title") title = conversationTitle(input.input);
+      // R7: id duplicado (409) ⇒ gerar outro e tentar UMA vez.
+      if (code === "session_exists" && !idRetried) {
+        idRetried = true;
+        continue;
+      }
+      // §0.3: título duplicado (400) ⇒ `" (2)"`, `" (3)"` e, na terceira falha, criar
+      // SEM título. Só quando fomos nós que derivamos o título; se veio do usuário, o
+      // erro sobe para o formulário pedir outro.
+      if (code === "invalid_title" && titleIsOurs && titleAttempt < TITLE_COLLISION_SUFFIXES.length + 1) {
+        titleAttempt += 1;
+        title = conversationTitleAttempt(input.input, titleAttempt);
+        continue;
+      }
+      throw err;
     }
   }
 
@@ -785,7 +836,7 @@ export async function startConversation(
       },
       signal,
     );
-    return { sessionId, runId: run.run_id, title: session.title ?? title };
+    return { sessionId, runId: run.run_id, title: session.title ?? title ?? undefined };
   } catch (err) {
     // Sem primeiro turno a sessão fica com 0 mensagens: desfaz (R4).
     // Sem `signal`: a limpeza precisa acontecer mesmo se o usuário cancelou.

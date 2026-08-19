@@ -106,11 +106,37 @@ function escapeRegExp(value: string): string {
 }
 
 /**
+ * Segredos já resolvidos nesta execução do comando, para a passada LITERAL da §5.1
+ * regra 5 ("substituir qualquer ocorrência da chave").
+ *
+ * Existe porque `resolveApiKey()` é assíncrona e a maioria dos blocos de detalhes
+ * técnicos é montada em render síncrono: sem este registro, `ask.tsx`,
+ * `run-progress.tsx` e `session-detail.tsx` só teriam as heurísticas `Bearer …` /
+ * `chave=…`, e um eco do valor CRU da chave (ex.: `KeyError: '9f3a…'`) passaria.
+ *
+ * SEGURANÇA: o conjunto vive só em memória, é privado do módulo, nunca é exportado,
+ * serializado nem exibido — o único uso possível de um valor daqui é ser APAGADO.
+ */
+const registeredSecrets = new Set<string>();
+
+/**
+ * Registra um segredo para redação futura. Chamado por `preferences.resolveApiKey()`,
+ * o único ponto da extensão que enxerga a `API_SERVER_KEY`.
+ */
+export function registerSecret(value: string): void {
+  const trimmed = value.trim();
+  // Valores curtos casariam com texto legítimo e destruiriam o detalhe.
+  if (trimmed.length < 6) return;
+  registeredSecrets.add(trimmed);
+}
+
+/**
  * Remove qualquer credencial de um texto antes de exibi-lo ou copiá-lo.
  *
  * Roda SEMPRE, mesmo sem `secrets` — a UX-SPEC §5.1 regra 5 proíbe pular o filtro
- * quando a chave não está carregada. Quem tiver o valor literal da chave (só
- * `preferences.ts` tem) pode passá-lo em `secrets` para uma segunda passada.
+ * quando a chave não está carregada. Além dos `secrets` recebidos, apaga tudo o que
+ * já passou por `registerSecret()`, de modo que a passada literal aconteça mesmo em
+ * quem monta o bloco sem poder aguardar `resolveApiKey()`.
  *
  * Não redige blobs por entropia de propósito: `run_e4118ab9...` e
  * `api_1787173253_21269392` são identificadores públicos e úteis no diagnóstico.
@@ -118,7 +144,7 @@ function escapeRegExp(value: string): string {
 export function sanitizeTechnical(text: string, secrets: readonly string[] = []): string {
   let out = text;
 
-  for (const secret of secrets) {
+  for (const secret of [...secrets, ...registeredSecrets]) {
     const trimmed = secret.trim();
     // Valores curtos demais casariam com texto legítimo e destruiriam o detalhe.
     if (trimmed.length < 6) continue;
