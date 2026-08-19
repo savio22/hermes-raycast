@@ -136,3 +136,31 @@ Atende à regra do brief de evitar dependências quando a API nativa resolve.
 **Restrição:** a remoção nativa de tipos não aceita construções que exigem
 transformação — `enum`, `namespace`, decorators, `import =`. Usar objetos
 `as const` no lugar de `enum` e `import type` para tipos.
+
+## D-08 — Ler `API_SERVER_KEY` do `.env` é APROVADO (fecha a pendência P1)
+
+**Status: DECIDIDO PELO USUÁRIO** em 2026-08-19. Substitui a pendência P1 da
+seção "Decisões pendentes" de `ARCHITECTURE.md`, que fica encerrada.
+
+O plano original continha uma tensão real: proíbe "ler arquivos internos do
+Hermes" e ao mesmo tempo proíbe "exigir terminal para o uso normal". A chave
+mora em `<HERMES_HOME>\.env`, então cumprir as duas coisas ao pé da letra é
+impossível.
+
+**Decisão: manter a ação `Detectar configuração automaticamente` como está**,
+com as travas já implementadas:
+
+- roda **somente** por ação explícita do usuário, nunca em background, nunca
+  no mount de nenhuma tela;
+- lê **apenas** a linha `API_SERVER_KEY=` do `.env` e a porta do `config.yaml`
+  — nenhum outro conteúdo desses arquivos, e nunca o `auth.json`;
+- **nunca exibe o valor** — nem o valor, nem um prefixo, nem o tamanho, nem
+  uma versão mascarada;
+- nunca copia a chave para a área de transferência;
+- guarda a chave no LocalStorage do Raycast (banco criptografado), e a
+  preferência digitada pelo usuário continua tendo precedência.
+
+**Consequência para quem for implementar:** a invariante 3 da `ARCHITECTURE.md`
+("`discovery.ts` só pode ler `API_SERVER_PORT`") está relaxada exatamente nestes
+termos e não deve ser reinstaurada. Nenhuma outra leitura de arquivo interno do
+Hermes fica autorizada por esta decisão.
