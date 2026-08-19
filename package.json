@@ -1,0 +1,31 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "hermes",
+  "title": "Hermes",
+  "description": "Converse com o Hermes Agent, acompanhe tarefas e continue no Hermes Desktop — sem sair do Raycast.",
+  "icon": "hermes.png",
+  "author": "sam",
+  "categories": ["Productivity", "Developer Tools"],
+  "license": "MIT",
+  "platforms": ["Windows"],
+  "commands": [],
+  "preferences": [],
+  "dependencies": {
+    "@raycast/api": "^1.104.20",
+    "@raycast/utils": "^2.2.7"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.2.0",
+    "@types/node": "22.19.17",
+    "@types/react": "19.0.10",
+    "eslint": "^10.5.0",
+    "prettier": "^3.8.5",
+    "typescript": "^6.0.3"
+  },
+  "scripts": {
+    "dev": "ray develop",
+    "build": "ray build",
+    "lint": "ray lint",
+    "fix-lint": "ray lint --fix"
+  }
+}
