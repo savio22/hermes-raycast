@@ -729,3 +729,30 @@ test("resolveHermesConfig: carrega discovery tardiamente e propaga o erro do Her
     },
   );
 });
+
+/* ═══════════ hermesDesktopSessionUrl — deep link do Hermes Desktop (§6.3) ═══════════ */
+
+test("hermesDesktopSessionUrl: monta o link dos três formatos reais de id", () => {
+  assert.equal(discovery.hermesDesktopSessionUrl("api_1787173253_21269392"), "hermes://open/api_1787173253_21269392");
+  assert.equal(
+    discovery.hermesDesktopSessionUrl("raycast_1787173253_a1b2c3d4"),
+    "hermes://open/raycast_1787173253_a1b2c3d4",
+  );
+  assert.equal(discovery.hermesDesktopSessionUrl("a1b2c3d4"), "hermes://open/a1b2c3d4");
+});
+
+test("hermesDesktopSessionUrl: recusa o que o parser do Desktop não aceita", () => {
+  // Sem id não há ação: a UI omite "Abrir no Hermes Desktop" em vez de abrir errado.
+  assert.equal(discovery.hermesDesktopSessionUrl(undefined), undefined);
+  assert.equal(discovery.hermesDesktopSessionUrl(""), undefined);
+  assert.equal(discovery.hermesDesktopSessionUrl("com/barra"), undefined);
+  assert.equal(discovery.hermesDesktopSessionUrl("com\\contrabarra"), undefined);
+  assert.equal(discovery.hermesDesktopSessionUrl("com:doispontos"), undefined);
+  assert.equal(discovery.hermesDesktopSessionUrl(".."), undefined);
+  assert.equal(discovery.hermesDesktopSessionUrl("subiu..de..nivel"), undefined);
+});
+
+test("hermesDesktopSessionUrl: escapa o que sobra, sem quebrar o esquema", () => {
+  assert.equal(discovery.hermesDesktopSessionUrl("com espaço"), "hermes://open/com%20espa%C3%A7o");
+  assert.equal(discovery.hermesDesktopSessionUrl("com?query#hash"), "hermes://open/com%3Fquery%23hash");
+});

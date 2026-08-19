@@ -424,3 +424,21 @@ export async function invalidateBaseUrl(): Promise<void> {
   memo = undefined;
   await writeJson(StorageKeys.endpointCache, undefined);
 }
+
+/* ──────────────── Deep link para o Hermes Desktop (ARCHITECTURE §6.3) ──────────────── */
+
+/**
+ * `hermes://open/<sessionId>` foca aquela conversa num Hermes Desktop já aberto (V-2,
+ * confirmada ao vivo). Restrições do parser do Desktop: o id não pode conter barra, contrabarra,
+ * ":" nem "..". Ids do api_server (`api_<epoch>_<8hex>`), os nossos (`raycast_<epoch>_<8hex>`)
+ * e os do Desktop (8 hex) satisfazem tudo isso.
+ *
+ * Devolve `undefined` quando o id não é linkável — a UI OMITE a ação nesse caso, em vez de
+ * oferecer um link que abriria o Desktop no lugar errado.
+ */
+export function hermesDesktopSessionUrl(sessionId: string | undefined): string | undefined {
+  if (sessionId === undefined || sessionId === "" || /[\\/:]/.test(sessionId) || sessionId.includes("..")) {
+    return undefined;
+  }
+  return `hermes://open/${encodeURIComponent(sessionId)}`;
+}

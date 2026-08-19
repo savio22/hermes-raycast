@@ -23,6 +23,7 @@ const {
   consumeRunEventStream,
   consumeSessionChatStream,
   createSseParser,
+  createTextBuffer,
   isDoneSentinel,
   isKeepAliveComment,
   isStreamClosedComment,
@@ -729,4 +730,56 @@ test("queda da conexão no meio do stream sobe como HermesError, com o texto par
 
   // O que já tinha chegado passou por onText: a UI mantém o texto parcial na tela (UX-SPEC E23).
   assert.deepEqual(texts, ["meio da "]);
+});
+
+/* ══════════════════════ createTextBuffer (armadilha 55) ══════════════════════ */
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+test("createTextBuffer: várias chamadas na janela viram UM flush, com o texto mais recente", async () => {
+  const flushes: string[] = [];
+  const buffer = createTextBuffer((text) => flushes.push(text), 20);
+
+  buffer.push("a");
+  buffer.push("ab");
+  buffer.push("abc");
+  assert.deepEqual(flushes, [], "nada pode ser publicado de forma síncrona");
+
+  await wait(60);
+  assert.deepEqual(flushes, ["abc"], "um único flush, com o acumulado mais recente");
+});
+
+test("createTextBuffer: flush() publica na hora e não deixa timer pendurado", async () => {
+  const flushes: string[] = [];
+  const buffer = createTextBuffer((text) => flushes.push(text), 50);
+
+  buffer.push("parcial");
+  buffer.flush();
+  assert.deepEqual(flushes, ["parcial"]);
+
+  await wait(80);
+  assert.deepEqual(flushes, ["parcial"], "o timer agendado antes do flush foi cancelado");
+});
+
+test("createTextBuffer: cancel() descarta o flush pendente sem publicar", async () => {
+  const flushes: string[] = [];
+  const buffer = createTextBuffer((text) => flushes.push(text), 20);
+
+  buffer.push("texto que chegou depois da desmontagem");
+  buffer.cancel();
+
+  await wait(60);
+  assert.deepEqual(flushes, [], "cancel() é o que evita setState em componente desmontado");
+});
+
+test("createTextBuffer: janelas seguintes voltam a agendar", async () => {
+  const flushes: string[] = [];
+  const buffer = createTextBuffer((text) => flushes.push(text), 20);
+
+  buffer.push("um");
+  await wait(60);
+  buffer.push("um dois");
+  await wait(60);
+
+  assert.deepEqual(flushes, ["um", "um dois"]);
 });

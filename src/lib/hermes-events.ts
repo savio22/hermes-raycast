@@ -580,3 +580,54 @@ export async function consumeRunEventStream(
   if (signal?.aborted) result.aborted = true;
   return result;
 }
+
+/* ──────────── Buffer de renderização (UX-SPEC §6.2, ARCHITECTURE §8.7) ──────────── */
+
+export interface TextBuffer {
+  /** Registra o texto acumulado mais recente e agenda um único flush. */
+  push(text: string): void;
+  /** Publica na hora e cancela o flush pendente. Obrigatório ao fim do stream. */
+  flush(): void;
+  /** Cancela o flush pendente SEM publicar. Use na desmontagem, junto do abort. */
+  cancel(): void;
+}
+
+/**
+ * Agrupa os `onText` do stream para que a view chame `setState` ~12 vezes por segundo em
+ * vez de uma por token: cada re-render do `Detail` atravessa a ponte IPC até o host WPF do
+ * Raycast, e sem isto uma resposta longa engasga a interface (armadilha 55).
+ *
+ * `push()` guarda o texto MAIS RECENTE — os dois consumidores deste módulo entregam o
+ * acumulado, não o delta — e agenda um flush; chamadas dentro da janela não agendam nada.
+ * `cancel()` existe para a desmontagem: publicar depois do unmount é `setState` em
+ * componente morto, que o Raycast mostra como erro em tela cheia no `ray develop`.
+ */
+export function createTextBuffer(onFlush: (text: string) => void, intervalMs = 80): TextBuffer {
+  let latest = "";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const clear = (): void => {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+  };
+
+  return {
+    push(text: string): void {
+      latest = text;
+      if (timer !== undefined) return;
+      timer = setTimeout(() => {
+        timer = undefined;
+        onFlush(latest);
+      }, intervalMs);
+    },
+    flush(): void {
+      clear();
+      onFlush(latest);
+    },
+    cancel(): void {
+      clear();
+    },
+  };
+}

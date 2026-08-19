@@ -201,6 +201,15 @@ export interface StoredApproval {
   choices: string[];
   requestId?: string;
   receivedAt: number;
+  /**
+   * Identificador do tipo de bloqueio. Vai CRU para a metadata da tela de aprovação
+   * (UX-SPEC §7.2): é o único identificador confiável para quem for pedir suporte.
+   */
+  patternKey?: string;
+  /** Decide o bloco de risco destrutivo vs sensível da UX-SPEC §7.3. */
+  patternKeys?: string[];
+  /** `true` quando o servidor já havia negado o pedido e só oferece `once`/`deny` (§7.3). */
+  smartDenied?: boolean;
 }
 
 export function saveApprovalRequest(approval: StoredApproval): Promise<void> {
