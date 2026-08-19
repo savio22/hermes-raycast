@@ -218,10 +218,12 @@
     "typescript": "^6.0.3"
   },
   "scripts": {
-    "dev": "ray develop",
-    "build": "ray build",
+    "dev": "ray develop --target release",
+    "build": "ray build --target release",
     "lint": "ray lint",
     "fix-lint": "ray lint --fix",
-    "build:dist": "ray build --skip-types -e dist -o dist"
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build:dist": "ray build -e dist -o dist --target release"
   }
 }
