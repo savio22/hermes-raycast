@@ -5,9 +5,14 @@
   "description": "Converse com o Hermes Agent, acompanhe tarefas e continue no Hermes Desktop — sem sair do Raycast.",
   "icon": "hermes.png",
   "author": "sam",
-  "categories": ["Productivity", "Developer Tools"],
+  "categories": [
+    "Productivity",
+    "Developer Tools"
+  ],
   "license": "MIT",
-  "platforms": ["Windows"],
+  "platforms": [
+    "Windows"
+  ],
   "commands": [
     {
       "name": "ask-hermes",
@@ -15,7 +20,15 @@
       "subtitle": "Hermes",
       "description": "Faça uma pergunta ao Hermes e receba a resposta na hora, com opção de continuar a conversa.",
       "mode": "view",
-      "keywords": ["hermes", "ia", "ai", "perguntar", "pergunta", "chat", "agente"],
+      "keywords": [
+        "hermes",
+        "ia",
+        "ai",
+        "perguntar",
+        "pergunta",
+        "chat",
+        "agente"
+      ],
       "arguments": [
         {
           "name": "pergunta",
@@ -31,7 +44,13 @@
       "subtitle": "Hermes",
       "description": "Veja, pesquise, continue, renomeie e organize suas conversas do Hermes, incluindo as do Hermes Desktop.",
       "mode": "view",
-      "keywords": ["hermes", "conversas", "historico", "chats", "sessoes"]
+      "keywords": [
+        "hermes",
+        "conversas",
+        "historico",
+        "chats",
+        "sessoes"
+      ]
     },
     {
       "name": "run-task",
@@ -39,7 +58,13 @@
       "subtitle": "Hermes",
       "description": "Peça uma tarefa mais longa ao Hermes e acompanhe cada etapa até o resultado final.",
       "mode": "view",
-      "keywords": ["hermes", "tarefa", "executar", "run", "agente"],
+      "keywords": [
+        "hermes",
+        "tarefa",
+        "executar",
+        "run",
+        "agente"
+      ],
       "arguments": [
         {
           "name": "tarefa",
@@ -55,7 +80,13 @@
       "subtitle": "Hermes",
       "description": "Acompanhe as tarefas em andamento, responda pedidos de aprovação e reabra resultados recentes.",
       "mode": "view",
-      "keywords": ["hermes", "execucoes", "andamento", "aprovacao", "status"]
+      "keywords": [
+        "hermes",
+        "execucoes",
+        "andamento",
+        "aprovacao",
+        "status"
+      ]
     },
     {
       "name": "models",
@@ -63,7 +94,13 @@
       "subtitle": "Hermes",
       "description": "Veja os modelos disponíveis no seu Hermes e escolha qual usar por padrão.",
       "mode": "view",
-      "keywords": ["hermes", "modelos", "modelo", "provider", "ia"]
+      "keywords": [
+        "hermes",
+        "modelos",
+        "modelo",
+        "provider",
+        "ia"
+      ]
     },
     {
       "name": "check-connection",
@@ -71,7 +108,13 @@
       "subtitle": "Hermes",
       "description": "Verifique se o Hermes está ligado e se a conexão da extensão está funcionando.",
       "mode": "view",
-      "keywords": ["hermes", "conexao", "diagnostico", "testar", "status"]
+      "keywords": [
+        "hermes",
+        "conexao",
+        "diagnostico",
+        "testar",
+        "status"
+      ]
     },
     {
       "name": "configure-hermes",
@@ -79,7 +122,13 @@
       "subtitle": "Hermes",
       "description": "Conecte a extensão ao Hermes instalado neste computador, sem precisar de terminal.",
       "mode": "view",
-      "keywords": ["hermes", "configurar", "conectar", "chave", "ajustes"]
+      "keywords": [
+        "hermes",
+        "configurar",
+        "conectar",
+        "chave",
+        "ajustes"
+      ]
     }
   ],
   "preferences": [
@@ -137,10 +186,22 @@
       "required": false,
       "default": "50",
       "data": [
-        { "title": "25", "value": "25" },
-        { "title": "50", "value": "50" },
-        { "title": "100", "value": "100" },
-        { "title": "200", "value": "200" }
+        {
+          "title": "25",
+          "value": "25"
+        },
+        {
+          "title": "50",
+          "value": "50"
+        },
+        {
+          "title": "100",
+          "value": "100"
+        },
+        {
+          "title": "200",
+          "value": "200"
+        }
       ]
     }
   ],
@@ -160,6 +221,7 @@
     "dev": "ray develop",
     "build": "ray build",
     "lint": "ray lint",
-    "fix-lint": "ray lint --fix"
+    "fix-lint": "ray lint --fix",
+    "build:dist": "ray build --skip-types -e dist -o dist"
   }
 }
