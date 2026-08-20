@@ -180,9 +180,16 @@ export default function Command(): React.JSX.Element {
       } catch (err) {
         if (isAbort(err) || !mountedRef.current) return;
         const mapped = toHermesError(err, "listSessions");
-        // Uma falha passageira não pode apagar a lista que o usuário está lendo (§5.3):
-        // a tela cheia de erro é só para quando não há nada para mostrar.
-        if (feedRef.current.items.length > 0) {
+        // Falta de configuração NÃO é falha passageira: é o estado de primeiro uso, e tem
+        // de levar à tela de onboarding sempre. A lista é semeada pelo cache (TTL de 30 s),
+        // então sem esta exceção uma instalação sem chave mostrava a lista velha com um
+        // Toast de erro, e a guarda de `HermesNotConfiguredError` mais abaixo nunca era
+        // alcançada — o item 1 do checklist reprovava só neste comando.
+        if (mapped instanceof HermesNotConfiguredError) {
+          setError(mapped);
+        } else if (feedRef.current.items.length > 0) {
+          // Uma falha passageira não pode apagar a lista que o usuário está lendo (§5.3):
+          // a tela cheia de erro é só para quando não há nada para mostrar.
           if (mode !== "poll" || !pollFailingRef.current) {
             await showToast({ style: Toast.Style.Failure, title: mapped.userMessage });
           }

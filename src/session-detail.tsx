@@ -790,7 +790,15 @@ export function SessionDetail({
         </List.Section>
       ))}
 
-      {historyTruncated ? (
+      {/* As seções auxiliares só aparecem quando há mensagem visível. Sem esta guarda o
+          `List.EmptyView` acima era inalcançável: a seção "Hermes Desktop" logo abaixo
+          entrava em toda conversa cujo id fosse linkável — ou seja, em praticamente todas —
+          e uma lista com um item nunca é uma lista vazia. `isShowingDetail={visible.length > 0}`
+          mostra que o caso zero estava previsto; faltava deixá-lo acontecer.
+          "Carregar parte anterior" fica FORA da guarda de propósito: quando o trecho atual
+          só tem passos de ferramenta, ela é a única saída útil, e escondê-la criaria um
+          beco sem saída. */}
+      {historyTruncated && visible.length > 0 ? (
         <List.Section>
           <List.Item
             icon={Icon.Clock}
@@ -810,7 +818,7 @@ export function SessionDetail({
         </List.Section>
       ) : null}
 
-      {desktopUrl === undefined ? null : (
+      {desktopUrl === undefined || visible.length === 0 ? null : (
         <List.Section title="Hermes Desktop">
           <List.Item
             icon={Icon.Desktop}

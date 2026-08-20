@@ -593,6 +593,10 @@ export function useRunStream(request: AskRequest): RunStreamController {
         if (!alive() || controller.signal.aborted) return;
         try {
           const run = await reconcileRun(runId, controller.signal);
+          // Um ciclo que deu certo apaga o aviso do ciclo que falhou. Sem isto o banner de
+          // rede ficaria na tela para sempre depois de uma falha passageira já superada.
+          // Devolver o mesmo objeto quando não há aviso evita um re-render inútil por poll.
+          patch((s) => (s.streamFailure === undefined ? s : { ...s, streamFailure: undefined }));
           if (run === "expired") {
             // 404 = expirada. NUNCA "Falhou" (§4.3). Gravar no índice: sem isso o
             // `lastKnownStatus` fica em `running` por até 7 dias e o banner
@@ -610,7 +614,12 @@ export function useRunStream(request: AskRequest): RunStreamController {
             ...s,
             streamFailure: { message: hermes.userMessage, canReattach: true, technical: hermes.technical },
           }));
-          return;
+          // Deliberadamente SEM `return`: uma falha de rede passageira não pode encerrar o
+          // acompanhamento. Encerrar aqui deixava o status preso em `running` e a barra de
+          // carregamento girando para sempre, porque nada mais consultava o servidor.
+          // `run-progress.tsx` já reagenda o ciclo no `finally`; a simetria aqui é cair no
+          // `sleep` abaixo e tentar de novo. O aviso na tela é apagado no primeiro ciclo
+          // que voltar a dar certo.
         }
         await sleep(POLL_INTERVAL_MS, controller.signal);
       }
@@ -656,8 +665,13 @@ export function useRunStream(request: AskRequest): RunStreamController {
   }, [request.prompt, request.sessionId, request.model, request.provider, follow, attempt, streamResponses]);
 
   const stop = useCallback(async (): Promise<void> => {
-    const runId = runIdRef.current;
-    if (runId === undefined) return;
+    // A ação `Parar` já está visível no primeiro quadro, porque o estado inicial é `queued`
+    // (§4.1) — mas `runIdRef` só é preenchido depois que a criação da run volta do servidor.
+    // Sair aqui por `runId === undefined` fazia de `Parar` um no-op silencioso justamente na
+    // janela em que o usuário mais tenta parar: logo depois de enviar. `startRef` guarda a
+    // promessa ÚNICA de criação, então dá para esperar por ela e parar de verdade.
+    const pending = startRef.current;
+    if (runIdRef.current === undefined && pending === undefined) return;
 
     const toast = await showToast({ style: Toast.Style.Animated, title: "Parando a tarefa…" });
     setState((s) => ({
@@ -665,6 +679,24 @@ export function useRunStream(request: AskRequest): RunStreamController {
       stopRequested: true,
       status: isTerminalRunStatus(s.status) ? s.status : "stopping",
     }));
+
+    let runId = runIdRef.current;
+    if (runId === undefined && pending !== undefined) {
+      try {
+        runId = (await pending).runId;
+      } catch {
+        // A criação falhou por conta própria; o efeito já publica esse erro na tela.
+        // Não há execução para parar, e um segundo aviso só confundiria.
+        toast.hide();
+        setState((s) => ({ ...s, stopRequested: false }));
+        return;
+      }
+    }
+    if (runId === undefined) {
+      toast.hide();
+      setState((s) => ({ ...s, stopRequested: false }));
+      return;
+    }
 
     try {
       await stopRun(runId);

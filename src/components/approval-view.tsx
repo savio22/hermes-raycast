@@ -274,9 +274,15 @@ export function ApprovalView(props: ApprovalViewProps) {
   // conhecemos é ignorado: sem rótulo confiável, botão nenhum. O `?? []` é defesa contra o
   // fio: `choices` chega de um cast do frame do stream, sem validação de forma, e um
   // `undefined` aqui derrubaria a tela — deixando o usuário sem conseguir nem negar.
-  const offered = detailsLost
-    ? (["deny"] as ApprovalChoice[])
-    : (fields.choices ?? []).filter((c) => c in CHOICE_SPECS);
+  const known = (fields.choices ?? []).filter((c) => c in CHOICE_SPECS);
+  // Se sobrar zero opção conhecida — `choices` veio vazio, ou só com rótulos que não
+  // reconhecemos — a tela ficaria SEM nenhuma saída: nem aprovar, nem negar, nem parar,
+  // com a tarefa travada esperando resposta. `deny` é o mesmo default que
+  // `run-progress.tsx` e `use-run-stream.ts` já usam ao reidratar um pedido perdido, e é
+  // o único seguro: nunca inventar uma aprovação que o usuário não deu.
+  const offered = detailsLost || known.length === 0 ? (["deny"] as ApprovalChoice[]) : known;
+  /** Sem opção vinda do servidor, `Parar tarefa` também precisa existir (§7.6). */
+  const showStop = detailsLost || known.length === 0;
 
   return (
     <Detail
@@ -345,8 +351,9 @@ export function ApprovalView(props: ApprovalViewProps) {
                 onAction={onShowSteps}
               />
             ) : null}
-            {/* §7.6: com os detalhes perdidos, parar a tarefa é uma das saídas oferecidas. */}
-            {detailsLost ? (
+            {/* §7.6: sem detalhes, ou sem opção utilizável do servidor, parar a tarefa é
+                uma das saídas oferecidas — senão a tela vira um beco sem saída. */}
+            {showStop ? (
               <Action
                 title="Parar tarefa"
                 icon={Icon.Stop}

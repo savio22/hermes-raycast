@@ -836,7 +836,16 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
               />
             )}
             {terminal && state.text !== "" && (
-              <Action.Paste title="Colar no aplicativo ativo" content={state.text} shortcut={SHORTCUTS.paste} />
+              /* Mesma forma da tela de pergunta (`ask.tsx`): sem o `onPaste` a colagem
+                 acontecia sem nenhuma confirmação visível, e o item 12 do checklist
+                 ("cópia e colagem") reprovava só nesta tela. */
+              <Action.Paste
+                title="Colar no aplicativo ativo"
+                icon={Icon.Text}
+                content={state.text}
+                shortcut={SHORTCUTS.paste}
+                onPaste={() => void showHUD("Resposta colada")}
+              />
             )}
             {!terminal && state.text !== "" && (
               <Action.CopyToClipboard
