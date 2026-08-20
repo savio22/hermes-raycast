@@ -92,18 +92,63 @@ Eventos observados no stream de runs: `message.delta` (campo `delta`),
 `reasoning.available` (campo `text`), `run.completed` (campos `output` e
 `usage`).
 
-## D-04 — `jobs_admin` está DESLIGADO neste servidor
+## D-04 — `jobs_admin` é legenda desatualizada, não estado (REVISADA em 2026-08-19)
 
-**Status: OBSERVADO.**
+**Status: OBSERVAÇÃO MANTIDA, INFERÊNCIA REFUTADA — agora com prova ao vivo.**
 
-`GET /v1/capabilities` retorna `"jobs_admin": false` e
-`"memory_write_api": false`. As rotas `/api/jobs*` existem no código, mas a
-capability que as governa está off.
+A redação anterior desta decisão dizia: *"a capability que as governa está off
+[…] o comando de Automações precisa checar `features.jobs_admin` e se ocultar
+quando for `false`"*. A **observação** continua verdadeira — o campo vem
+`false`. A **inferência** de que ele governa as rotas era um palpite, nunca
+testado, e está errada. Ela teria feito a extensão esconder uma tela que
+funciona.
 
-**Consequência:** o comando de Automações precisa checar
-`features.jobs_admin` e se ocultar (ou explicar) quando for `false`, em vez de
-abrir uma tela que só produz erro. Vale a mesma disciplina para toda
-funcionalidade de terceira fase.
+### O que foi provado
+
+`grep` recursivo por `jobs_admin` em toda a árvore do Hermes devolve **uma
+única linha**: `gateway/platforms/api_server.py:3189`, um literal `False` dentro
+do dicionário de `features`. Nenhum handler o lê, nenhuma configuração o
+altera.
+
+O portão real é `_CRON_AVAILABLE`. `_check_jobs_available`
+(`api_server.py:5692-5698`) olha só essa variável e devolve **501** quando ela é
+falsa. Não existe caminho de 403 por capability: o único 403 do servidor vem do
+middleware de CORS, que a extensão não aciona por nunca mandar header `Origin`.
+
+Sondagem contra o servidor real, em 2026-08-19:
+
+```
+GET /api/cron/fire         -> 405   (a rota existe; só o método está errado)
+GET /api/rota-inexistente  -> 404   (controle: rota ausente responde 404)
+GET /api/jobs                       -> 200  {"jobs": []}
+GET /api/jobs?include_disabled=true -> 200  1 automação real
+```
+
+O 405 prova `_CRON_AVAILABLE == True`, porque `POST /api/cron/fire` só é
+registrada dentro do bloco `if _CRON_AVAILABLE:` (`api_server.py:2101-2104`).
+
+### Consequências
+
+1. **Construir a tela de Automações**, detectando pela resposta HTTP: `200` com
+   lista, `501` com estado vazio explicativo (E19), `401` caindo na tela de
+   primeiro uso. **Nunca** com gate em `features.jobs_admin`.
+2. **`?include_disabled=true` é obrigatório na chamada.** O default do servidor
+   é falso e filtra jobs desabilitados. Sem o parâmetro, esta máquina — que tem
+   um job pausado — veria "nenhuma automação" com uma automação real no disco.
+3. **Regra geral para o resto do roteiro.** `features.*` tem duas espécies:
+   valores **derivados** de estado real (`cors` é `bool(self._cors_origins)`,
+   `api_server.py:3196`) e **literais fixos** (`admin_config_rw`, `jobs_admin`,
+   `memory_write_api`, `audio_api`, `realtime_voice`, `:3188-3193`). Os
+   derivados podem ser lidos como estado; os literais são documentação, e
+   precisam ser conferidos contra a tabela de rotas antes de virarem decisão.
+   Dos cinco literais falsos, `jobs_admin` é o único cujo valor contradiz a
+   tabela de rotas — para os outros quatro não há rota, e "não construir"
+   continua certo, agora pelo motivo certo.
+
+**Lição de método:** "a capability diz `false`" e "a funcionalidade não
+funciona" são afirmações diferentes. Esta decisão nasceu marcada como
+`OBSERVADO`, não `PROVADO`, e a diferença entre os dois carimbos era exatamente
+esta.
 
 ## D-05 — `/v1/chat/completions` NÃO é o caminho, apesar de funcionar
 
