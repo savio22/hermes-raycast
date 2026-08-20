@@ -56,6 +56,7 @@ import { HermesError, isAbort, toHermesError } from "./lib/errors";
 import { getSession, reconcileRun, stopRun } from "./lib/hermes-api";
 import { isConfigured } from "./lib/preferences";
 import {
+  NO_CONNECTION,
   RUN_EXPIRED,
   isTerminalRunStatus,
   runStatusAppearance,
@@ -447,7 +448,10 @@ export default function Command(): ReactElement {
       {showEmpty && error !== undefined && (
         // UX-SPEC §5.3: erro que impede a tela inteira vira `List.EmptyView` numa `List`.
         <List.EmptyView
-          icon={{ source: Icon.WifiDisabled, tintColor: Color.Red }}
+          icon={statusImage(NO_CONNECTION)}
+          /* `NO_CONNECTION` (status.ts) é a fonte única do par ícone+cor de "Sem
+             conexão". Repetir o par à mão deixava duas telas fora da paleta do
+             Hermes assim que ela mudasse. */
           title={error.userMessage}
           actions={
             <ActionPanel>
@@ -475,7 +479,7 @@ export default function Command(): ReactElement {
 
       {showEmpty && error === undefined && (
         <List.EmptyView
-          icon={Icon.Clock}
+          icon={Icon.Hourglass}
           title="Nenhuma execução recente"
           description="Quando você pedir uma tarefa ao Hermes, ela aparece aqui até você limpar."
           actions={

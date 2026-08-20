@@ -46,8 +46,11 @@ import { forkSession, getRun, openRunEventStream, reconcileRun, stopRun } from "
 import { consumeRunEventStream, createTextBuffer, type RunStreamResult } from "../lib/hermes-events";
 import { getHermesPreferences } from "../lib/preferences";
 import {
+  NO_CONNECTION,
   RUN_EXPIRED,
   RUN_EXPIRED_DETAIL,
+  RUN_STATUS_APPEARANCE,
+  RUN_STATUS_LABEL,
   isTerminalRunStatus,
   runStatusAppearance,
   runStatusLabel,
@@ -83,8 +86,18 @@ const THINKING_AFTER_MS = 3_000;
  * de compilação (`satisfies IconMembers` / `satisfies ColorMembers`), então um nome
  * inventado ou um valor que mude de string não compilaria lá.
  */
-export function statusImage(appearance: StatusAppearance): { source: Icon; tintColor: Color } {
-  return { source: appearance.icon as Icon, tintColor: appearance.color as Color };
+export function statusImage(appearance: StatusAppearance): { source: Icon; tintColor: Color.ColorLike } {
+  return { source: appearance.icon as Icon, tintColor: appearance.color as Color.ColorLike };
+}
+
+/**
+ * A mesma travessia, para as posições que pedem `icon` e `color` em props separadas —
+ * hoje só `Detail.Metadata.TagList.Item`, cujo `color` também aceita `Color.ColorLike`
+ * (`types/index.d.ts:8399`). Existe para que NENHUM ponto da interface leia
+ * `appearance.color` cru: assim a paleta pode mudar de forma sem vazar para o JSX.
+ */
+export function tagTone(appearance: StatusAppearance): { icon: Icon; color: Color.ColorLike } {
+  return { icon: appearance.icon as Icon, color: appearance.color as Color.ColorLike };
 }
 
 /** Primeira linha do texto, colapsada e cortada, para cabeçalhos e títulos de item. */
@@ -185,6 +198,23 @@ export function ErrorDetail(props: {
     <Detail
       navigationTitle={props.navigationTitle}
       markdown={markdown}
+      metadata={
+        /* `Detail` não tem prop de ícone; o veículo é a metadata. Sem isto a tela de erro
+           era um bloco de texto sem nenhum sinal visual.
+           O rótulo NÃO é adivinhado: `recovery === "start_hermes"` é a própria
+           classificação de "o Hermes não está no ar", e só nesse caso a condição é
+           "Sem conexão" (§4.3) — nos demais o que houve foi uma falha, e chamar tudo de
+           "Sem conexão" seria mentir sobre a causa. O par ícone+cor sai de `status.ts`. */
+        <Detail.Metadata>
+          <Detail.Metadata.TagList title="Estado">
+            {props.error.recovery === "start_hermes" ? (
+              <Detail.Metadata.TagList.Item text={NO_CONNECTION.label} {...tagTone(NO_CONNECTION)} />
+            ) : (
+              <Detail.Metadata.TagList.Item text={RUN_STATUS_LABEL.failed} {...tagTone(RUN_STATUS_APPEARANCE.failed)} />
+            )}
+          </Detail.Metadata.TagList>
+        </Detail.Metadata>
+      }
       actions={
         <ActionPanel>
           {props.onRetry !== undefined && (

@@ -36,7 +36,8 @@ import { useRef, useState } from "react";
 import { hermesDesktopSessionUrl } from "../lib/discovery";
 import { toHermesError } from "../lib/errors";
 import { respondToApproval, stopRun } from "../lib/hermes-api";
-import { runStatusLabel } from "../lib/status";
+import { RUN_STATUS_APPEARANCE, runStatusLabel } from "../lib/status";
+import { tagTone } from "./run-progress";
 import type { ApprovalChoice, ApprovalRequestFields } from "../lib/types";
 import { SHORTCUTS } from "./shortcuts";
 
@@ -291,11 +292,20 @@ export function ApprovalView(props: ApprovalViewProps) {
       markdown={buildMarkdown(props)}
       metadata={
         <Detail.Metadata>
-          <Detail.Metadata.Label title="Tarefa" text={taskPreview} />
-          <Detail.Metadata.Label title="Conversa" text={conversationTitle} />
-          <Detail.Metadata.Label title="Estado" text={runStatusLabel("waiting_for_approval")} />
+          {/* Esta é a tela mais crítica da extensão — a única em que o usuário autoriza o
+              Hermes a mexer na máquina — e era a única sem nenhum ícone ou cor. O estado
+              vem do mesmo par ícone+cor de `status.ts`, no âmbar que o Hermes reserva ao
+              "aja agora"; `Label` só aceita cor do enum, então o estado vira `TagList`. */}
+          <Detail.Metadata.TagList title="Estado">
+            <Detail.Metadata.TagList.Item
+              text={runStatusLabel("waiting_for_approval")}
+              {...tagTone(RUN_STATUS_APPEARANCE.waiting_for_approval)}
+            />
+          </Detail.Metadata.TagList>
+          <Detail.Metadata.Label title="Tarefa" text={taskPreview} icon={Icon.Hourglass} />
+          <Detail.Metadata.Label title="Conversa" text={conversationTitle} icon={Icon.SpeechBubble} />
           {/* `pattern_key` cru de propósito: é o identificador confiável do tipo de bloqueio. */}
-          {patternKey ? <Detail.Metadata.Label title="Tipo de bloqueio" text={patternKey} /> : null}
+          {patternKey ? <Detail.Metadata.Label title="Tipo de bloqueio" text={patternKey} icon={Icon.Lock} /> : null}
           {fields.request_id ? (
             <Detail.Metadata.Label title="Identificador" text={fields.request_id.slice(0, 8)} />
           ) : null}

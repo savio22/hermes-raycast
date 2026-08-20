@@ -26,6 +26,15 @@ import {
   runStatusAppearance,
   runStatusLabel,
 } from "../src/lib/status.ts";
+import type { Tint } from "../src/lib/status.ts";
+
+/**
+ * Resolve um `Tint` para o valor que o Raycast usaria no tema pedido: uma cor do Raycast
+ * é a mesma string nos dois temas; uma cor do Hermes tem um hex por tema.
+ */
+function tom(tint: Tint, tema: "light" | "dark"): string {
+  return typeof tint === "string" ? tint : tint[tema];
+}
 
 /**
  * Enumerados a partir de todo `_set_run_status(...)` do api_server 0.20.4
@@ -83,18 +92,52 @@ test("ícone e cor batem com a tabela da UX-SPEC §4.1", () => {
   assert.deepEqual(ordenado(Object.keys(RUN_STATUS_APPEARANCE)), ordenado(STATUS_DO_FIO));
   assert.deepEqual(RUN_STATUS_APPEARANCE, {
     queued: { icon: "clock-16", color: "raycast-secondary-text" },
-    running: { icon: "circle-progress-16", color: "raycast-blue" },
-    waiting_for_approval: { icon: "warning-16", color: "raycast-orange" },
-    stopping: { icon: "stop-16", color: "raycast-yellow" },
-    completed: { icon: "check-circle-16", color: "raycast-green" },
+    running: { icon: "circle-progress-16", color: { light: "#0053fd", dark: "#0053fd" } },
+    waiting_for_approval: { icon: "warning-16", color: { light: "#fe9a00", dark: "#fe9a00" } },
+    stopping: { icon: "stop-16", color: { light: "#c08532", dark: "#c08532" } },
+    completed: { icon: "check-circle-16", color: { light: "#1f8a65", dark: "#55a583" } },
     cancelled: { icon: "minus-circle-16", color: "raycast-secondary-text" },
-    failed: { icon: "x-mark-circle-16", color: "raycast-red" },
+    failed: { icon: "x-mark-circle-16", color: { light: "#cf2d56", dark: "#e75e78" } },
   });
 });
 
 test("as cores que carregam significado à distância não se repetem entre estados de sentido oposto", () => {
-  assert.notEqual(RUN_STATUS_APPEARANCE.completed.color, RUN_STATUS_APPEARANCE.failed.color);
-  assert.notEqual(RUN_STATUS_APPEARANCE.running.color, RUN_STATUS_APPEARANCE.waiting_for_approval.color);
+  // `notEqual` sobre objetos compara REFERÊNCIA: com cores em objeto `{light,dark}` ele
+  // passaria sempre, e a assertiva viraria decorativa sem ninguém perceber. Comparar o
+  // hex resolvido em cada tema é o que de fato prova que as cores são distinguíveis.
+  for (const tema of ["light", "dark"] as const) {
+    assert.notEqual(tom(RUN_STATUS_APPEARANCE.completed.color, tema), tom(RUN_STATUS_APPEARANCE.failed.color, tema));
+    assert.notEqual(
+      tom(RUN_STATUS_APPEARANCE.running.color, tema),
+      tom(RUN_STATUS_APPEARANCE.waiting_for_approval.color, tema),
+    );
+  }
+});
+
+test("as cores com significado vêm da paleta do Hermes, não das cores prontas do Raycast", () => {
+  // O que este teste protege: a extensão deve mostrar a MESMA cor de estado que o Hermes
+  // Desktop. Voltar para "raycast-blue" e companhia compilaria e passaria em todo o resto
+  // — a regressão seria invisível sem esta trava. Hexes conferidos em
+  // `apps/desktop/src/styles.css` (bloco claro `:196-202`, bloco `:root.dark` `:517-551`).
+  const doHermes = ["running", "waiting_for_approval", "stopping", "completed", "failed"] as const;
+  for (const status of doHermes) {
+    const cor = RUN_STATUS_APPEARANCE[status].color;
+    assert.equal(typeof cor, "object", `${status} deveria usar a paleta do Hermes, não uma cor pronta do Raycast`);
+    for (const tema of ["light", "dark"] as const) {
+      assert.match(tom(cor, tema), /^#[0-9a-f]{6}$/, `${status}/${tema} precisa ser um hex de 6 dígitos em minúsculas`);
+    }
+  }
+
+  // Os neutros continuam vindo do Raycast de propósito: eles têm de acompanhar o texto
+  // secundário do tema do usuário, e um hex fixo brigaria com ele.
+  for (const status of ["queued", "cancelled"] as const) {
+    assert.equal(RUN_STATUS_APPEARANCE[status].color, "raycast-secondary-text");
+  }
+  assert.equal(RUN_EXPIRED.color, "raycast-secondary-text");
+
+  // Um vermelho só: falha de execução e falta de conexão são a mesma cor (o DESIGN.md do
+  // Hermes manda um único tratamento de erro em toda parte).
+  assert.deepEqual(NO_CONNECTION.color, RUN_STATUS_APPEARANCE.failed.color);
 });
 
 test("terminalidade: só completed, cancelled e failed — stopping não é terminal", () => {
@@ -153,7 +196,7 @@ test("'Sem conexão' é condição do cliente e também fica fora do vocabulári
   assert.equal(NO_CONNECTION.label, "Sem conexão");
   assert.equal(Object.values(RUN_STATUS_LABEL).includes(NO_CONNECTION.label as never), false);
   assert.notEqual(NO_CONNECTION.label, RUN_EXPIRED.label);
-  assert.equal(NO_CONNECTION.color, "raycast-red");
+  assert.deepEqual(NO_CONNECTION.color, { light: "#cf2d56", dark: "#e75e78" });
   assert.ok(NO_CONNECTION.icon.length > 0);
 });
 

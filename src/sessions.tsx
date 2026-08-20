@@ -421,7 +421,7 @@ export default function Command(): React.JSX.Element {
       });
     }
     if (typeof session.model === "string" && session.model !== "") {
-      accessories.push({ text: session.model, icon: Icon.Stars, tooltip: "Modelo usado nesta conversa" });
+      accessories.push({ text: session.model, icon: Icon.ComputerChip, tooltip: "Modelo usado nesta conversa" });
     }
     if (typeof lastActive === "number" && lastActive > 0) {
       // `last_active` vem em SEGUNDOS: multiplicar é obrigatório, senão a data cai em 1970.

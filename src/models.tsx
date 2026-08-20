@@ -20,10 +20,12 @@ import { Action, ActionPanel, Color, Icon, List, Toast, openExtensionPreferences
 import { useCallback, useEffect, useState, type ReactElement } from "react";
 
 import { NotConfigured } from "./components/first-run";
+import { statusImage } from "./components/run-progress";
 import { SHORTCUTS } from "./components/shortcuts";
 import { HermesError, isAbort, toHermesError } from "./lib/errors";
 import { getModelOptions } from "./lib/hermes-api";
 import { isConfigured } from "./lib/preferences";
+import { NO_CONNECTION } from "./lib/status";
 import { CacheKeys, CacheTtl, StorageKeys, cacheWrite, cachedFetch, readJson, writeJson } from "./lib/storage";
 import type { ModelCapability, ModelOptionsResponse, ModelPricing, ProviderOption } from "./lib/types";
 
@@ -177,7 +179,10 @@ export default function Command(): ReactElement {
       {!isLoading && !hasModels && error !== undefined && (
         // §5.3: com a lista vazia, o erro toma a tela — numa `List` isso é a `EmptyView`.
         <List.EmptyView
-          icon={{ source: Icon.WifiDisabled, tintColor: Color.Red }}
+          icon={statusImage(NO_CONNECTION)}
+          /* `NO_CONNECTION` (status.ts) é a fonte única do par ícone+cor de "Sem
+             conexão". Repetir o par à mão deixava duas telas fora da paleta do
+             Hermes assim que ela mudasse. */
           title={error.userMessage}
           actions={
             <ActionPanel>
@@ -283,14 +288,19 @@ function ModelItem(props: {
   if (fast) accessories.push({ tag: "Rápido" });
   if (reasoning) accessories.push({ tag: "Raciocínio" });
   if (price !== undefined) accessories.push({ text: price });
+  // §2.6: provedor sem credencial continua marcado com o cadeado — agora como accessory,
+  // porque o ícone da linha passou a identificar a entidade "modelo". A escolha segue
+  // liberada: quem configura o provedor é o Hermes Desktop, não esta tela.
+  if (!authenticated) accessories.push({ icon: Icon.Lock, tooltip: "Provedor sem credencial no Hermes" });
 
   return (
     <List.Item
       title={model}
       keywords={[provider.name, provider.slug]}
-      // §2.6: provedor sem credencial fica com o cadeado; a escolha não é bloqueada,
-      // porque quem configura o provedor é o Hermes Desktop, não esta tela.
-      icon={authenticated ? undefined : Icon.Lock}
+      // Todo item da lista tem ícone. Antes, um provedor autenticado vinha sem nenhum, e
+      // esta era a única lista da extensão que misturava linhas com e sem ícone — o que
+      // desalinha o texto de uma linha para a outra.
+      icon={Icon.ComputerChip}
       accessories={accessories}
       detail={
         <List.Item.Detail

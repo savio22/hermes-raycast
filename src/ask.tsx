@@ -45,6 +45,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApprovalView } from "./components/approval-view";
 import { AutoDetectAction, NotConfigured } from "./components/first-run";
 import { RenameSessionForm } from "./components/rename-session-form";
+import { tagTone } from "./components/run-progress";
 import { SHORTCUTS } from "./components/shortcuts";
 import { SteerForm } from "./components/steer-form";
 import { hermesDesktopSessionUrl } from "./lib/discovery";
@@ -242,11 +243,11 @@ function AskForm(props: AskFormProps) {
       enableDrafts={props.isRoot === true}
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Perguntar ao Hermes" icon={Icon.Bolt} onSubmit={handleSubmit} />
+          <Action.SubmitForm title="Perguntar ao Hermes" icon={Icon.SpeechBubble} onSubmit={handleSubmit} />
           {runningCount !== undefined && runningCount > 0 ? (
             <Action
               title="Ver tarefas em andamento"
-              icon={Icon.Clock}
+              icon={Icon.Hourglass}
               shortcut={SHORTCUTS.activeRuns}
               onAction={() => void openActiveRuns()}
             />
@@ -300,7 +301,7 @@ function AskForm(props: AskFormProps) {
       </Form.Dropdown>
 
       <Form.Dropdown {...itemProps.modelo} title="Modelo">
-        <Form.Dropdown.Item value="" title="Padrão do Hermes" />
+        <Form.Dropdown.Item value="" title="Padrão do Hermes" icon={Icon.Wand} />
         {(models ?? []).map((option) => (
           <Form.Dropdown.Item
             key={modelValue(option)}
@@ -518,7 +519,7 @@ function AnswerView(props: AnswerViewProps) {
             />
             <Action
               title={showTechnical ? "Ocultar detalhes técnicos" : "Mostrar detalhes técnicos"}
-              icon={Icon.Bug}
+              icon={showTechnical ? Icon.EyeDisabled : Icon.Eye}
               shortcut={SHORTCUTS.showTechnical}
               onAction={() => setShowTechnical((value) => !value)}
             />
@@ -547,7 +548,7 @@ function AnswerView(props: AnswerViewProps) {
       metadata={
         <Detail.Metadata>
           <Detail.Metadata.TagList title="Estado">
-            <Detail.Metadata.TagList.Item text={statusLabel} icon={appearance.icon} color={appearance.color} />
+            <Detail.Metadata.TagList.Item text={statusLabel} {...tagTone(appearance)} />
           </Detail.Metadata.TagList>
           <Detail.Metadata.Label title="Conversa" text={title ?? "Sem título"} />
           <Detail.Metadata.Label title="Modelo" text={state.model ?? "Padrão do Hermes"} />
@@ -568,7 +569,7 @@ function AnswerView(props: AnswerViewProps) {
             {state.approval !== undefined ? (
               <Action.Push
                 title="Responder pedido de aprovação"
-                icon={Icon.Warning}
+                icon={Icon.Lock}
                 target={
                   <ApprovalView
                     runId={state.runId ?? ""}
@@ -642,7 +643,7 @@ function AnswerView(props: AnswerViewProps) {
           <ActionPanel.Section>
             <Action
               title={mode === "resposta" ? "Ver etapas" : "Ver resposta"}
-              icon={Icon.List}
+              icon={mode === "resposta" ? Icon.List : Icon.Text}
               shortcut={SHORTCUTS.toggleSteps}
               onAction={() => setMode((value) => (value === "resposta" ? "etapas" : "resposta"))}
             />
@@ -721,7 +722,7 @@ function AnswerView(props: AnswerViewProps) {
           <ActionPanel.Section>
             <Action
               title={showTechnical ? "Ocultar detalhes técnicos" : "Mostrar detalhes técnicos"}
-              icon={Icon.Bug}
+              icon={showTechnical ? Icon.EyeDisabled : Icon.Eye}
               shortcut={SHORTCUTS.showTechnical}
               onAction={() => setShowTechnical((value) => !value)}
             />
@@ -737,7 +738,7 @@ function AnswerView(props: AnswerViewProps) {
             />
             <Action
               title="Ver tarefas em andamento"
-              icon={Icon.Clock}
+              icon={Icon.Hourglass}
               shortcut={SHORTCUTS.activeRuns}
               onAction={() => void openActiveRuns()}
             />

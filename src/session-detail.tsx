@@ -92,7 +92,7 @@ const MESSAGING_SOURCES: ReadonlySet<string> = new Set(["telegram", "discord", "
 export function describeOrigin(session: Session): SessionOrigin {
   if (session.id.startsWith(RAYCAST_ID_PREFIX)) {
     return {
-      icon: Icon.Bolt,
+      icon: Icon.RaycastLogoNeg,
       tag: "Criada no Raycast",
       tooltip: "Você começou esta conversa no Raycast. Ela também aparece no Hermes Desktop.",
       visibleInDesktop: true,
@@ -117,7 +117,7 @@ export function describeOrigin(session: Session): SessionOrigin {
     };
   }
   return {
-    icon: Icon.Circle,
+    icon: Icon.QuestionMarkCircle,
     tag: "Criada por outro programa",
     tooltip: "Esta conversa não aparece na lista principal do Hermes Desktop.",
     visibleInDesktop: false,
@@ -372,9 +372,9 @@ function roleIcon(message: SessionMessage): Icon {
     case "assistant":
       return Icon.Stars;
     case "tool":
-      return Icon.Hammer;
+      return Icon.WrenchScrewdriver;
     default:
-      return Icon.Cog;
+      return Icon.Gear;
   }
 }
 
@@ -710,7 +710,7 @@ export function SessionDetail({
           onChange={(next) => setScope(next === "tudo" ? "tudo" : "conversa")}
         >
           <List.Dropdown.Item title="Somente conversa" value="conversa" icon={Icon.SpeechBubble} />
-          <List.Dropdown.Item title="Conversa e ferramentas" value="tudo" icon={Icon.Hammer} />
+          <List.Dropdown.Item title="Conversa e ferramentas" value="tudo" icon={Icon.WrenchScrewdriver} />
         </List.Dropdown>
       }
     >

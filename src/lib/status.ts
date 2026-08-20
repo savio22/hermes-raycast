@@ -46,14 +46,56 @@ const ICON = {
   Circle: "circle-16",
 } as const satisfies IconMembers;
 
+/**
+ * Só o neutro vem do Raycast. As cores com significado vêm de `HERMES`, abaixo: o
+ * cinza secundário é o único que precisa acompanhar o texto secundário do próprio
+ * Raycast, e por isso não pode ser um hex fixo.
+ */
 const COLOR = {
-  Blue: "raycast-blue",
-  Orange: "raycast-orange",
-  Yellow: "raycast-yellow",
-  Green: "raycast-green",
-  Red: "raycast-red",
   SecondaryText: "raycast-secondary-text",
 } as const satisfies ColorMembers;
+
+/**
+ * Uma cor do Raycast, ou uma cor própria com variante por tema.
+ *
+ * O formato do objeto é o `Color.Dynamic` do Raycast (`types/index.d.ts:1377`), aceito em
+ * toda posição tipada como `Color.ColorLike` — `Image.tintColor` (`:5419`),
+ * `accessory.tag.color` (`:5667`) e `Metadata.TagList.Item.color` (`:8399`). Ele NÃO é
+ * aceito em `accessory.text.color` (`:5647`), `accessory.date.color` (`:5657`) nem
+ * `Metadata.Label.text.color` (`:6102`), que exigem o enum. Todas as cores deste módulo
+ * viajam por `statusImage()` até posições `ColorLike`, então o objeto é seguro aqui.
+ */
+export type Tint = `${Color}` | { readonly light: string; readonly dark: string; readonly adjustContrast?: boolean };
+
+/**
+ * A paleta do Hermes Desktop, em hex literal, para que a extensão tenha a mesma cor de
+ * estado que o aplicativo. Valores conferidos em `apps/desktop/src/styles.css`: o bloco
+ * claro em `:196-202` e o bloco `:root.dark` em `:517-551`, que sobrescreve SOMENTE
+ * vermelho, verde e ciano — azul e amarelo são os mesmos nos dois temas, e por isso
+ * aparecem repetidos aqui em vez de virarem string solta.
+ *
+ * `adjustContrast` fica omitido de propósito: o default é `true` (`:1394`) e é justamente
+ * ele que garante contraste do azul do Hermes sobre o tema escuro do Raycast.
+ */
+const HERMES = {
+  /** `--ui-blue` / `--theme-primary`: a cor da marca. Execução em andamento. */
+  blue: { light: "#0053fd", dark: "#0053fd" },
+  /**
+   * Âmbar. Não vem de `--ui-*`: é o `bg-amber-500` de
+   * `apps/desktop/src/app/chat/session-status-dot.tsx:34`, que o próprio Hermes descreve
+   * como "a única cor 'aja agora', e o único estado sobre o qual o usuário é obrigado a
+   * fazer algo" (`:30-32`) — exatamente "Aguardando aprovação". Tailwind 4.3.3 declara
+   * `oklch(76.9% 0.188 70.08)` (`node_modules/tailwindcss/theme.css:39`), que em sRGB é
+   * este hex.
+   */
+  amber: { light: "#fe9a00", dark: "#fe9a00" },
+  /** `--ui-yellow`. Interrompendo: começou a parar, ainda não parou. */
+  yellow: { light: "#c08532", dark: "#c08532" },
+  /** `--ui-green`, com a variante escura de `:529`. */
+  green: { light: "#1f8a65", dark: "#55a583" },
+  /** `--ui-red`, com a variante escura de `:528`. Um vermelho só, para estado e para erro. */
+  red: { light: "#cf2d56", dark: "#e75e78" },
+} as const satisfies Record<string, Tint>;
 
 /* ────────────────────────────── Vocabulário ────────────────────────────── */
 
@@ -70,7 +112,7 @@ export const UNKNOWN_STATUS_LABEL = "Desconhecido";
 /** A dupla ícone+cor. A cor é o que carrega o significado à distância; ela nunca muda. */
 export interface StatusAppearance {
   readonly icon: `${Icon}`;
-  readonly color: `${Color}`;
+  readonly color: Tint;
 }
 
 export interface LabeledAppearance extends StatusAppearance {
@@ -97,12 +139,12 @@ export const RUN_STATUS_LABEL = {
 /** Ícone e cor de cada status (UX-SPEC §4.1). Mesma totalidade da tabela de rótulos. */
 export const RUN_STATUS_APPEARANCE = {
   queued: { icon: ICON.Clock, color: COLOR.SecondaryText },
-  running: { icon: ICON.CircleProgress, color: COLOR.Blue },
-  waiting_for_approval: { icon: ICON.Warning, color: COLOR.Orange },
-  stopping: { icon: ICON.Stop, color: COLOR.Yellow },
-  completed: { icon: ICON.CheckCircle, color: COLOR.Green },
+  running: { icon: ICON.CircleProgress, color: HERMES.blue },
+  waiting_for_approval: { icon: ICON.Warning, color: HERMES.amber },
+  stopping: { icon: ICON.Stop, color: HERMES.yellow },
+  completed: { icon: ICON.CheckCircle, color: HERMES.green },
   cancelled: { icon: ICON.MinusCircle, color: COLOR.SecondaryText },
-  failed: { icon: ICON.XMarkCircle, color: COLOR.Red },
+  failed: { icon: ICON.XMarkCircle, color: HERMES.red },
 } as const satisfies Record<RunStatus, StatusAppearance>;
 
 /**
@@ -159,7 +201,7 @@ export const RUN_EXPIRED_DETAIL =
 export const NO_CONNECTION = {
   label: "Sem conexão",
   icon: ICON.WifiDisabled,
-  color: COLOR.Red,
+  color: HERMES.red,
 } as const satisfies LabeledAppearance;
 
 /* ─────────────── Fase do turno em /api/sessions/{id}/chat/stream ─────────────── */
