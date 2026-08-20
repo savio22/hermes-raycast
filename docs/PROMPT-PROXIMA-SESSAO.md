@@ -1,148 +1,123 @@
-Continue a extensão Raycast para o Hermes Agent, em
+Implemente a conversa contínua na extensão Raycast do Hermes, em
 C:\Users\SAM\Desktop\Projetos\Plugin RayCast
+
+## A TAREFA
+
+Executar o desenho já aprovado em
+`docs/superpowers/specs/2026-08-19-conversa-continua-design.md`.
+
+Ele é a fonte da verdade desta tarefa: tem a tela, os textos literais em pt-BR, a
+ordem do `ActionPanel`, os contratos dos três módulos novos, os testes e os riscos.
+**Leia-o inteiro antes de escrever qualquer linha.** Não redesenhe, não reabra as
+decisões — elas foram tomadas com o usuário e estão registradas na §3 do documento.
+
+Em uma frase: `Perguntar ao Hermes` deixa de empilhar uma tela por turno e vira um
+`List` só, com a barra de busca fazendo as vezes de campo de escrita, `Enter`
+enviando por ser a ação primária, e uma linha por troca completa (sua mensagem no
+título, a resposta no painel).
 
 ## LEIA PRIMEIRO, NESTA ORDEM (a de número menor vence em conflito)
 
 1. `docs/DECISOES-VERIFICADAS.md` — decisões provadas contra o Hermes real.
-   **A D-04 foi REVISADA**: `jobs_admin` não governa nada, e a tela de
-   Automações funciona. Leia a versão nova antes de qualquer coisa.
-2. `docs/UX-SPEC.md` — spec tela a tela, textos literais em pt-BR, os 7 rótulos
-   de estado. Tem divergências conhecidas com o código; ver "Pendências" abaixo.
-3. `docs/ARCHITECTURE.md` — contratos dos módulos e armadilhas.
-4. `INSTRUCOES_DO_PROJETO.md` — brief de produto e regras de engenharia.
-5. `docs/research/*.md` — detalhe de campo, com citações arquivo:linha.
+2. `docs/superpowers/specs/2026-08-19-conversa-continua-design.md` — o desenho.
+3. `docs/UX-SPEC.md` — spec tela a tela. **A §13 do desenho lista o que ela perde**;
+   nessas seções o desenho vence, e a UX-SPEC é que deve ser corrigida no fim.
+4. `docs/ARCHITECTURE.md` — contratos dos módulos e armadilhas.
+5. `INSTRUCOES_DO_PROJETO.md` — brief de produto, regras de engenharia e o
+   checklist manual de 13 itens.
 
-## ESTADO (verificado rodando, não relatado)
+## ESTADO (verificado rodando em 2026-08-19, não relatado)
 
 ```
 npx tsc --noEmit -p tsconfig.json         exit 0
 npx tsc --noEmit -p tests/tsconfig.json   exit 0
 node --test "tests/**/*.test.ts"          182 passando, 0 falhando
-npx ray lint                              exit 0
+npx ray lint                              exit 0   (1 aviso de Title Case, esperado)
 npx ray build --target release            exit 0
 ```
 
-**A extensão roda de verdade dentro do Raycast.** Conecta, detecta a chave
-sozinha, pergunta e responde. Isso foi confirmado pelo usuário na sessão de
-2026-08-19.
+A extensão roda de verdade dentro do Raycast: conecta, detecta a chave sozinha,
+pergunta e responde. Nenhuma linha de `src/` foi alterada na sessão do desenho.
 
 ## A ARMADILHA DE BUILD — não redescubra
 
 O CLI `@raycast/api` 1.104.x usa flavor `x` no Windows e grava em
 `~/.config/raycast-x/extensions/hermes/`. O app Raycast 2.0.3 lê
 `~/.config/raycast/extensions/<uuid || nome>/<comando>.js`. Era isso o
-`Error: Missing executable` — o build sempre esteve certo, a pasta é que era a
-antiga.
+`Error: Missing executable` — o build sempre esteve certo, a pasta é que era a antiga.
 
-O flag oculto `--target release` corrige, e **já está nos scripts**. Use
-`npm run dev` (que é `ray develop --target release`) e deixe rodando — é
-literalmente o que o botão "Start Development" do Raycast executa.
+O flag oculto `--target release` corrige e **já está nos scripts**. Use `npm run dev`
+(que é `ray develop --target release`) e deixe rodando — é literalmente o que o botão
+"Start Development" do Raycast executa.
 
-## A PRÓXIMA TAREFA: deixar o uso fluido
+## O QUE ESTA TAREFA CANCELA
 
-Este é o pedido literal do usuário ao fim da sessão anterior: *"Ele responde
-mas não tem como interagir mais que isso, quero deixar mais fluido o uso"*.
+O "Passo 0 obrigatório" das sessões anteriores — extrair `AnswerView` de `src/ask.tsx`
+para `src/components/answer-view.tsx` — **está cancelado**. `AnswerView` deixa de
+existir; quem precisar de "prompt pronto → resposta escrevendo" monta a
+`ConversationView` com um turno inicial já enviado. Ver §9.2 do desenho.
 
-**O diagnóstico já está feito, não refaça.** `Continuar esta conversa` existe
-em `src/ask.tsx`, mas:
+## RESOLVA AO VIVO ANTES DE IMPLEMENTAR A PARTE QUE DEPENDE
 
-- está na **segunda** seção do `ActionPanel`, abaixo de Copiar e Colar, então
-  não é a ação primária e só aparece no `Ctrl+K`;
-- ela empurra um **formulário novo**, e o formulário empurra uma **tela nova**.
-  Cada turno vira uma tela empilhada e o usuário **nunca vê a troca anterior**.
+Quatro perguntas do apêndice do desenho só se respondem com o Hermes rodando e a
+extensão aberta. Meça cada uma **antes** da parte que depende dela, não depois:
 
-Ou seja: funciona como pergunta-e-resposta avulsa, não como conversa. É lacuna
-de produto, não defeito.
+1. **Fluidez do render** — 40 itens com painel, um escrevendo a ~12 atualizações por
+   segundo, no Raycast Windows. Se travar, o teto de 40 turnos cai antes de qualquer
+   outra coisa ser mexida (§4.6, §9.4, §15).
+2. **Duas execuções na mesma conversa** — o Hermes aceita? O que acontece na
+   intercalação? A regra R9 só existe em comentário. Isto decide se a fila da §7 basta.
+3. **Aprovação em conversa com vários turnos** — `approval.request` chega igual numa
+   segunda execução da mesma conversa? A fila de aprovação é por execução ou por
+   conversa? O código de hoje assume por execução (`use-run-stream.ts:252`).
+4. **Latência de `askInSession` em conversa longa** — quanto demora o primeiro pedaço
+   de texto quando o agente precisa recarregar o passado. Decide se a conversa
+   *parece* fluida.
 
-Antes de implementar, **use a skill de brainstorming e alinhe com o usuário**,
-porque isto muda a tela principal do produto. Duas direções conhecidas:
+A quinta pergunta histórica — se `Enter` quebra linha num `Form.TextArea` no Raycast
+Windows — **continua sem resposta e deixou de bloquear**. O desenho não depende mais
+dela; é por isso que a barra de busca virou o campo principal e o `Form` virou desvio.
 
-- **A — thread no `Detail`.** Acumular os turnos no mesmo markdown e promover
-  `Continuar esta conversa` a ação primária depois de concluído. Menor risco,
-  mantém tudo o que existe. Conflita com a §6.4 da UX-SPEC, que hoje lista essa
-  ação só em "Depois (Concluído)" e põe `Copiar resposta` como primária.
-- **B — padrão de chat do Raycast.** `List` com a barra de busca fazendo as
-  vezes de composer: cada mensagem é um item, `Enter` envia. É o padrão nativo
-  para chat no Raycast e é o mais fluido. Reescreve a tela principal.
+## DEPOIS QUE A CONVERSA ESTIVER DE PÉ
 
-Ainda sem resposta e **só resolvível teclando na máquina**: `Enter` envia um
-`Form` com `Form.TextArea` em foco no Raycast Windows, ou quebra a linha?
-`docs/research/07-...md:68-70` marca como UNVERIFIED e três seções da UX-SPEC
-assumem que sim. A direção B depende disso.
-
-## DEPOIS, NESTA ORDEM
-
-### 1. Fase 2 — os comandos que faltam
-
-O levantamento pesado já foi feito e os contratos foram verificados **ao vivo**:
-
-- `GET /v1/skills` → `{object:"list", data:[{name, description, category}]}`.
-  140 skills neste servidor; `category` pode ser `null`. Tipos já existem em
-  `src/lib/types.ts`.
-- `GET /v1/toolsets` → seis campos por toolset. **Cuidado real**: o handler roda
-  no event loop do aiohttp e pode disparar um `urlopen` síncrono de 8 s ao
-  portal da Nous (`hermes_cli/nous_account.py:595`), travando o Hermes inteiro.
-  Cache de 10 min no cliente, `AbortController` de 12 s, nunca em background.
-- `GET /api/jobs?include_disabled=true` → 200. **O parâmetro é obrigatório**:
-  sem ele o servidor filtra jobs desabilitados, e esta máquina tem um job
-  pausado que sumiria da tela.
-
-Passo 0 obrigatório, antes de qualquer comando novo: **extrair `AnswerView` de
-`src/ask.tsx` para `src/components/answer-view.tsx`**. Hoje ela é privada
-(`src/ask.tsx:398`, sem `export`) e é exatamente o componente "prompt pronto →
-resposta em streaming" que todos os comandos de fase 2 precisam. Três
-acoplamentos a quebrar com props novas: título fixo do comando, `AskForm`
-importado direto (criaria ciclo — injete como render prop), e a ordem fixa
-Copiar-antes-de-Colar.
-
-Ícones já prontos em `assets/`: `cmd-ask-selection.png`,
-`cmd-summarize-clipboard.png`, `cmd-skills.png`, `cmd-toolsets.png`. Faltam
-`cmd-fix-clipboard.png`, `cmd-translate-clipboard.png`, `cmd-paste-answer.png`,
-`cmd-jobs.png` — gere com `node tools-gerar-icones.mjs`, que reproduz a família
-a partir dos SVGs originais do `@tabler/icons`.
-
-`getSelectedText()` **rejeita** quando não há seleção; `Clipboard.readText()`
-devolve `undefined` e não rejeita. São dois testes diferentes, nunca unifique.
-
-### 2. Checklist manual dentro do Raycast
-
-Seis defeitos que o reprovavam já foram corrigidos (itens 1, 7, 8, 9, 11 e 12),
-mas **não foram reexercitados na interface**. Falta percorrer os 13 itens do fim
-do `INSTRUCOES_DO_PROJETO.md` com a extensão rodando. O item 13 (navegação só
-por teclado) nunca foi testado.
-
-### 3. Divergências entre a spec e o código — corrigir a SPEC, não o código
-
-- `docs/UX-SPEC.md:520-524` e `:534-541`: os literais do diagnóstico estão
-  desatualizados. O código diz `Suas conversas foram encontradas`
-  (`src/check-connection.tsx:336`) e `resposta na hora` (`:141`, exigido pela
-  proibição de jargão da própria spec em `:1407`).
-- `docs/UX-SPEC.md:741`: `"Chave de acesso do Hermes"` → `"Chave do Hermes"`,
-  que é o que o usuário vê.
-- `docs/UX-SPEC.md` §5.3: registrar o título órfão `# Não foi possível
-  perguntar` (`src/ask.tsx:504`).
-
-### 4. Duas decisões de produto em aberto
-
-- O Toast `Sua tarefa terminou.` + `Ver resultado` da §6.5 não existe.
-  Implementar ou riscar da spec?
-- A ação `Abrir o Hermes Desktop` de E1/E22 não existe (só existe `Abrir **no**
-  Hermes Desktop`, que é deep link de conversa). Implementar ou remover da spec?
+1. **Corrigir a UX-SPEC** conforme a §13 do desenho — a spec segue o código aqui,
+   porque a mudança foi deliberada.
+2. **Percorrer o checklist manual de 13 itens** do fim do `INSTRUCOES_DO_PROJETO.md`
+   com a extensão rodando. O item 13 (navegação só por teclado) nunca foi testado, e
+   agora é o item mais importante dos treze.
+3. **Fase 2 — os comandos que faltam.** Contratos já verificados ao vivo:
+   - `GET /v1/skills` → `{object:"list", data:[{name, description, category}]}`.
+     140 skills neste servidor; `category` pode ser `null`. Tipos já em `src/lib/types.ts`.
+   - `GET /v1/toolsets` → **cuidado real**: o handler roda no laço de eventos do
+     servidor e pode disparar uma leitura síncrona de 8 s ao portal da Nous
+     (`hermes_cli/nous_account.py:595`), travando o Hermes inteiro. Cache de 10 min no
+     cliente, corte em 12 s, nunca em segundo plano.
+   - `GET /api/jobs?include_disabled=true` → o parâmetro é **obrigatório**: sem ele o
+     servidor filtra jobs desabilitados, e esta máquina tem um pausado que sumiria.
+   - Ícones prontos em `assets/`: `cmd-ask-selection.png`, `cmd-summarize-clipboard.png`,
+     `cmd-skills.png`, `cmd-toolsets.png`. Faltam `cmd-fix-clipboard.png`,
+     `cmd-translate-clipboard.png`, `cmd-paste-answer.png`, `cmd-jobs.png` — gere com
+     `node tools-gerar-icones.mjs`.
+   - `getSelectedText()` **rejeita** quando não há seleção; `Clipboard.readText()`
+     devolve `undefined` e não rejeita. São dois testes diferentes, nunca unifique.
 
 ## DECISÕES JÁ TOMADAS — não reabra
 
-- **Sem variantes `@dark` dos ícones.** O `DESIGN.md` do Hermes diz que o
-  ladrilho branco do `BrandMark` é "o único literal sancionado" justamente por
-  ser idêntico no claro e no escuro. Variante escura contrariaria a marca.
-- **Emoji governa markdown, `Icon.*` governa componente.** `src/ask.tsx:488`
-  extrai nome de ferramenta com `/^🔧 Usando ([^—]+)/u`. Trocar o prefixo por um
-  `Icon` quebra a lista de Etapas em silêncio.
-- **A paleta mora em `src/lib/status.ts`, com `import type`.** `@raycast/api`
-  não tem runtime em `node_modules`; um `theme.ts` com import de VALOR de
-  `Icon`/`Color` seria impossível de carregar sob `node --test`.
+- **Sem variantes `@dark` dos ícones.** O `DESIGN.md` do Hermes diz que o ladrilho
+  branco do `BrandMark` é "o único literal sancionado" por ser idêntico no claro e no
+  escuro.
+- **Emoji governa markdown, `Icon.*` governa componente.** O parser extrai nome de
+  ferramenta com `/^🔧 Usando ([^—]+)/u`; trocar o prefixo por um `Icon` quebra a lista
+  de etapas em silêncio.
+- **A paleta mora em `src/lib/status.ts`, com `import type`.** `@raycast/api` não tem
+  runtime em `node_modules`; um `theme.ts` com import de VALOR seria impossível de
+  carregar sob `node --test`.
 - **Cor do Hermes só em posição `Color.ColorLike`** (`tintColor`, `tag.color`,
   `TagList.Item.color`). `accessory.text.color`, `accessory.date.color` e
   `Metadata.Label.text.color` exigem o enum e não recebem cor nossa.
+- **O motor continua em `/v1/runs`**, não em `/api/sessions/{id}/chat/stream`: abortar
+  aquele fetch cancela o turno no servidor, e a D-02 exige que fechar a janela deixe a
+  tarefa viva.
 
 ## AMBIENTE
 
@@ -150,34 +125,39 @@ por teclado) nunca foi testado.
   `C:\Users\SAM\AppData\Local\hermes\hermes-agent`. É melhor que a documentação
   pública; use como fonte de verdade.
 - Gateway ao vivo em `http://127.0.0.1:8642`.
-- A chave está em `C:\Users\SAM\AppData\Local\hermes\.env`, nome
-  `API_SERVER_KEY`. Pode lê-la para variável de shell; **nunca** imprima,
-  registre nem escreva o valor em lugar nenhum.
+- A chave está em `C:\Users\SAM\AppData\Local\hermes\.env`, nome `API_SERVER_KEY`.
+  Pode lê-la para variável de shell; **nunca** imprima, registre nem escreva o valor
+  em lugar nenhum.
 - Raycast Windows 2.0.3, Node 22.22.2 (o do Raycast), React 19.2.1.
 
 Três armadilhas de rede já pagas: use `127.0.0.1` literal (a porta é só IPv4);
 **nunca** envie header `Origin` (403 de corpo vazio antes da auth); ao descobrir
-endpoint, valide com `GET /health` exigindo `platform === "hermes-agent"` (a
-porta 8644 é outro adaptador e também responde `/health`).
+endpoint, valide com `GET /health` exigindo `platform === "hermes-agent"` (a porta
+8644 é outro adaptador e também responde `/health`).
 
 ## REGRAS INEGOCIÁVEIS
 
 - TypeScript strict; sem `any` sem comentário justificando.
 - Nunca registre, exiba nem comite o valor da `API_SERVER_KEY`.
-- Cancele streams no unmount com `AbortController`. **Nenhum** caminho pode
-  chamar o endpoint de parar a run no unmount: fechar a janela do Raycast não
-  cancela a tarefa (D-02).
-- Toda criação de sessão envia `source: "desktop"` (D-01), senão a conversa some
-  da barra lateral do Hermes Desktop — que é a funcionalidade principal.
+- Cancele streams no unmount com `AbortController`. **Nenhum** caminho pode chamar o
+  endpoint de parar a run no unmount: fechar a janela do Raycast não cancela a
+  tarefa (D-02).
+- Toda criação de sessão envia `source: "desktop"` (D-01), senão a conversa some da
+  barra lateral do Hermes Desktop — que é a funcionalidade principal.
+- Conversa vazia é proibida: a conversa só nasce no primeiro envio.
+- No máximo **um turno vivo por conversa** (R9). Não há trava no servidor; a fila da
+  §7 do desenho é a trava.
 - Windows: nenhum modificador `cmd`, sem menu-bar, sem AppleScript.
 - Ações destrutivas passam por `confirmAlert`.
 - Use os 7 rótulos de `src/lib/status.ts`. Nunca invente sinônimo.
-- Interface em português do Brasil, linguagem simples, sem jargão.
+- Interface em português do Brasil, linguagem simples, sem jargão. A §10.2 da UX-SPEC
+  **proíbe as palavras "chat", "thread" e "histórico"** em texto de tela — o termo é
+  "conversa".
 - Todo arquivo de tela novo precisa do cabeçalho
   `/* eslint-disable @raycast/prefer-title-case ... */`, senão `ray lint --fix`
   reescreve os títulos em pt-BR para Title Case do inglês.
-- **Não declare nada pronto sem rodar e mostrar a saída literal dos cinco
-  portões** listados em "Estado".
+- **Não declare nada pronto sem rodar e mostrar a saída literal dos cinco portões**
+  listados em "Estado".
 
 ## MÉTODO
 
@@ -187,7 +167,7 @@ arquivo:linha não sustenta a alegação é erro do revisor, e "corrigir" um ach
 refutado piora o código.
 
 **Verifique você mesmo a saída dos portões e as citações que embasam mudança de
-código.** Em duas sessões seguidas isso pagou: uma vez um agente relatou sucesso
-enquanto um `Bearer` recebia uma Promise não aguardada; na outra, o levantamento
-citou um hex de memória que só coincidiu com o valor real depois de eu converter
-o `oklch` na mão.
+código.** Em três sessões seguidas isso pagou: um agente relatou sucesso enquanto um
+`Bearer` recebia uma Promise não aguardada; um levantamento citou um hex de memória
+que só coincidiu depois de converter o `oklch` na mão; e um refutador declarou
+inexistente um arquivo do Hermes porque procurou no repositório errado.
