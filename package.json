@@ -19,6 +19,7 @@
       "title": "Perguntar ao Hermes",
       "subtitle": "Hermes",
       "description": "Faça uma pergunta ao Hermes e receba a resposta na hora, com opção de continuar a conversa.",
+      "icon": "cmd-ask-hermes.png",
       "mode": "view",
       "keywords": [
         "hermes",
@@ -43,6 +44,7 @@
       "title": "Conversas do Hermes",
       "subtitle": "Hermes",
       "description": "Veja, pesquise, continue, renomeie e organize suas conversas do Hermes, incluindo as do Hermes Desktop.",
+      "icon": "cmd-sessions.png",
       "mode": "view",
       "keywords": [
         "hermes",
@@ -57,6 +59,7 @@
       "title": "Executar tarefa no Hermes",
       "subtitle": "Hermes",
       "description": "Peça uma tarefa mais longa ao Hermes e acompanhe cada etapa até o resultado final.",
+      "icon": "cmd-run-task.png",
       "mode": "view",
       "keywords": [
         "hermes",
@@ -79,6 +82,7 @@
       "title": "Execuções do Hermes",
       "subtitle": "Hermes",
       "description": "Acompanhe as tarefas em andamento, responda pedidos de aprovação e reabra resultados recentes.",
+      "icon": "cmd-active-runs.png",
       "mode": "view",
       "keywords": [
         "hermes",
@@ -93,6 +97,7 @@
       "title": "Modelos do Hermes",
       "subtitle": "Hermes",
       "description": "Veja os modelos disponíveis no seu Hermes e escolha qual usar por padrão.",
+      "icon": "cmd-models.png",
       "mode": "view",
       "keywords": [
         "hermes",
@@ -107,6 +112,7 @@
       "title": "Verificar conexão com Hermes",
       "subtitle": "Hermes",
       "description": "Verifique se o Hermes está ligado e se a conexão da extensão está funcionando.",
+      "icon": "cmd-check-connection.png",
       "mode": "view",
       "keywords": [
         "hermes",
@@ -121,6 +127,7 @@
       "title": "Configurar Hermes",
       "subtitle": "Hermes",
       "description": "Conecte a extensão ao Hermes instalado neste computador, sem precisar de terminal.",
+      "icon": "cmd-configure-hermes.png",
       "mode": "view",
       "keywords": [
         "hermes",
