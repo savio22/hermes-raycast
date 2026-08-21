@@ -39,7 +39,7 @@ test("o texto do macOS nunca nomeia programa do Windows, e vice-versa", () => {
   const macTexto = Object.values(mac).join("\n");
   const windowsTexto = Object.values(windows).join("\n");
 
-  for (const proibido of ["Bloco de Notas", "Explorador", "Ctrl"]) {
+  for (const proibido of ["Notepad", "File Explorer", "Ctrl"]) {
     assert.ok(!macTexto.includes(proibido), `o texto do macOS não pode citar "${proibido}": ${macTexto}`);
   }
   for (const proibido of ["TextEdit", "Finder", "Cmd"]) {
@@ -61,12 +61,12 @@ test("as teclas nomeadas seguem o modificador de cada sistema", () => {
   assert.equal(windows.findKeys, "Ctrl+F");
   assert.equal(windows.actionsKeys, "Ctrl+K");
   assert.equal(windows.submitKeys, "Ctrl+Enter");
-  assert.equal(windows.fileManager, "Explorador de Arquivos");
-  assert.equal(windows.plainTextEditor, "Bloco de Notas");
+  assert.equal(windows.fileManager, "File Explorer");
+  assert.equal(windows.plainTextEditor, "Notepad");
 });
 
 test("a dica de arquivos ocultos ensina o caminho do sistema certo", () => {
-  assert.match(platformCopy("windows").showHiddenFilesHint, /Itens ocultos/);
+  assert.match(platformCopy("windows").showHiddenFilesHint, /Hidden items/);
   assert.match(platformCopy("macos").showHiddenFilesHint, /Cmd\+Shift\+\./);
 });
 

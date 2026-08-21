@@ -33,7 +33,7 @@ export function compactMessageCount(count: number): string {
 /** Distinguish a section of conversations from the message count shown on each row. */
 export function compactConversationCount(count: number): string {
   const safeCount = Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
-  return `${safeCount} ${safeCount === 1 ? "conversa" : "conversas"}`;
+  return `${safeCount} ${safeCount === 1 ? "conversation" : "conversations"}`;
 }
 
 /** Keep provider/model accessories readable in compact Raycast rows. */

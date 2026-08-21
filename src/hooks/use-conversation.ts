@@ -257,7 +257,7 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 }
 
 function seconds(value: number): string {
-  return value.toFixed(1).replace(".", ",");
+  return value.toFixed(1);
 }
 
 /**
@@ -771,7 +771,7 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
           receivedAt,
         }).catch(() => undefined);
 
-        patchTurn(turnId, (turn) => ({ ...turn, steps: [...turn.steps, "🔐 O Hermes pediu sua aprovação"] }));
+        patchTurn(turnId, (turn) => ({ ...turn, steps: [...turn.steps, "🔐 Hermes asked for your approval"] }));
         setStatus("waiting_for_approval");
         patchState((previous) => ({
           ...previous,
@@ -805,7 +805,7 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
         onToolStarted: (tool, preview) => {
           patchTurn(turnId, (turn) => ({
             ...turn,
-            steps: [...turn.steps, preview ? `🔧 Usando ${tool} — ${preview}` : `🔧 Usando ${tool}`],
+            steps: [...turn.steps, preview ? `🔧 Using ${tool} — ${preview}` : `🔧 Using ${tool}`],
           }));
           patchState((previous) => ({ ...previous, activeTool: tool }));
         },
@@ -815,8 +815,8 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
             steps: [
               ...turn.steps,
               failed
-                ? `⚠️ ${tool} falhou depois de ${seconds(duration)} s`
-                : `✅ ${tool} concluído em ${seconds(duration)} s`,
+                ? `⚠️ ${tool} failed after ${seconds(duration)} s`
+                : `✅ ${tool} finished in ${seconds(duration)} s`,
             ],
           }));
           patchState((previous) => ({ ...previous, activeTool: undefined }));
@@ -829,8 +829,8 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
           const fields = event as unknown as { goal?: string; summary?: string };
           const line =
             event.event === "subagent.start"
-              ? `👥 Tarefa auxiliar iniciada: ${fields.goal ?? "sem descrição"}`
-              : `👥 Tarefa auxiliar concluída: ${fields.summary ?? "sem resumo"}`;
+              ? `👥 Helper task started: ${fields.goal ?? "no description"}`
+              : `👥 Helper task finished: ${fields.summary ?? "no summary"}`;
           patchTurn(turnId, (turn) => ({ ...turn, steps: [...turn.steps, line] }));
         },
         onApprovalRequest: (fields) => {
@@ -845,7 +845,7 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
           }
           patchTurn(turnId, (turn) => ({
             ...turn,
-            steps: [...turn.steps, `🔐 Aprovação respondida: ${APPROVAL_CHOICE_LABEL[choice]}`],
+            steps: [...turn.steps, `🔐 Approval answered: ${APPROVAL_CHOICE_LABEL[choice]}`],
           }));
           patchState((previous) => ({
             ...previous,
@@ -896,7 +896,7 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
               ? {
                   kind: "provider_authentication",
                   message:
-                    "O modelo escolhido não está autenticado no Hermes. Abra o Hermes Desktop e configure o provedor, ou escolha outro modelo.",
+                    "The model you picked is not authenticated in Hermes. Open Hermes Desktop and set up the provider, or pick another model.",
                 }
               : turn.diagnostic,
           finishedAt: terminal ? (turn.finishedAt ?? Date.now()) : turn.finishedAt,
@@ -946,7 +946,7 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
                 ? {
                     kind: "provider_authentication",
                     message:
-                      "O modelo escolhido não está autenticado no Hermes. Abra o Hermes Desktop e configure o provedor, ou escolha outro modelo.",
+                      "The model you picked is not authenticated in Hermes. Open Hermes Desktop and set up the provider, or pick another model.",
                   }
                 : undefined,
             });
@@ -963,8 +963,8 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
               finishedAt: turn.finishedAt ?? Date.now(),
               // E21 — o texto do evento já vem redigido pelo servidor.
               error: streamError(
-                `O Hermes não conseguiu concluir: ${result.error ?? "sem detalhes"}`,
-                `run.failed em ${runId}: ${result.error ?? "-"}`,
+                `Hermes could not finish: ${result.error ?? "no details"}`,
+                `run.failed on ${runId}: ${result.error ?? "-"}`,
               ),
               transportPhase: "reconciling",
             }));
@@ -1000,7 +1000,8 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
             ...previous,
             // E23 — literal da UX-SPEC §5.2.
             streamFailure: {
-              message: "A conexão com o Hermes caiu no meio da resposta. A tarefa continua rodando no Hermes.",
+              message:
+                "The connection to Hermes dropped in the middle of the answer. The task is still going inside Hermes.",
               canReattach: true,
               technical: hermes.technical,
             },
@@ -1025,7 +1026,7 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
               previous.streamFailure === undefined ? previous : { ...previous, streamFailure: undefined },
             );
             if (run === "expired") {
-              // 404 = expirada. NUNCA "Falhou" (§4.3).
+              // 404 = expirada. NUNCA "Failed" (§4.3).
               await updateStoredRun(runId, { expired: true });
               markProgress();
               patchTurn(turnId, (turn) => ({ ...turn, expired: true, finishedAt: turn.finishedAt ?? Date.now() }));
@@ -1228,7 +1229,7 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
 
   /**
    * §7: se o turno em curso falhou ou foi cancelado, o que estava na fila NÃO dispara. Os
-   * turnos ficam com o rótulo `Cancelado` e dizem por que não saíram daqui.
+   * turnos ficam com o rótulo `Cancelled` e dizem por que não saíram daqui.
    *
    * Roda DEPOIS do efeito de disparo, e a ordem importa: `startedRef` já contém o turno que
    * o efeito anterior acabou de disparar, e é isso que impede esta varredura de cancelar,
@@ -1250,14 +1251,14 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
         // em vez de enviar. Tirar a ação do painel promoveria outra a primária, e `Enter`
         // numa barra vazia passaria a copiar ou a trocar de modo, sem aviso.
         // Literal da §2.1.1, o mesmo da validação do formulário de antes.
-        void showToast({ style: Toast.Style.Failure, title: "Escreva sua pergunta." });
+        void showToast({ style: Toast.Style.Failure, title: "Write your question." });
         return undefined;
       }
       const id = newTurnId();
       // Com a conversa parada, isto não é um item de fila: é um envio explícito da pessoa,
       // agora. A recusa de "não disparar em cima de um erro" (§7) existe só para o que JÁ
       // estava esperando quando o turno anterior acabou mal — sem esta marca ela engolia
-      // também a mensagem seguinte, que nascia `Cancelado` com uma explicação falsa e
+      // também a mensagem seguinte, que nascia `Cancelled` com uma explicação falsa e
       // deixava a conversa sem saída depois de qualquer falha ou de um `Parar`.
       // R9 continua de pé, e a guarda é mais larga que `isTurnLive` de propósito: um turno
       // recém-disparado ainda aparece `queued` até o `patchTurn` comitar. Sem contar também
@@ -1420,9 +1421,9 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
         await steerRun(runId, text);
         if (conversationEpochRef.current !== operationEpoch || liveTurnIdRef.current !== liveId) return;
         if (liveId !== undefined) {
-          patchTurn(liveId, (turn) => ({ ...turn, steps: [...turn.steps, "🧭 Orientação enviada"] }));
+          patchTurn(liveId, (turn) => ({ ...turn, steps: [...turn.steps, "🧭 Guidance sent"] }));
         }
-        await showHUD("Orientação enviada");
+        await showHUD("Guidance sent");
       } catch (err) {
         const hermes = toHermesError(err, `POST /v1/runs/${runId}/steer`);
         await showToast({ style: Toast.Style.Failure, title: hermes.userMessage });

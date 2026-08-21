@@ -38,7 +38,7 @@ import type { RunStatus, SessionMessage } from "./types";
 /**
  * - `queued`: escrito pelo usuário, ainda não enviado (a fila da §7).
  * - `live`: turno DESTA sessão do Raycast, com estado de execução — inclusive depois de
- *   terminar, porque é o `status` que dá o rótulo dos 7 (`Concluído`, `Falhou`…).
+ *   terminar, porque é o `status` que dá o rótulo dos 7 (`Done`, `Failed`…).
  * - `past`: veio do servidor; nunca teve stream e não tem estado de execução.
  */
 export type TurnState = { kind: "queued" } | { kind: "live"; runId?: string; status: RunStatus } | { kind: "past" };
@@ -84,24 +84,24 @@ export const MAX_TURN_CHARS = 6_000;
 
 /* ─────────────────────────── Textos literais ─────────────────────────── */
 
-const YOU = "**Você**";
+const YOU = "**You**";
 const SEPARATOR = "---";
 /** Literal de `session-detail.tsx`, para o corte ser o mesmo nas duas telas. */
-const LONG_MESSAGE_NOTE = "_Mensagem longa: mostrando só o começo._";
+const LONG_MESSAGE_NOTE = "_Long message: showing only the beginning._";
 /** UX-SPEC §2.1.4. */
-const EMPTY_ANSWER = "O Hermes terminou sem escrever uma resposta.";
+const EMPTY_ANSWER = "Hermes finished without writing an answer.";
 /** UX-SPEC §6.1 — os dois únicos textos automáticos, agora por turno. */
-const PREPARING = "_Preparando…_";
-const THINKING = "_O Hermes está pensando…_";
-const NO_STEPS = "_Nenhuma etapa até agora._";
+const PREPARING = "_Preparing…_";
+const THINKING = "_Hermes is thinking…_";
+const NO_STEPS = "_No steps yet._";
 /** §7 do desenho: a fila não dispara em cima de um erro, e o turno diz por quê. */
-const NEVER_SENT = "> Esta mensagem não chegou a ser enviada porque a resposta anterior não terminou.";
+const NEVER_SENT = "> This message was never sent, because the previous answer had not finished.";
 /**
  * Título da troca cujo começo ficou fora da página carregada — acontece sempre que uma
  * conversa longa é aberta pelas 120 mensagens mais novas e a página cai no meio de uma
  * troca. Deriva do literal já existente `Carregar parte anterior da conversa` (§4.6).
  */
-const OLDER_PART_TITLE = "Parte anterior desta conversa";
+const OLDER_PART_TITLE = "Earlier part of this conversation";
 
 /* ──────────────────────────── Pareamento ──────────────────────────── */
 
@@ -149,7 +149,7 @@ export function pairMessagesIntoTurns(messages: readonly SessionMessage[]): Turn
       // Duração e sucesso não são recuperáveis daqui — não invente (UX-SPEC §6.3).
       // O prefixo `🔧 Usando ` é contrato: é por ele que a metadata extrai o nome.
       const tool = (message.tool_name ?? "").trim();
-      if (tool !== "") turns[index].steps.push(`🔧 Usando ${tool}`);
+      if (tool !== "") turns[index].steps.push(`🔧 Using ${tool}`);
     }
   }
 
@@ -247,11 +247,11 @@ export function turnTitle(turn: Turn): string {
 
 /**
  * Ícone, cor e rótulo do turno — sempre dos 7 rótulos de `status.ts`, ou da condição
- * `Execução expirada`, que NÃO é um deles (UX-SPEC §4.3).
+ * `Task expired`, que NÃO é um deles (UX-SPEC §4.3).
  *
  * A troca vinda do servidor não tem estado de execução: ela já aconteceu. Com resposta é
- * `Concluído`; sem resposta é uma pergunta que ainda está sendo respondida em outro lugar
- * (o Hermes Desktop, tipicamente), e aí o rótulo honesto é `Preparando`.
+ * `Done`; sem resposta é uma pergunta que ainda está sendo respondida em outro lugar
+ * (o Hermes Desktop, tipicamente), e aí o rótulo honesto é `Preparing`.
  */
 export function turnAppearance(turn: Turn): LabeledAppearance {
   if (turn.expired === true) return RUN_EXPIRED;
@@ -321,7 +321,7 @@ export function pickTurnToRun(turns: readonly Turn[], forcedId?: string): Turn |
 
 /**
  * §7: se o turno anterior falhou ou foi cancelado, o que ficou na fila NÃO dispara sozinho.
- * Estes turnos passam a `Cancelado` e explicam por que não saíram daqui (`turnMarkdown`).
+ * Estes turnos passam a `Cancelled` e explicam por que não saíram daqui (`turnMarkdown`).
  *
  * `started` é o conjunto de turnos que já foram disparados alguma vez: sem ele, um turno que
  * o usuário acabou de mandar repetir seria cancelado no mesmo instante em que dispara.

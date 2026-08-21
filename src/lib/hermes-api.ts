@@ -137,7 +137,7 @@ function retryDelayMs(err: unknown): number {
 
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) {
-    return Promise.reject(Object.assign(new Error("Operação cancelada"), { name: "AbortError" }));
+    return Promise.reject(Object.assign(new Error("Operation cancelled"), { name: "AbortError" }));
   }
   return new Promise((resolve, reject) => {
     let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
@@ -146,7 +146,7 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     const onAbort = () => {
       cleanup();
-      reject(Object.assign(new Error("Operação cancelada"), { name: "AbortError" }));
+      reject(Object.assign(new Error("Operation cancelled"), { name: "AbortError" }));
     };
     const cleanup = () => {
       if (timer !== undefined) clearTimeout(timer);
@@ -261,8 +261,8 @@ export async function requestJson<TResult>(options: RequestOptions): Promise<TRe
           return JSON.parse(text) as TResult;
         } catch {
           throw new HermesProtocolError({
-            userMessage: "Resposta inesperada do Hermes.",
-            technical: `${method} ${options.path} devolveu HTTP ${response.status} com corpo não-JSON: ${text.slice(0, 500)}`,
+            userMessage: "Unexpected answer from Hermes.",
+            technical: `${method} ${options.path} returned HTTP ${response.status} with a non-JSON body: ${text.slice(0, 500)}`,
             recovery: "report_bug",
           });
         }
@@ -288,15 +288,15 @@ export async function requestStream(options: RequestOptions): Promise<Response> 
   const contentType = response.headers.get("Content-Type") ?? "";
   if (!contentType.includes("text/event-stream")) {
     throw new HermesProtocolError({
-      userMessage: "Resposta inesperada do Hermes.",
+      userMessage: "Unexpected answer from Hermes.",
       technical: `${options.method ?? "POST"} ${options.path} deveria devolver text/event-stream, veio "${contentType}".`,
       recovery: "report_bug",
     });
   }
   if (!response.body) {
     throw new HermesProtocolError({
-      userMessage: "Resposta inesperada do Hermes.",
-      technical: `${options.path}: response.body é null.`,
+      userMessage: "Unexpected answer from Hermes.",
+      technical: `${options.path}: response.body is null.`,
       recovery: "report_bug",
     });
   }
@@ -406,7 +406,7 @@ export function conversationTitle(prompt: string): string {
     .replace(/\p{Cc}+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
-  const base = cleaned === "" ? "Conversa do Raycast" : cleaned;
+  const base = cleaned === "" ? "Raycast conversation" : cleaned;
   return base.length > MAX_TITLE_LENGTH ? base.slice(0, MAX_TITLE_LENGTH).trimEnd() : base;
 }
 
@@ -744,7 +744,7 @@ export function steerRun(runId: string, text: string, signal?: AbortSignal): Pro
 
 /**
  * Corpo ignorado pelo servidor. 404 aqui significa "a run já terminou", não erro.
- * "stopping" não emite evento no stream: renderize "Interrompendo" a partir deste
+ * "stopping" não emite evento no stream: renderize "Stopping" a partir deste
  * 200 e siga no polling até `cancelled`/`completed` (armadilha 20).
  */
 export function stopRun(runId: string, signal?: AbortSignal): Promise<T.RunStopResponse> {
@@ -939,12 +939,12 @@ export function isValidJobId(jobId: string): boolean {
  */
 export function validateSchedule(raw: string): { ok: true } | { ok: false; reason: string } {
   const value = raw.trim();
-  if (value === "") return { ok: false, reason: "Informe quando a automação deve rodar." };
+  if (value === "") return { ok: false, reason: "Say when the automation should run." };
 
   if (value.toLowerCase().startsWith("every ")) {
     return DURATION_RE.test(value.slice(6).trim())
       ? { ok: true }
-      : { ok: false, reason: "Use por exemplo: every 30m, every 2h, every 1d." };
+      : { ok: false, reason: "Use for example: every 30m, every 2h, every 1d." };
   }
 
   const parts = value.split(/\s+/);
@@ -952,7 +952,7 @@ export function validateSchedule(raw: string): { ok: true } | { ok: false; reaso
 
   if (value.includes("T") || /^\d{4}-\d{2}-\d{2}/.test(value)) {
     return Number.isNaN(Date.parse(value.replace("Z", "+00:00")))
-      ? { ok: false, reason: "Data e hora inválidas. Use 2026-06-01T09:00:00." }
+      ? { ok: false, reason: "That date and time are not valid. Use 2026-06-01T09:00:00." }
       : { ok: true };
   }
 
@@ -960,8 +960,7 @@ export function validateSchedule(raw: string): { ok: true } | { ok: false; reaso
 
   return {
     ok: false,
-    reason:
-      "Formatos aceitos: 30m · 2h · 1d (uma vez) · every 30m (repetido) · 0 9 * * * (cron) · 2026-06-01T09:00:00.",
+    reason: "Accepted formats: 30m · 2h · 1d (once) · every 30m (repeating) · 0 9 * * * (cron) · 2026-06-01T09:00:00.",
   };
 }
 
@@ -1003,7 +1002,7 @@ export function createJob(input: CreateJobInput, signal?: AbortSignal): Promise<
   if (!schedule.ok) {
     throw new HermesValidationError({
       userMessage: schedule.reason,
-      technical: `validateSchedule recusou o valor antes de enviar (o servidor devolveria 500).`,
+      technical: `validateSchedule rejected the value before sending (the server would answer 500).`,
       recovery: "change_input",
     });
   }

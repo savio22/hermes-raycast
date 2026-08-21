@@ -61,9 +61,9 @@ test("401 gateway_auth_failed vira HermesAuthError com a frase E2", () => {
   assert.equal(e.type, "gateway_auth_error");
   assert.equal(e.httpStatus, 401);
   assert.equal(e.status, 401); // apelido lido pelo retry de hermes-api.ts
-  assert.equal(e.userMessage, "O Hermes não aceitou a chave de acesso. Ela pode ter mudado desde a última vez.");
+  assert.equal(e.userMessage, "Hermes did not accept the access key. It may have changed since the last time.");
   assert.equal(e.recovery, "open_preferences");
-  assert.equal(e.recoveryLabel, "Abrir configurações");
+  assert.equal(e.recoveryLabel, "Open Settings");
   assert.equal(e.retryable, false);
   assert.equal(e.uxId, "E2");
 });
@@ -74,14 +74,14 @@ test("401: a decisão vem do code, não da frase do servidor", () => {
     '{"error": {"message": "qualquer outra coisa", "type": "gateway_auth_error", "code": "gateway_auth_failed"}}';
   const e = mapHttpError(ctx({ status: 401, body: outro }));
   assert.ok(e instanceof HermesAuthError);
-  assert.equal(e.userMessage, "O Hermes não aceitou a chave de acesso. Ela pode ter mudado desde a última vez.");
+  assert.equal(e.userMessage, "Hermes did not accept the access key. It may have changed since the last time.");
 });
 
 test("401 nunca ecoa o corpo do servidor na mensagem do usuário", () => {
   const e = mapHttpError(ctx({ status: 401, body: BODY_401 }));
   assert.ok(!e.userMessage.includes("API_SERVER_KEY"));
   assert.ok(!e.userMessage.includes("gateway_auth"));
-  assert.equal(e.message, e.userMessage); // Error.message é o texto pt-BR
+  assert.equal(e.message, e.userMessage); // Error.message é o texto de tela
 });
 
 /* ─────────────────────── 403 de corpo vazio (CORS) ─────────────────────── */
@@ -92,10 +92,7 @@ test("403 com corpo vazio vira HermesOriginBlockedError e acusa o header Origin"
   assert.ok(e instanceof HermesOriginBlockedError);
   assert.ok(!(e instanceof HermesForbiddenError));
   assert.equal(e.code, null);
-  assert.equal(
-    e.userMessage,
-    "Não foi possível falar com o Hermes por causa de uma restrição de segurança do servidor.",
-  );
+  assert.equal(e.userMessage, "Could not talk to Hermes because of a security restriction on the server.");
   assert.equal(e.recovery, "report_bug");
   assert.equal(e.uxId, "E5");
   assert.match(e.technical, /Origin/);
@@ -117,7 +114,7 @@ test("403 com JSON de API key ausente vira HermesForbiddenError (E6)", () => {
   assert.equal(e.type, "invalid_request_error");
   assert.equal(
     e.userMessage,
-    "O Hermes está rodando sem chave de acesso configurada e não aceita este tipo de pedido.",
+    "Hermes is running with no access key set up, and it does not accept this kind of request.",
   );
   assert.equal(e.uxId, "E6");
 });
@@ -130,7 +127,7 @@ test("404 em text/plain (corpo não-JSON) não quebra o parser", () => {
   assert.ok(e instanceof HermesNotFoundError);
   assert.equal(e.code, null);
   assert.equal(e.type, null);
-  assert.equal(e.userMessage, "Recurso não encontrado no Hermes.");
+  assert.equal(e.userMessage, "Hermes could not find what was asked for.");
   assert.equal(e.recovery, "report_bug");
   assert.match(e.technical, /404: Not Found/);
 });
@@ -142,7 +139,10 @@ test("404 session_not_found aponta o Hermes Desktop (E7)", () => {
 
   assert.ok(e instanceof HermesNotFoundError);
   assert.equal(e.code, "session_not_found");
-  assert.equal(e.userMessage, "Esta conversa não existe mais no Hermes. Ela pode ter sido apagada no Hermes Desktop.");
+  assert.equal(
+    e.userMessage,
+    "This conversation no longer exists in Hermes. It may have been deleted in Hermes Desktop.",
+  );
   assert.equal(e.recovery, "reload_list");
   assert.equal(e.uxId, "E7");
 });
@@ -160,7 +160,7 @@ test("404 run_not_found fora do stream é E8", () => {
 test("404 run_not_found ao abrir o stream é E9 e não perde a tarefa", () => {
   const e = mapHttpError(ctx({ path: "/v1/runs/run_missing/events", status: 404, body: BODY_RUN_404 }));
   assert.equal(e.uxId, "E9");
-  assert.equal(e.userMessage, "Perdi o acompanhamento ao vivo desta tarefa, mas ela continua rodando no Hermes.");
+  assert.equal(e.userMessage, "I lost the live view of this task, but it is still going inside Hermes.");
   assert.equal(e.retryable, true);
 });
 
@@ -168,13 +168,13 @@ test("404 de perfil desconhecido (envelope legado de string) manda para as confi
   const e = mapHttpError(
     ctx({ path: "/p/outro/v1/models", status: 404, body: '{"error": "Unknown or unconfigured profile"}' }),
   );
-  assert.equal(e.userMessage, "O perfil informado não existe neste Hermes.");
+  assert.equal(e.userMessage, "The profile you gave does not exist in this Hermes.");
   assert.equal(e.recovery, "open_preferences");
 });
 
 test("404 em rota de jobs é discriminado pela rota, não pela frase", () => {
   const e = mapHttpError(ctx({ path: "/api/jobs/abc", status: 404, body: '{"error": "Job not found"}' }));
-  assert.equal(e.userMessage, "Esta automação não existe mais.");
+  assert.equal(e.userMessage, "This automation no longer exists.");
   assert.equal(e.recovery, "reload_list");
 });
 
@@ -187,7 +187,7 @@ test("400 invalid_title é validação de formulário (E11)", () => {
 
   assert.ok(e instanceof HermesValidationError);
   assert.equal(e.code, "invalid_title");
-  assert.equal(e.userMessage, "Já existe uma conversa com esse título. Escolha outro nome.");
+  assert.equal(e.userMessage, "There is already a conversation with that title. Pick another name.");
   assert.equal(e.recovery, "change_input");
   assert.equal(e.uxId, "E11");
 });
@@ -197,7 +197,7 @@ test("400 dos campos de sessão vira uma frase só, sem jargão", () => {
     const body = `{"error": {"message": "seja lá o que for", "type": "invalid_request_error", "param": null, "code": "${code}"}}`;
     const e = mapHttpError(ctx({ method: "PATCH", path: "/api/sessions/x", status: 400, body }));
     assert.ok(e instanceof HermesValidationError, code);
-    assert.equal(e.userMessage, "Não foi possível salvar essa alteração na conversa.", code);
+    assert.equal(e.userMessage, "Could not save that change to the conversation.", code);
     assert.equal(e.recovery, "report_bug", code);
   }
 });
@@ -206,7 +206,7 @@ test("400 invalid_steer_input pede a orientação (E14)", () => {
   const body =
     '{"error": {"message": "steer text is required", "type": "invalid_request_error", "param": null, "code": "invalid_steer_input"}}';
   const e = mapHttpError(ctx({ method: "POST", path: "/v1/runs/run_x/steer", status: 400, body }));
-  assert.equal(e.userMessage, "Escreva a orientação antes de enviar.");
+  assert.equal(e.userMessage, "Write your guidance before sending.");
   assert.equal(e.uxId, "E14");
 });
 
@@ -224,7 +224,7 @@ test("400 desconhecido cai no genérico de validação, sem lançar", () => {
     '{"error": {"message": "algo novo", "type": "invalid_request_error", "param": null, "code": "codigo_que_nao_existe_ainda"}}';
   const e = mapHttpError(ctx({ status: 400, body }));
   assert.ok(e instanceof HermesValidationError);
-  assert.equal(e.userMessage, "O Hermes recusou os dados enviados.");
+  assert.equal(e.userMessage, "Hermes rejected the data that was sent.");
   assert.equal(e.code, "codigo_que_nao_existe_ainda");
 });
 
@@ -237,7 +237,7 @@ test("409 session_exists é retentável com outro id (E10)", () => {
 
   assert.ok(e instanceof HermesConflictError);
   assert.equal(e.code, "session_exists");
-  assert.equal(e.userMessage, "Já existe uma conversa com esse identificador. Vou criar outra.");
+  assert.equal(e.userMessage, "There is already a conversation with that identifier. I will create another one.");
   assert.equal(e.recovery, "retry");
   assert.equal(e.retryable, true);
   assert.equal(e.uxId, "E10");
@@ -272,7 +272,7 @@ test("413 body_too_large sugere dividir o texto (E15)", () => {
   assert.ok(e instanceof HermesPayloadTooLargeError);
   assert.equal(
     e.userMessage,
-    "Seu texto é grande demais para o Hermes processar de uma vez. Tente dividir em partes menores.",
+    "Your text is too big for Hermes to handle in one go. Try splitting it into smaller parts.",
   );
   assert.equal(e.recovery, "reduce_size");
   assert.equal(e.uxId, "E15");
@@ -308,7 +308,7 @@ test("501 do módulo de cron (envelope legado) desliga as automações", () => {
   );
 
   assert.ok(e instanceof HermesNotSupportedError);
-  assert.equal(e.userMessage, "As automações não estão disponíveis neste Hermes.");
+  assert.equal(e.userMessage, "Automations are not available in this Hermes.");
   assert.equal(e.recovery, "none");
   assert.equal(e.recoveryLabel, null);
   assert.equal(e.uxId, "E19");
@@ -383,14 +383,14 @@ test("500 genérico é retentável", () => {
     ctx({ status: 500, body: '{"error": {"message": "boom", "type": "server_error", "code": null}}' }),
   );
   assert.ok(e instanceof HermesServerError);
-  assert.equal(e.userMessage, "O Hermes encontrou um erro interno.");
+  assert.equal(e.userMessage, "Hermes hit an internal error.");
   assert.equal(e.retryable, true);
 });
 
 test("status fora do catálogo vira erro de protocolo em vez de exceção", () => {
   const e = mapHttpError(ctx({ status: 418, body: "sou um bule" }));
   assert.ok(e instanceof HermesProtocolError);
-  assert.equal(e.userMessage, "O Hermes respondeu de um jeito que a extensão não entendeu.");
+  assert.equal(e.userMessage, "Hermes answered in a way the extension did not understand.");
   assert.equal(e.uxId, "E24");
 });
 
@@ -505,7 +505,7 @@ test("ECONNREFUSED embrulhado pelo fetch do Node vira HermesConnectionError (E1)
   assert.equal(e.recovery, "start_hermes");
   assert.equal(e.retryable, true);
   assert.equal(e.uxId, "E1");
-  assert.match(e.userMessage, /^Não foi possível conectar ao Hermes\./);
+  assert.match(e.userMessage, /^Could not connect to Hermes\./);
   assert.match(e.technical, /ECONNREFUSED/);
 });
 
@@ -523,7 +523,7 @@ test("timeout do AbortSignal vira HermesTimeoutError (E25) e não erro de conex�
   const e = toHermesError(falha, "POST /v1/runs");
 
   assert.ok(e instanceof HermesTimeoutError);
-  assert.equal(e.userMessage, "O Hermes está demorando mais que o esperado para responder.");
+  assert.equal(e.userMessage, "Hermes is taking longer than expected to answer.");
   assert.equal(e.retryable, true);
   assert.equal(e.uxId, "E25");
 });

@@ -354,7 +354,7 @@ test("segurança: sanitizeTechnical apaga a chave mesmo se alguém a colar num t
 
 test("segurança: um HermesError construído com a chave no technical já nasce redigido", () => {
   const err = new errors.HermesConnectionError({
-    userMessage: "Não foi possível conectar ao Hermes.",
+    userMessage: "Could not connect to Hermes.",
     technical: `falhou com API_SERVER_KEY=${FIXTURE_KEY}`,
     recovery: "start_hermes",
   });

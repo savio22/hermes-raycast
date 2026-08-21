@@ -41,7 +41,7 @@ export const DEFAULT_PORT = 8642;
  * `userMessage` cru, então uma variante local vaza para a tela.
  */
 const E1_MESSAGE =
-  "Não foi possível conectar ao Hermes. Verifique se o Hermes API Server está ativo e se a URL e a chave estão corretas.";
+  "Could not connect to Hermes. Check that the Hermes API Server is on, and that the address and the key are right.";
 
 /** Adaptador de webhook: responde `/health` com `platform: "webhook"`. */
 const WEBHOOK_PORT = 8644;
@@ -90,7 +90,7 @@ export async function probeHealth(baseUrl: string, timeoutMs = PROBE_TIMEOUT_MS)
     if (!res.ok) return undefined;
     const json = (await res.json()) as Partial<HealthResponse>;
     if (typeof json?.status !== "string" || typeof json?.platform !== "string") return undefined;
-    return { status: json.status, platform: json.platform, version: json.version ?? "desconhecida" };
+    return { status: json.status, platform: json.platform, version: json.version ?? "unknown" };
   } catch {
     return undefined;
   }
@@ -407,10 +407,10 @@ export async function resolveBaseUrl(options?: { force?: boolean; deps?: Discove
     }
     if (health) {
       throw new HermesWrongServerError({
-        userMessage: "O endereço configurado não é o Hermes API Server.",
+        userMessage: "The address you configured is not the Hermes API Server.",
         technical:
-          `GET ${apiUrl}/health respondeu platform="${health.platform}", status="${health.status}". ` +
-          `Esperado platform="hermes-agent". A porta ${WEBHOOK_PORT} é o adaptador de webhook.`,
+          `GET ${apiUrl}/health answered platform="${health.platform}", status="${health.status}". ` +
+          `Expected platform="hermes-agent". Port ${WEBHOOK_PORT} is the webhook adapter.`,
         recovery: "open_preferences",
       });
     }
@@ -418,7 +418,7 @@ export async function resolveBaseUrl(options?: { force?: boolean; deps?: Discove
       // §10.3: E1 é frase canônica, "usar sem variação". Quem renderiza `userMessage`
       // cru (`HermesErrorEmptyView`) mostraria uma variante encurtada.
       userMessage: E1_MESSAGE,
-      technical: `GET ${apiUrl}/health não respondeu em ${PROBE_TIMEOUT_MS} ms.`,
+      technical: `GET ${apiUrl}/health did not answer within ${PROBE_TIMEOUT_MS} ms.`,
       recovery: "open_preferences",
       retryable: true,
       uxId: "E1",
@@ -466,11 +466,11 @@ export async function resolveBaseUrl(options?: { force?: boolean; deps?: Discove
   const webhook = await probe(`http://127.0.0.1:${WEBHOOK_PORT}`, PROBE_TIMEOUT_MS);
   if (webhook && webhook.platform !== "hermes-agent") {
     throw new HermesWrongServerError({
-      userMessage: "O Hermes está rodando, mas o API Server não respondeu.",
+      userMessage: "Hermes is running, but the API Server did not answer.",
       technical:
-        `Portas testadas: ${describeCandidates(candidates)}. ` +
-        `A porta ${WEBHOOK_PORT} respondeu com platform="${webhook.platform}" (adaptador de webhook, ` +
-        `não é o API Server). Verifique platforms.api_server em ${hermesFile(hermesHome, "config.yaml", deps)}.`,
+        `Ports tried: ${describeCandidates(candidates)}. ` +
+        `Port ${WEBHOOK_PORT} answered with platform="${webhook.platform}" (the webhook adapter, ` +
+        `not the API Server). Check platforms.api_server in ${hermesFile(hermesHome, "config.yaml", deps)}.`,
       recovery: "open_preferences",
     });
   }
@@ -480,7 +480,7 @@ export async function resolveBaseUrl(options?: { force?: boolean; deps?: Discove
     // fora do ar (`rawRequest` resolve o endereço antes do `fetch`), então uma versão
     // truncada aqui seria o texto que o usuário mais lê.
     userMessage: E1_MESSAGE,
-    technical: `HERMES_HOME=${hermesHome}. Portas testadas: ${describeCandidates(candidates)}.`,
+    technical: `HERMES_HOME=${hermesHome}. Ports tried: ${describeCandidates(candidates)}.`,
     recovery: "start_hermes",
     retryable: true,
     uxId: "E1",

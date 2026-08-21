@@ -22,9 +22,8 @@ import assert from "node:assert/strict";
 import "./helpers/module-hooks.mjs";
 import { __resetRaycastState, __setPreferences } from "./helpers/raycast-api-stub.mjs";
 
-const { conversationTitle, conversationTitleAttempt, requestJson, startConversation } = await import(
-  "../src/lib/hermes-api.ts"
-);
+const { conversationTitle, conversationTitleAttempt, requestJson, startConversation } =
+  await import("../src/lib/hermes-api.ts");
 const { invalidateBaseUrl } = await import("../src/lib/discovery.ts");
 const { isAbort } = await import("../src/lib/errors.ts");
 
@@ -365,7 +364,7 @@ test("GET em 503 abortado durante Retry-After não faz a segunda chamada", async
 });
 
 test("o título nunca é vazio e normaliza controles e espaços", () => {
-  assert.equal(conversationTitle("   "), "Conversa do Raycast");
+  assert.equal(conversationTitle("   "), "Raycast conversation");
   assert.equal(conversationTitle("linha\numa\tdois"), "linha uma dois");
 });
 

@@ -18,7 +18,8 @@
  *
  * Fontes: ARCHITECTURE.md §4 (taxonomia, ações, retry) e UX-SPEC.md §5 (frases
  * literais em pt-BR e os identificadores E1..E26). Onde as duas divergem, a
- * frase literal da UX-SPEC prevalece, porque é ela que o usuário lê.
+ * frase literal da UX-SPEC prevalece, porque é ela que o usuário lê. Ela está em inglês
+ * desde a tradução da interface; a UX-SPEC continua descrevendo a intenção, em português.
  */
 
 /* ─────────────────────────── Ações de recuperação ─────────────────────────── */
@@ -36,14 +37,14 @@ export type RecoveryAction =
 
 /** Rótulos dos botões — para a UI não inventar variações (princípio 9 do brief). */
 export const RECOVERY_LABEL: Record<RecoveryAction, string | null> = {
-  open_preferences: "Abrir configurações",
-  retry: "Tentar novamente",
-  wait_and_retry: "Tentar novamente",
-  start_hermes: "Verificar o Hermes",
-  reload_list: "Atualizar",
-  change_input: "Editar e reenviar",
-  reduce_size: "Reduzir o conteúdo",
-  report_bug: "Copiar detalhes técnicos",
+  open_preferences: "Open Settings",
+  retry: "Try Again",
+  wait_and_retry: "Try Again",
+  start_hermes: "Check Hermes",
+  reload_list: "Refresh",
+  change_input: "Edit and Send Again",
+  reduce_size: "Shorten the Text",
+  report_bug: "Copy Technical Details",
   none: null,
 };
 
@@ -83,7 +84,7 @@ export type UxErrorId =
 const MAX_TECHNICAL_CHARS = 4000;
 
 /** Marcador exigido pela UX-SPEC §5.1 regra 5. */
-export const REDACTED_SECRET = "[chave omitida]";
+export const REDACTED_SECRET = "[key redacted]";
 
 /**
  * Nomes que, seguidos de `:` ou `=`, indicam um valor secreto. A lista é casada
@@ -162,7 +163,7 @@ export function sanitizeTechnical(text: string, secrets: readonly string[] = [])
 /* ──────────────────────────── Classes de erro ──────────────────────────── */
 
 export interface HermesErrorInit {
-  /** pt-BR, sem jargão. É o que aparece no Toast/Detail. */
+  /** Em inglês, sem jargão. É o que aparece no Toast/Detail. */
   userMessage: string;
   /** Detalhe para "Copiar detalhes técnicos". Oculto por padrão. */
   technical: string;
@@ -186,8 +187,8 @@ export class HermesError extends Error {
   readonly uxId?: UxErrorId;
 
   constructor(init: HermesErrorInit) {
-    // `message` recebe o texto do usuário: se alguém logar o erro cru, sai pt-BR
-    // e não um corpo HTTP.
+    // `message` recebe o texto do usuário: se alguém logar o erro cru, sai o texto
+    // de tela e não um corpo HTTP.
     super(init.userMessage, init.cause === undefined ? undefined : { cause: init.cause });
     this.name = new.target.name;
     this.userMessage = init.userMessage;
@@ -314,13 +315,13 @@ export function parseErrorBody(raw: string): ParsedErrorBody {
  * As duas chaves com "≤" usam o caractere U+2264 do servidor, não "<=".
  */
 const JOB_FIELD_MESSAGES: Record<string, string> = {
-  "Name is required": "Dê um nome para a automação.",
-  "Name must be ≤ 200 characters": "O nome da automação deve ter no máximo 200 caracteres.",
-  "Schedule is required": "Informe quando a automação deve rodar.",
-  "Prompt must be ≤ 5000 characters": "A instrução da automação deve ter no máximo 5000 caracteres.",
-  "Repeat must be a positive integer": "O número de repetições deve ser um inteiro maior que zero.",
-  "No valid fields to update": "Nenhuma alteração para salvar.",
-  "Invalid job ID format": "Identificador de automação inválido.",
+  "Name is required": "Give the automation a name.",
+  "Name must be ≤ 200 characters": "The automation name can have at most 200 characters.",
+  "Schedule is required": "Say when the automation should run.",
+  "Prompt must be ≤ 5000 characters": "The automation instruction can have at most 5000 characters.",
+  "Repeat must be a positive integer": "The number of repeats has to be a whole number above zero.",
+  "No valid fields to update": "There is nothing to save.",
+  "Invalid job ID format": "That automation identifier is not valid.",
 };
 
 /* ───────────────────────── Mapeamento HTTP → erro ───────────────────────── */
@@ -358,7 +359,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (ctx.path.startsWith("/api/jobs")) {
         return new HermesNotConfiguredError({
           ...base,
-          userMessage: "As automações precisam de uma configuração válida do Hermes.",
+          userMessage: "Automations need a valid Hermes setup.",
           recovery: "open_preferences",
           uxId: "E2",
         });
@@ -366,7 +367,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       // Único code observado: gateway_auth_failed / gateway_auth_error.
       return new HermesAuthError({
         ...base,
-        userMessage: "O Hermes não aceitou a chave de acesso. Ela pode ter mudado desde a última vez.",
+        userMessage: "Hermes did not accept the access key. It may have changed since the last time.",
         recovery: "open_preferences",
         uxId: "E2",
       });
@@ -377,9 +378,9 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
         return new HermesOriginBlockedError({
           ...base,
           technical:
-            `${where}\nCorpo vazio: o middleware de CORS rejeitou a requisição porque um header ` +
-            `Origin foi enviado. Nenhuma requisição deste cliente pode definir Origin.`,
-          userMessage: "Não foi possível falar com o Hermes por causa de uma restrição de segurança do servidor.",
+            `${where}\nEmpty body: the CORS middleware rejected the request because an ` +
+            `Origin header was sent. No request from this client may set Origin.`,
+          userMessage: "Could not talk to Hermes because of a security restriction on the server.",
           recovery: "report_bug",
           uxId: "E5",
         });
@@ -389,14 +390,14 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (msg.includes("requires API key authentication")) {
         return new HermesForbiddenError({
           ...base,
-          userMessage: "O Hermes está rodando sem chave de acesso configurada e não aceita este tipo de pedido.",
+          userMessage: "Hermes is running with no access key set up, and it does not accept this kind of request.",
           recovery: "open_preferences",
           uxId: "E6",
         });
       }
       return new HermesForbiddenError({
         ...base,
-        userMessage: "O Hermes bloqueou esta operação.",
+        userMessage: "Hermes blocked this operation.",
         recovery: "open_preferences",
       });
 
@@ -404,7 +405,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "session_not_found") {
         return new HermesNotFoundError({
           ...base,
-          userMessage: "Esta conversa não existe mais no Hermes. Ela pode ter sido apagada no Hermes Desktop.",
+          userMessage: "This conversation no longer exists in Hermes. It may have been deleted in Hermes Desktop.",
           recovery: "reload_list",
           uxId: "E7",
         });
@@ -414,7 +415,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
         if (ctx.path.endsWith("/events")) {
           return new HermesNotFoundError({
             ...base,
-            userMessage: "Perdi o acompanhamento ao vivo desta tarefa, mas ela continua rodando no Hermes.",
+            userMessage: "I lost the live view of this task, but it is still going inside Hermes.",
             recovery: "retry",
             retryable: true,
             uxId: "E9",
@@ -423,7 +424,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
         return new HermesNotFoundError({
           ...base,
           userMessage:
-            "O Hermes não tem mais informação sobre esta tarefa. Ela pode ter terminado normalmente, ou o Hermes foi reiniciado.",
+            "Hermes no longer has any information about this task. It may have finished normally, or Hermes was restarted.",
           recovery: "reload_list",
           uxId: "E8",
         });
@@ -432,20 +433,20 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (ctx.path.startsWith("/api/jobs")) {
         return new HermesNotFoundError({
           ...base,
-          userMessage: "Esta automação não existe mais.",
+          userMessage: "This automation no longer exists.",
           recovery: "reload_list",
         });
       }
       if (msg.includes("Unknown or unconfigured profile")) {
         return new HermesNotFoundError({
           ...base,
-          userMessage: "O perfil informado não existe neste Hermes.",
+          userMessage: "The profile you gave does not exist in this Hermes.",
           recovery: "open_preferences",
         });
       }
       return new HermesNotFoundError({
         ...base,
-        userMessage: "Recurso não encontrado no Hermes.",
+        userMessage: "Hermes could not find what was asked for.",
         recovery: "report_bug",
       });
 
@@ -453,7 +454,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "invalid_title") {
         return new HermesValidationError({
           ...base,
-          userMessage: "Já existe uma conversa com esse título. Escolha outro nome.",
+          userMessage: "There is already a conversation with that title. Pick another name.",
           recovery: "change_input",
           uxId: "E11",
         });
@@ -461,14 +462,14 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "missing_message") {
         return new HermesValidationError({
           ...base,
-          userMessage: "Escreva uma pergunta antes de enviar.",
+          userMessage: "Write a question before sending.",
           recovery: "change_input",
         });
       }
       if (code === "invalid_steer_input") {
         return new HermesValidationError({
           ...base,
-          userMessage: "Escreva a orientação antes de enviar.",
+          userMessage: "Write your guidance before sending.",
           recovery: "change_input",
           uxId: "E14",
         });
@@ -476,7 +477,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "invalid_pagination") {
         return new HermesValidationError({
           ...base,
-          userMessage: "Não foi possível carregar esta parte da conversa.",
+          userMessage: "Could not load this part of the conversation.",
           recovery: "retry",
           retryable: true,
         });
@@ -484,14 +485,14 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "invalid_approval_choice") {
         return new HermesValidationError({
           ...base,
-          userMessage: "Opção de aprovação inválida.",
+          userMessage: "That approval option is not valid.",
           recovery: "report_bug",
         });
       }
       if (code === "invalid_content_length") {
         return new HermesValidationError({
           ...base,
-          userMessage: "O Hermes não entendeu o tamanho do envio.",
+          userMessage: "Hermes did not understand the size of what was sent.",
           recovery: "retry",
           retryable: true,
         });
@@ -499,7 +500,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "unsupported_session_field" || code === "invalid_session_field" || code === "invalid_session_id") {
         return new HermesValidationError({
           ...base,
-          userMessage: "Não foi possível salvar essa alteração na conversa.",
+          userMessage: "Could not save that change to the conversation.",
           recovery: "report_bug",
         });
       }
@@ -508,7 +509,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (msg.startsWith("Blocked: prompt matches threat pattern")) {
         return new HermesValidationError({
           ...base,
-          userMessage: "Este texto foi bloqueado por segurança. Reescreva a instrução da automação.",
+          userMessage: "This text was blocked for safety. Rewrite the automation instruction.",
           recovery: "change_input",
         });
       }
@@ -521,7 +522,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       }
       return new HermesValidationError({
         ...base,
-        userMessage: "O Hermes recusou os dados enviados.",
+        userMessage: "Hermes rejected the data that was sent.",
         recovery: "change_input",
       });
 
@@ -529,7 +530,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "session_exists") {
         return new HermesConflictError({
           ...base,
-          userMessage: "Já existe uma conversa com esse identificador. Vou criar outra.",
+          userMessage: "There is already a conversation with that identifier. I will create another one.",
           recovery: "retry",
           retryable: true,
           uxId: "E10",
@@ -538,14 +539,14 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "model_lock_unavailable") {
         return new HermesConflictError({
           ...base,
-          userMessage: "Este modelo não está disponível agora. Escolha outro.",
+          userMessage: "This model is not available right now. Pick another one.",
           recovery: "change_input",
         });
       }
       if (code === "approval_not_active" || code === "approval_not_pending") {
         return new HermesConflictError({
           ...base,
-          userMessage: "Esse pedido de aprovação já foi respondido, talvez em outro aplicativo.",
+          userMessage: "That approval request was already answered, perhaps in another app.",
           recovery: "reload_list",
           uxId: "E12",
         });
@@ -553,21 +554,21 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "run_not_accepting_steer" || code === "steer_not_accepted") {
         return new HermesConflictError({
           ...base,
-          userMessage: "Não dá para orientar esta tarefa agora. Isso só funciona enquanto ela está executando.",
+          userMessage: "This task cannot be guided right now. That only works while it is working.",
           recovery: "reload_list",
           uxId: "E13",
         });
       }
       return new HermesConflictError({
         ...base,
-        userMessage: "O estado mudou no Hermes e esta operação não vale mais. Atualize e tente de novo.",
+        userMessage: "Things changed in Hermes and this operation no longer applies. Refresh and try again.",
         recovery: "reload_list",
       });
 
     case 413:
       return new HermesPayloadTooLargeError({
         ...base,
-        userMessage: "Seu texto é grande demais para o Hermes processar de uma vez. Tente dividir em partes menores.",
+        userMessage: "Your text is too big for Hermes to handle in one go. Try splitting it into smaller parts.",
         recovery: "reduce_size",
         uxId: "E15",
       });
@@ -576,14 +577,14 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       // A automação FOI salva. Recriar duplicaria o job — por isso `none`.
       return new HermesJobRegistrationError({
         ...base,
-        userMessage: "A automação foi salva, mas não foi agendada. Pause e retome para tentar de novo.",
+        userMessage: "The automation was saved but not scheduled. Pause it and resume to try again.",
         recovery: "none",
       });
 
     case 429:
       return new HermesRateLimitError({
         ...base,
-        userMessage: "O Hermes está com tarefas demais ao mesmo tempo. Espere alguns segundos e tente de novo.",
+        userMessage: "Hermes has too many tasks going at once. Wait a few seconds and try again.",
         recovery: "wait_and_retry",
         retryable: true,
         retryAfterSeconds: wait,
@@ -593,7 +594,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
     case 501:
       return new HermesNotSupportedError({
         ...base,
-        userMessage: "As automações não estão disponíveis neste Hermes.",
+        userMessage: "Automations are not available in this Hermes.",
         recovery: "none",
         uxId: "E19",
       });
@@ -602,7 +603,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "session_db_unavailable") {
         return new HermesUnavailableError({
           ...base,
-          userMessage: "O Hermes não conseguiu abrir o banco de conversas. Reinicie o Hermes Desktop e tente de novo.",
+          userMessage: "Hermes could not open the conversation database. Restart Hermes Desktop and try again.",
           recovery: "start_hermes",
           retryable: true,
           uxId: "E18",
@@ -611,7 +612,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       return new HermesUnavailableError({
         ...base,
         userMessage:
-          "O Hermes está terminando o que já estava fazendo e não aceita novos pedidos agora. Tente de novo em instantes.",
+          "Hermes is finishing what it had already started and is not taking new requests. Try again in a moment.",
         recovery: "wait_and_retry",
         retryable: true,
         retryAfterSeconds: wait,
@@ -626,7 +627,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
           return new HermesScheduleError({
             ...base,
             userMessage:
-              "A recorrência informada não é válida. Exemplos aceitos: 'every 30m', '0 9 * * *', '2h', '2026-06-01T09:00:00'.",
+              "That recurrence is not valid. Accepted examples: 'every 30m', '0 9 * * *', '2h', '2026-06-01T09:00:00'.",
             recovery: "change_input",
           });
         }
@@ -634,7 +635,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
           return new HermesServerError({
             ...base,
             userMessage:
-              "O Hermes começou a tarefa mas não conseguiu terminar. Tente pedir de novo, se possível com mais detalhes.",
+              "Hermes started the task but could not finish it. Try asking again, with more detail if you can.",
             recovery: "retry",
             retryable: true,
             uxId: "E20",
@@ -643,7 +644,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
         if (code === "model_lock_persistence_failed") {
           return new HermesServerError({
             ...base,
-            userMessage: "Não foi possível fixar o modelo desta conversa.",
+            userMessage: "Could not pin the model for this conversation.",
             recovery: "retry",
             retryable: true,
           });
@@ -651,21 +652,21 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
         if (code === "model_options_failed") {
           return new HermesServerError({
             ...base,
-            userMessage: "Não foi possível listar os modelos.",
+            userMessage: "Could not list the models.",
             recovery: "retry",
             retryable: true,
           });
         }
         return new HermesServerError({
           ...base,
-          userMessage: "O Hermes encontrou um erro interno.",
+          userMessage: "Hermes hit an internal error.",
           recovery: "retry",
           retryable: true,
         });
       }
       return new HermesProtocolError({
         ...base,
-        userMessage: "O Hermes respondeu de um jeito que a extensão não entendeu.",
+        userMessage: "Hermes answered in a way the extension did not understand.",
         recovery: "report_bug",
         uxId: "E24",
       });
@@ -731,7 +732,7 @@ export function toHermesError(err: unknown, context = ""): HermesError {
 
   if (name === "StoragePersistenceError") {
     const userMessage =
-      readString(record, "userMessage") ?? "Não consegui salvar o estado local desta execução. Tente novamente.";
+      readString(record, "userMessage") ?? "I could not save the local state of this task. Try again.";
     return new HermesServerError({
       userMessage,
       technical,
@@ -743,7 +744,7 @@ export function toHermesError(err: unknown, context = ""): HermesError {
 
   if (name === "TimeoutError" || (nodeCode !== undefined && TIMEOUT_CODES.has(nodeCode))) {
     return new HermesTimeoutError({
-      userMessage: "O Hermes está demorando mais que o esperado para responder.",
+      userMessage: "Hermes is taking longer than expected to answer.",
       technical,
       recovery: "retry",
       retryable: true,
@@ -754,7 +755,7 @@ export function toHermesError(err: unknown, context = ""): HermesError {
 
   if (name === "AbortError" || nodeCode === "ABORT_ERR") {
     return new HermesAbortError({
-      userMessage: "Operação cancelada.",
+      userMessage: "Operation cancelled.",
       technical,
       recovery: "none",
       cause: err,
@@ -769,7 +770,7 @@ export function toHermesError(err: unknown, context = ""): HermesError {
   ) {
     return new HermesConnectionError({
       userMessage:
-        "Não foi possível conectar ao Hermes. Verifique se o Hermes API Server está ativo e se a URL e a chave estão corretas.",
+        "Could not connect to Hermes. Check that the Hermes API Server is on, and that the address and the key are right.",
       technical,
       recovery: "start_hermes",
       retryable: true,
@@ -779,7 +780,7 @@ export function toHermesError(err: unknown, context = ""): HermesError {
   }
 
   return new HermesProtocolError({
-    userMessage: "O Hermes respondeu de um jeito que a extensão não entendeu.",
+    userMessage: "Hermes answered in a way the extension did not understand.",
     technical,
     recovery: "report_bug",
     uxId: "E24",

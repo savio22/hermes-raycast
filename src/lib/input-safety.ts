@@ -1,7 +1,7 @@
 import { delimitUntrustedContent, truncatePreservingEnds } from "./conversation-lifecycle";
 
 export const MAX_INPUT_CHARS = 20_000;
-export const INPUT_TRUNCATION_MARKER = "… [meio removido; início e fim preservados] …";
+export const INPUT_TRUNCATION_MARKER = "… [middle removed; beginning and end kept] …";
 
 export type TranslationDirection = "pt-en" | "en-pt" | "ambiguous";
 

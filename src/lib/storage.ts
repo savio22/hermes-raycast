@@ -53,14 +53,14 @@ async function retryStorage<T>(operation: () => Promise<T>): Promise<T> {
       lastError = error;
     }
   }
-  throw lastError instanceof Error ? lastError : new Error("Falha ao acessar o armazenamento local.");
+  throw lastError instanceof Error ? lastError : new Error("Could not reach the local storage.");
 }
 
 export class StoragePersistenceError extends Error {
   readonly userMessage =
-    "Não consegui salvar o estado local desta execução. Tente novamente e mantenha o Raycast aberto até confirmar.";
+    "I could not save the local state of this task. Try again and keep Raycast open until it confirms.";
   constructor(cause: unknown) {
-    super("O armazenamento local do Raycast recusou uma gravação após as tentativas permitidas.", { cause });
+    super("The Raycast local storage refused a write after the allowed retries.", { cause });
     this.name = "StoragePersistenceError";
   }
 }
@@ -210,7 +210,7 @@ export interface StoredRun {
   baseUrl: string;
   /**
    * `GET /v1/runs/{id}` devolveu 404: o gateway reiniciou ou passou o TTL de 1 h.
-   * É CONDIÇÃO, nunca o estado `Falhou` (UX-SPEC §4.3) — e precisa morar no índice,
+   * É CONDIÇÃO, nunca o estado `Failed` (UX-SPEC §4.3) — e precisa morar no índice,
    * porque `lastKnownStatus` fica congelado em `queued`/`running` para sempre e o
    * banner "Você tem N tarefas em andamento" continuaria contando a execução por
    * até 7 dias depois de ela ter sumido do servidor.

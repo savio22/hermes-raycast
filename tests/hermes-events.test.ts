@@ -695,7 +695,7 @@ test("readSseFrames rejeita um Response sem corpo com erro de protocolo tipado",
     (err: unknown) => {
       assert.ok(err instanceof HermesProtocolError, "precisa ser um HermesError, não um Error cru");
       assert.equal(err.recovery, "report_bug");
-      assert.match(err.technical, /sem corpo/);
+      assert.match(err.technical, /no body/);
       return true;
     },
   );

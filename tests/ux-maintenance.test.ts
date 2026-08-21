@@ -57,8 +57,8 @@ test("contadores e rótulos do seletor ficam compactos sem perder a data", () =>
   assert.equal(compactMessageCount(1), "1 msg");
   assert.equal(compactMessageCount(12), "12 msgs");
   assert.equal(compactMessageCount(0), "0 msgs");
-  assert.equal(compactConversationCount(1), "1 conversa");
-  assert.equal(compactConversationCount(12), "12 conversas");
+  assert.equal(compactConversationCount(1), "1 conversation");
+  assert.equal(compactConversationCount(12), "12 conversations");
 
   const label = conversationDropdownLabel("Uma conversa com um título muito, muito comprido", "há 2 h");
   assert.equal(label.endsWith(" · há 2 h"), true);
@@ -175,8 +175,8 @@ test("aprovação explica que as escolhas ficam em Actions e não inventa botõe
   // A tecla é a do sistema (`tests/platform.test.ts` cobre as duas); aqui só importa que
   // a frase continue apontando o painel de ações.
   assert.match(approvalActionHint(), /Actions \((Ctrl|Cmd)\+K\)/);
-  assert.match(approvalDetailsLostHint(), /detalhes.*perderam/i);
-  assert.match(approvalDetailsLostHint(), /Negar/i);
+  assert.match(approvalDetailsLostHint(), /details.*lost/i);
+  assert.match(approvalDetailsLostHint(), /Deny/i);
 });
 
 test("aprovação sem detalhes mantém somente a saída segura e filtra choices próprias", () => {

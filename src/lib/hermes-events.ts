@@ -175,8 +175,8 @@ export async function* readSseFrames(
   const body = response.body;
   if (!body) {
     throw new HermesProtocolError({
-      userMessage: "O Hermes respondeu de um jeito que a extensão não entendeu.",
-      technical: "readSseFrames: a resposta SSE veio sem corpo (response.body é null).",
+      userMessage: "Hermes answered in a way the extension did not understand.",
+      technical: "readSseFrames: the SSE response arrived with no body (response.body is null).",
       recovery: "report_bug",
       uxId: "E24",
     });

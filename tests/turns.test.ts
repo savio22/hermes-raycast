@@ -103,7 +103,7 @@ test("mensagens de ferramenta ficam na troca que as pediu, nunca numa troca pró
 
   assert.equal(turns.length, 2);
   assert.equal(turns[0].answer, "Está chovendo.");
-  assert.deepEqual(turns[0].steps, ["🔧 Usando web_search"]);
+  assert.deepEqual(turns[0].steps, ["🔧 Using web_search"]);
   assert.equal(turns[1].steps.length, 0);
 });
 
@@ -161,44 +161,44 @@ test("o identificador da troca é o da mensagem que a abriu", () => {
 test("modo resposta mostra a pergunta acima da resposta", () => {
   const markdown = turnMarkdown(turn({ message: "quanto é 2+2?", answer: "4", state: { kind: "past" } }), "resposta");
 
-  assert.equal(markdown, "**Você**\n\nquanto é 2+2?\n\n---\n\n4");
+  assert.equal(markdown, "**You**\n\nquanto é 2+2?\n\n---\n\n4");
 });
 
 test("modo etapas mostra as etapas no lugar da resposta", () => {
   const markdown = turnMarkdown(
     turn({
       answer: "resposta longa",
-      steps: ["🔧 Usando web_search", "✅ web_search concluído em 0,4 s"],
+      steps: ["🔧 Using web_search", "✅ web_search finished in 0.4 s"],
       state: { kind: "past" },
     }),
     "etapas",
   );
 
   assert.match(markdown, /### Etapas/);
-  assert.match(markdown, /🔧 Usando web_search/);
-  assert.match(markdown, /✅ web_search concluído em 0,4 s/);
+  assert.match(markdown, /🔧 Using web_search/);
+  assert.match(markdown, /✅ web_search finished in 0\.4 s/);
   assert.doesNotMatch(markdown, /resposta longa/);
 });
 
 test("modo etapas sem etapa nenhuma diz isso, em vez de ficar em branco", () => {
-  assert.match(turnMarkdown(turn({ state: { kind: "past" } }), "etapas"), /_Nenhuma etapa até agora\._/);
+  assert.match(turnMarkdown(turn({ state: { kind: "past" } }), "etapas"), /_No steps yet\._/);
 });
 
 test("turno que ainda não recebeu nada mostra Preparando", () => {
-  assert.match(turnMarkdown(turnoVivo("queued"), "resposta"), /_Preparando…_/);
+  assert.match(turnMarkdown(turnoVivo("queued"), "resposta"), /_Preparing…_/);
 });
 
 test("turno vivo há mais de três segundos mostra que o Hermes está pensando", () => {
   const markdown = turnMarkdown(turnoVivo("running"), "resposta", { thinking: true });
 
-  assert.match(markdown, /_O Hermes está pensando…_/);
-  assert.doesNotMatch(markdown, /_Preparando…_/);
+  assert.match(markdown, /_Hermes is thinking…_/);
+  assert.doesNotMatch(markdown, /_Preparing…_/);
 });
 
 test("turno concluído sem texto nenhum diz que o Hermes não escreveu resposta", () => {
   const markdown = turnMarkdown(turnoVivo("completed"), "resposta");
 
-  assert.match(markdown, /O Hermes terminou sem escrever uma resposta\./);
+  assert.match(markdown, /Hermes finished without writing an answer\./);
 });
 
 test("o erro do turno entra abaixo do texto já recebido, sem apagá-lo", () => {
@@ -206,13 +206,13 @@ test("o erro do turno entra abaixo do texto já recebido, sem apagá-lo", () => 
     turn({
       answer: "comecei a responder",
       state: { kind: "live", runId: "run_1", status: "failed" },
-      error: { userMessage: "O Hermes não conseguiu concluir: sem detalhes" } as Turn["error"],
+      error: { userMessage: "Hermes could not finish: no details" } as Turn["error"],
     }),
     "resposta",
   );
 
   const posicaoTexto = markdown.indexOf("comecei a responder");
-  const posicaoErro = markdown.indexOf("O Hermes não conseguiu concluir");
+  const posicaoErro = markdown.indexOf("Hermes could not finish");
   assert.ok(posicaoTexto >= 0, "o texto parcial precisa continuar na tela");
   assert.ok(posicaoErro > posicaoTexto, "o erro vem depois do texto, nunca no lugar dele");
 });
@@ -221,12 +221,12 @@ test("o erro aparece mesmo quando nada tinha chegado antes", () => {
   const markdown = turnMarkdown(
     turn({
       state: { kind: "live", runId: "run_1", status: "failed" },
-      error: { userMessage: "O Hermes não conseguiu concluir: sem detalhes" } as Turn["error"],
+      error: { userMessage: "Hermes could not finish: no details" } as Turn["error"],
     }),
     "resposta",
   );
 
-  assert.match(markdown, /O Hermes não conseguiu concluir/);
+  assert.match(markdown, /Hermes could not finish/);
 });
 
 test("corta o texto no teto de caracteres e avisa que a mensagem é longa", () => {
@@ -236,7 +236,7 @@ test("corta o texto no teto de caracteres e avisa que a mensagem é longa", () =
   );
 
   assert.ok(markdown.length < MAX_TURN_CHARS + 500, "o corpo não pode carregar o texto inteiro");
-  assert.match(markdown, /_Mensagem longa: mostrando só o começo\._/);
+  assert.match(markdown, /_Long message: showing only the beginning\._/);
 });
 
 test("a pergunta gigante também é cortada", () => {
@@ -254,7 +254,7 @@ test("turno enfileirado que nunca chegou a ser enviado explica por quê", () => 
     "resposta",
   );
 
-  assert.match(markdown, /> Esta mensagem não chegou a ser enviada porque a resposta anterior não terminou\./);
+  assert.match(markdown, /> This message was never sent, because the previous answer had not finished\./);
 });
 
 test("turno que chegou a rodar e foi cancelado não recebe a explicação da fila", () => {
@@ -268,7 +268,7 @@ test("turno que chegou a rodar e foi cancelado não recebe a explicação da fil
     "resposta",
   );
 
-  assert.doesNotMatch(markdown, /não chegou a ser enviada/);
+  assert.doesNotMatch(markdown, /never sent/);
 });
 
 test("execução expirada explica que o Hermes não sabe mais dela, e não vira Falhou", () => {
@@ -279,7 +279,7 @@ test("execução expirada explica que o Hermes não sabe mais dela, e não vira 
 
   assert.match(markdown, new RegExp(RUN_EXPIRED_DETAIL.slice(0, 40)));
   assert.match(markdown, /parte que chegou/);
-  assert.doesNotMatch(markdown, /Falhou/);
+  assert.doesNotMatch(markdown, /Failed/);
 });
 
 test("execução expirada sem texto nenhum não afirma que o Hermes deixou de escrever", () => {
@@ -291,7 +291,7 @@ test("execução expirada sem texto nenhum não afirma que o Hermes deixou de es
     "resposta",
   );
 
-  assert.doesNotMatch(markdown, /terminou sem escrever uma resposta/);
+  assert.doesNotMatch(markdown, /finished without writing an answer/);
   assert.match(markdown, new RegExp(RUN_EXPIRED_DETAIL.slice(0, 40)));
 });
 
@@ -299,7 +299,7 @@ test("o erro sem texto nenhum não deixa duas linhas horizontais coladas", () =>
   const markdown = turnMarkdown(
     turn({
       state: { kind: "live", runId: "run_1", status: "failed" },
-      error: { userMessage: "O Hermes não conseguiu concluir: sem detalhes" } as Turn["error"],
+      error: { userMessage: "Hermes could not finish: no details" } as Turn["error"],
     }),
     "resposta",
   );
@@ -310,7 +310,7 @@ test("o erro sem texto nenhum não deixa duas linhas horizontais coladas", () =>
 ${"---"}`),
     "duas réguas seguidas viram um borrão no painel",
   );
-  assert.match(markdown, /O Hermes não conseguiu concluir/);
+  assert.match(markdown, /Hermes could not finish/);
 });
 
 test("a troca sem pergunta que expirou não abre o painel com uma régua solta", () => {
@@ -342,7 +342,7 @@ test("o título colapsa quebras de linha, porque o item da lista é uma linha s�
 });
 
 test("a troca sem pergunta é rotulada como parte anterior da conversa", () => {
-  assert.equal(turnTitle(turn({ message: "", state: { kind: "past" } })), "Parte anterior desta conversa");
+  assert.equal(turnTitle(turn({ message: "", state: { kind: "past" } })), "Earlier part of this conversation");
 });
 
 test("turno enfileirado aparece como Preparando", () => {
@@ -473,7 +473,7 @@ test("a fila presa por um erro anterior vira Cancelado, com a explicação", () 
     depois.map((t) => (t.state.kind === "live" ? t.state.status : t.state.kind)),
     ["failed", "cancelled", "cancelled"],
   );
-  assert.match(turnMarkdown(depois[1], "resposta"), /não chegou a ser enviada/);
+  assert.match(turnMarkdown(depois[1], "resposta"), /never sent/);
 });
 
 test("um turno que já foi disparado nunca é cancelado pela varredura da fila", () => {
@@ -518,7 +518,7 @@ test("turno cancelado depois de ser aceito não diz que nunca foi enviado", () =
     turn({ state: { kind: "live", runId: "r1", status: "cancelled" }, transportPhase: "accepted", startedAt: 1 }),
     "resposta",
   );
-  assert.doesNotMatch(markdown, /não chegou a ser enviada/);
+  assert.doesNotMatch(markdown, /never sent/);
 });
 
 test("resposta concluída com aviso do provedor continua concluída", () => {
@@ -532,5 +532,5 @@ test("resposta concluída com aviso do provedor continua concluída", () => {
     "resposta",
   );
   assert.match(markdown, /Provider authentication failed/);
-  assert.doesNotMatch(markdown, /não chegou a ser enviada/);
+  assert.doesNotMatch(markdown, /never sent/);
 });

@@ -53,13 +53,13 @@ const STATUS_DO_FIO = [
 
 /** Os 7 rótulos obrigatórios do brief, na ordem da UX-SPEC §4.1. */
 const ROTULOS_CANONICOS = [
-  "Preparando",
-  "Executando",
-  "Aguardando aprovação",
-  "Interrompendo",
-  "Concluído",
-  "Cancelado",
-  "Falhou",
+  "Preparing",
+  "Running",
+  "Waiting for approval",
+  "Stopping",
+  "Done",
+  "Cancelled",
+  "Failed",
 ] as const;
 
 const ordenado = (valores: readonly string[]): string[] => [...valores].sort();
@@ -174,7 +174,7 @@ test("runStatusAppearance devolve a mesma dupla da tabela para status conhecidos
 });
 
 test("'Execução expirada' é condição, não estado: nunca é 'Falhou' nem 'Cancelado'", () => {
-  assert.equal(RUN_EXPIRED.label, "Execução expirada");
+  assert.equal(RUN_EXPIRED.label, "Task expired");
   assert.equal(
     Object.values(RUN_STATUS_LABEL).includes(RUN_EXPIRED.label as never),
     false,
@@ -188,12 +188,12 @@ test("'Execução expirada' é condição, não estado: nunca é 'Falhou' nem 'C
   );
   assert.equal(
     RUN_EXPIRED_DETAIL,
-    "O Hermes não tem mais informação sobre esta tarefa. Ela pode ter terminado normalmente.",
+    "Hermes no longer has any information about this task. It may have finished normally.",
   );
 });
 
 test("'Sem conexão' é condição do cliente e também fica fora do vocabulário de estados", () => {
-  assert.equal(NO_CONNECTION.label, "Sem conexão");
+  assert.equal(NO_CONNECTION.label, "No connection");
   assert.equal(Object.values(RUN_STATUS_LABEL).includes(NO_CONNECTION.label as never), false);
   assert.notEqual(NO_CONNECTION.label, RUN_EXPIRED.label);
   assert.deepEqual(NO_CONNECTION.color, { light: "#cf2d56", dark: "#e75e78" });
@@ -213,7 +213,7 @@ test("STREAM_PHASE_LABEL reaproveita o mesmo vocabulário, sem criar rótulo nov
 });
 
 test("nenhum sinônimo proibido aparece em rótulo nenhum", () => {
-  const proibidos = ["Rodando", "Em execução", "Finalizado", "Erro", "Abortado", "Em andamento", "Sucesso"];
+  const proibidos = ["In progress", "Executing", "Finished", "Error", "Aborted", "Complete", "Success"];
   const todos = [
     ...Object.values(RUN_STATUS_LABEL),
     ...Object.values(STREAM_PHASE_LABEL),
@@ -227,7 +227,7 @@ test("nenhum sinônimo proibido aparece em rótulo nenhum", () => {
 
 test("JOB_STATE_LABEL cobre os 4 estados de automação e degrada como os demais", () => {
   assert.deepEqual(ordenado(Object.keys(JOB_STATE_LABEL)), ordenado(["completed", "error", "paused", "scheduled"]));
-  assert.equal(jobStateLabel("scheduled"), "Agendado");
+  assert.equal(jobStateLabel("scheduled"), "Scheduled");
   assert.equal(jobStateLabel("error"), RUN_STATUS_LABEL.failed);
   assert.equal(jobStateLabel("nada_disso"), UNKNOWN_STATUS_LABEL);
   assert.equal(jobStateLabel(undefined), UNKNOWN_STATUS_LABEL);

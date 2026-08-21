@@ -7,7 +7,7 @@
  *   - **onde o Hermes guarda os arquivos** — `%LOCALAPPDATA%\hermes` no Windows,
  *     `~/.hermes` no macOS. Isso vive em `discovery.ts` (`defaultHermesHome`), porque
  *     é descoberta, não texto de tela;
- *   - **como o usuário chama as coisas** — "Explorador de Arquivos"/"Bloco de Notas"
+ *   - **como o usuário chama as coisas** — "File Explorer"/"Notepad"
  *     contra "Finder"/"TextEdit", e `Ctrl` contra `Cmd`. Isso vive aqui;
  *   - **as teclas dos atalhos** — em `components/shortcuts.ts`, na forma que a própria
  *     API do Raycast oferece (`{ Windows, macOS }`), não por `if`.
@@ -36,14 +36,14 @@ export function toUiPlatform(platform: NodeJS.Platform = process.platform): UiPl
   return platform === "darwin" ? "macos" : "windows";
 }
 
-/** Textos que dependem do sistema. Todos em pt-BR, frase com maiúscula só na primeira palavra. */
+/** Textos que dependem do sistema. Todos em inglês, em frase — nunca em Title Case. */
 export interface PlatformCopy {
   platform: UiPlatform;
   /** Como o usuário chama o sistema: "Windows" / "macOS". */
   osName: string;
-  /** O que a ação `Abrir a pasta do Hermes` abre: "Explorador de Arquivos" / "Finder". */
+  /** O que a ação `Open the Hermes Folder` abre: "File Explorer" / "Finder". */
   fileManager: string;
-  /** Editor de texto simples que já vem no sistema: "Bloco de Notas" / "TextEdit". */
+  /** Editor de texto simples que já vem no sistema: "Notepad" / "TextEdit". */
   plainTextEditor: string;
   /** Copiar: `Ctrl+C` / `Cmd+C`. */
   copyKeys: string;
@@ -60,13 +60,13 @@ export interface PlatformCopy {
 const WINDOWS_COPY: PlatformCopy = {
   platform: "windows",
   osName: "Windows",
-  fileManager: "Explorador de Arquivos",
-  plainTextEditor: "Bloco de Notas",
+  fileManager: "File Explorer",
+  plainTextEditor: "Notepad",
   copyKeys: "Ctrl+C",
   findKeys: "Ctrl+F",
   actionsKeys: "Ctrl+K",
   submitKeys: "Ctrl+Enter",
-  showHiddenFilesHint: 'Se o arquivo não aparecer, no Explorador vá em "Exibir" e marque "Itens ocultos".',
+  showHiddenFilesHint: 'If you do not see the file, open "View" in File Explorer and tick "Hidden items".',
 };
 
 const MACOS_COPY: PlatformCopy = {
@@ -78,7 +78,7 @@ const MACOS_COPY: PlatformCopy = {
   findKeys: "Cmd+F",
   actionsKeys: "Cmd+K",
   submitKeys: "Cmd+Enter",
-  showHiddenFilesHint: "Se o arquivo não aparecer, no Finder pressione Cmd+Shift+. para mostrar os arquivos ocultos.",
+  showHiddenFilesHint: "If you do not see the file, press Cmd+Shift+. in Finder to reveal hidden files.",
 };
 
 /** Os textos do sistema atual. Passe a plataforma para testar o outro sem trocar de máquina. */

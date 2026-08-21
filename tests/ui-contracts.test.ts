@@ -36,7 +36,7 @@ test("copy nova de autorização e entrada usa o vocabulário de produto", () =>
       .userMessage,
     "Configurar no Hermes Desktop",
     "O texto é muito longo: preservei o começo e o fim e removi só o meio.",
-    "O modelo escolhido não está autenticado no Hermes. Abra o Hermes Desktop e configure o provedor, ou escolha outro modelo.",
+    "The model you picked is not authenticated in Hermes. Open Hermes Desktop and set up the provider, or pick another model.",
   ];
   for (const message of messages) assert.doesNotMatch(message, forbidden, message);
 });

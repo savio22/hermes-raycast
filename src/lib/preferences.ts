@@ -151,8 +151,8 @@ export async function requireApiKey(): Promise<string> {
   const { key } = await resolveApiKey();
   if (key === "") {
     throw new HermesNotConfiguredError({
-      userMessage: "Conecte o Raycast ao Hermes: informe a chave do API Server.",
-      technical: "Nenhuma chave disponível: preferência apiServerKey vazia e nada detectado localmente.",
+      userMessage: "Connect Raycast to Hermes: enter the API Server key.",
+      technical: "No key available: the apiServerKey preference is empty and nothing was detected locally.",
       recovery: "open_preferences",
     });
   }
@@ -184,8 +184,8 @@ export async function resolveHermesConfig(): Promise<HermesConfig> {
   const { key, source } = await resolveApiKey();
   if (source === "none") {
     throw new HermesNotConfiguredError({
-      userMessage: "Conecte o Raycast ao Hermes: informe a chave do API Server.",
-      technical: "Nenhuma chave disponível: preferência apiServerKey vazia e nada detectado localmente.",
+      userMessage: "Connect Raycast to Hermes: enter the API Server key.",
+      technical: "No key available: the apiServerKey preference is empty and nothing was detected locally.",
       recovery: "open_preferences",
     });
   }
