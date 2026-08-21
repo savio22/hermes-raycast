@@ -350,3 +350,41 @@ As telas de progresso e de execuções não oferecem `Continuar esta conversa` e
 `Preparando`, `Executando`, `Aguardando aprovação` ou `Interrompendo`. A ação só reaparece após
 `Concluído`, `Cancelado`, `Falhou` ou `Execução expirada`, preservando a trava local de uma run
 viva por conversa.
+
+## D-15 — `GET /v1/toolsets` custa ~2 s na primeira chamada, e o corte de 12 s fica
+
+**Status: MEDIDO AO VIVO** em 2026-08-21, contra o Hermes v0.20.4 em
+`http://127.0.0.1:8642` (`/health` confirmando `platform: "hermes-agent"` antes).
+
+O corte de `TOOLSETS_TIMEOUT_MS` (`src/lib/hermes-api.ts`) tinha sido escolhido sobre
+uma leitura de código, sem número. Agora tem número. Quatro chamadas seguidas, com o
+mesmo corpo de 6.952 bytes nas quatro:
+
+| Chamada | `time_total` | `time_starttransfer` |
+|---|---|---|
+| 1 (fria) | 1,894 s | 1,894 s |
+| 2 | 0,709 s | 0,708 s |
+| 3 | 0,739 s | 0,703 s |
+| 4 | 0,712 s | 0,712 s |
+
+**O corte de 12 s continua certo, e continua sendo proteção e não impaciência.** O
+número de 8 s foi reconferido linha a linha e é real, mas é o PIOR caso, não o caso
+normal: `_fetch_nous_account_info()` em `hermes_cli/nous_account.py` termina em
+`urllib.request.urlopen(req, timeout=8)` — uma leitura HTTP **bloqueante** ao
+`portal.nousresearch.com` dentro do laço de eventos do servidor. Os 8 s só aparecem
+quando o portal não responde; nesta máquina ele respondeu, e sobrou o custo normal de
+~2 s. Doze segundos deixam ~4 s de folga sobre o pior caso conhecido. Cache de 10 min,
+nunca em segundo plano: nada disso muda.
+
+**Contrato conferido no mesmo teste** — bate com `T.ToolsetListResponse` sem ajuste:
+
+- topo `{ object: "list", platform: "api_server", data: [...] }`;
+- 28 grupos, cada um com exatamente `{name, label, description, enabled, configured, tools}`;
+- `stt` e `context_engine` vêm com `tools: []`. Não é caso de borda teórico, e
+  `src/toolsets.tsx` já protege: a seção `Ferramentas deste grupo` só é montada com
+  `tools.length > 0`, e o acessório mostra `0`;
+- a distribuição real cobre 3 dos 4 rótulos de `TOOLSET_AVAILABILITY_LABEL`:
+  14 `Disponível` (`enabled × configured`), 13 `Desligado` (`!enabled × configured`),
+  1 `Indisponível` (`!enabled × !configured`). **`Precisa configurar` não aparece nesta
+  instalação** — quem for validar a tela à mão não vai conseguir vê-lo sem habilitar um
+  grupo sem credencial.

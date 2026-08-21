@@ -2658,6 +2658,9 @@ POST /v1/runs/{id}/stop       (sem corpo)
 > `src/toolsets.tsx`. **Duas divergências do bloco abaixo, e o código vence:** `listToolsets` usa
 > `TOOLSETS_TIMEOUT_MS` (12 s), não `SLOW_TIMEOUT_MS`; e `CacheTtl.toolsets` é de 10 min, não 15 —
 > o handler pode travar o Hermes inteiro por ~8 s, e o corte curto é proteção, não impaciência.
+> Os 8 s são o pior caso, não o normal: são o `timeout=8` de uma leitura HTTP bloqueante ao
+> portal da Nous. Medido ao vivo em 2026-08-21, o custo real foi ~1,9 s na primeira chamada e
+> ~0,7 s nas seguintes — ver D-15 em `docs/DECISOES-VERIFICADAS.md`.
 > Os rótulos moram em `status.ts`, não em `hermes-api.ts`, pela mesma regra que vale para os 7
 > estados de execução: nenhuma tela monta rótulo por conta própria.
 
@@ -3477,7 +3480,7 @@ data: {"event": "message.delta", "run_id": "run_9f4c...", "timestamp": 175563120
 | `capabilities` | Cache | 5 min | Feature-detection; muda só com upgrade do Hermes |
 | `/api/model/options` | Cache | 10 min | Payload grande e caro |
 | `/v1/skills` | Cache | 5 min | O servidor já tem cache de 30 s |
-| `/v1/toolsets` | Cache | **10 min** | Endpoint lento E perigoso: pode travar o Hermes inteiro por ~8 s. Corte de 12 s, nunca em segundo plano |
+| `/v1/toolsets` | Cache | **10 min** | Endpoint lento E perigoso: pode travar o Hermes inteiro por ~8 s no pior caso. Medido em 2026-08-21: ~1,9 s na chamada fria, ~0,7 s nas seguintes (D-15). Corte de 12 s, nunca em segundo plano |
 | Primeira página de `/api/sessions` | Cache | 30 s | Só para pintura instantânea; **sempre** revalidar |
 | **Transcrições completas** (`/api/sessions/{id}/messages`) | **em lugar nenhum** | — | Regra do brief: "não cachear transcripts completos por padrão" |
 | Conteúdo de mensagens, previews longos, argumentos de ferramentas | **em lugar nenhum** | — | idem |
