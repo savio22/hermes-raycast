@@ -1,8 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- todos os títulos de ação são literais em
-   pt-BR da UX-SPEC (§6.4, §10.3) e do desenho da conversa contínua (§6): "Copiar resposta",
-   "Nova conversa", "Parar". A §10.1 manda escrever em frase; Title Case do inglês
-   desfiguraria a interface. */
-
 /**
  * A conversa — a tela principal do produto
  * (desenho `docs/superpowers/specs/2026-08-19-conversa-continua-design.md` §4 a §6).
@@ -61,7 +56,7 @@ import { SHORTCUTS } from "./shortcuts";
 import { SteerForm } from "./steer-form";
 import { conversationDropdownLabel } from "../lib/ui-text";
 
-const COMMAND_TITLE = "Perguntar ao Hermes";
+const COMMAND_TITLE = "Ask Hermes";
 const NEW_CONVERSATION = "new";
 /** §2.1.3: sem título da conversa, os 40 primeiros caracteres da primeira mensagem. */
 const PROMPT_IN_TITLE = 40;
@@ -72,14 +67,15 @@ const RECENT_SESSIONS = 5;
 /* ────────────────────────────── Textos literais ────────────────────────────── */
 
 const STOP_NOTE =
-  "> Pedido de parada enviado. O Hermes está encerrando com segurança — isso pode levar alguns segundos se ele estiver no meio de uma ferramenta.";
+  "> Stop request sent. Hermes is shutting down safely — that can take a few seconds if it is in the middle of a tool.";
 const OFFLINE_NOTE =
-  "> Acompanhando esta tarefa em modo simples. O texto que passou enquanto o Raycast estava fechado não pode ser recuperado, mas o resultado final aparece aqui.";
+  "> Following this task in simple mode. The text that went by while Raycast was closed cannot be recovered, but the final result shows up here.";
 const CONCURRENT_NOTE =
-  "> Esta conversa foi usada há pouco no Hermes Desktop. Se ela estiver aberta lá, espere a resposta terminar antes de continuar por aqui.";
-const PENDING_STEER_NOTE = "> Sua orientação chegou depois que o Hermes terminou. Quer enviá-la como próxima pergunta?";
+  "> This conversation was used in Hermes Desktop a moment ago. If it is open there, wait for that answer to finish before going on here.";
+const PENDING_STEER_NOTE =
+  "> Your guidance arrived after Hermes had finished. Do you want to send it as the next question?";
 /** §8.5 do desenho: aviso, nunca bloqueio. */
-const HISTORY_FAILED_TITLE = "Não foi possível carregar as mensagens anteriores desta conversa";
+const HISTORY_FAILED_TITLE = "Could not load the earlier messages of this conversation";
 const HISTORY_FAILED_NOTE = `> ${HISTORY_FAILED_TITLE}.`;
 
 /* ──────────────────────────────── Utilidades ──────────────────────────────── */
@@ -89,14 +85,14 @@ function truncate(value: string, max: number): string {
   return clean.length > max ? `${clean.slice(0, max)}…` : clean;
 }
 
-/** Números com vírgula decimal (§10.1). `12 s`, `0,4 s`. */
+/** Números com ponto decimal, como manda o inglês. `12 s`, `0.4 s`. */
 function formatDuration(ms: number): string {
   const value = ms / 1000;
-  return value < 10 ? `${value.toFixed(1).replace(".", ",")} s` : `${Math.round(value)} s`;
+  return value < 10 ? `${value.toFixed(1)} s` : `${Math.round(value)} s`;
 }
 
 function formatMoment(date: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" }).format(date);
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "medium" }).format(date);
 }
 
 /** Data relativa curta para o seletor de conversas. `last_active` vem em SEGUNDOS. */
@@ -104,10 +100,10 @@ function formatRelative(epochSeconds: number | null | undefined): string {
   if (epochSeconds === null || epochSeconds === undefined) return "";
   const date = new Date(epochSeconds * 1000);
   const minutes = Math.floor((Date.now() - date.getTime()) / 60_000);
-  if (minutes < 1) return "agora";
-  if (minutes < 60) return `há ${minutes} min`;
-  if (minutes < 60 * 24) return `há ${Math.floor(minutes / 60)} h`;
-  return new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(date);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)} h ago`;
+  return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long" }).format(date);
 }
 
 /**
@@ -117,21 +113,21 @@ function formatRelative(epochSeconds: number | null | undefined): string {
  */
 function technicalBlock(params: { endpoint?: string; runId?: string; sessionId?: string; detail?: string }): string {
   const lines = [
-    params.endpoint ? `Endereço: ${params.endpoint}` : undefined,
-    params.runId ? `Identificador da tarefa: ${params.runId}` : undefined,
-    params.sessionId ? `Identificador da conversa: ${params.sessionId}` : undefined,
-    `Momento: ${formatMoment(new Date())}`,
+    params.endpoint ? `Address: ${params.endpoint}` : undefined,
+    params.runId ? `Task id: ${params.runId}` : undefined,
+    params.sessionId ? `Conversation id: ${params.sessionId}` : undefined,
+    `Moment: ${formatMoment(new Date())}`,
     params.detail,
   ].filter((line): line is string => line !== undefined && line !== "");
 
-  return `### Detalhes técnicos\n\n\`\`\`\n${sanitizeTechnical(lines.join("\n"))}\n\`\`\``;
+  return `### Technical details\n\n\`\`\`\n${sanitizeTechnical(lines.join("\n"))}\n\`\`\``;
 }
 
 async function openActiveRuns(): Promise<void> {
   try {
     await launchCommand({ name: "active-runs", type: LaunchType.UserInitiated });
   } catch {
-    await showToast({ style: Toast.Style.Failure, title: "Não foi possível abrir as tarefas em andamento." });
+    await showToast({ style: Toast.Style.Failure, title: "Could not open the tasks in progress." });
   }
 }
 
@@ -156,16 +152,16 @@ function LongMessageForm({
 
   return (
     <Form
-      navigationTitle="Escrever mensagem longa"
+      navigationTitle="Write a Long Message"
       actions={
         <ActionPanel>
           <Action.SubmitForm
-            title="Perguntar ao Hermes"
+            title="Ask Hermes"
             icon={Icon.SpeechBubble}
             onSubmit={() => {
               if (text.trim() === "") {
                 // Literal da §2.1.1 — não usar o texto em inglês de `FormValidation.Required`.
-                setError("Escreva sua pergunta.");
+                setError("Write your question.");
                 return;
               }
               onSend(text);
@@ -178,8 +174,8 @@ function LongMessageForm({
     >
       <Form.TextArea
         id="pergunta"
-        title="Sua pergunta"
-        placeholder="Escreva sua pergunta. Ex.: resuma este relatório em 5 tópicos."
+        title="Your Question"
+        placeholder="Write your question. E.g. summarize this report in 5 bullet points."
         autoFocus
         value={text}
         error={error}
@@ -189,8 +185,8 @@ function LongMessageForm({
         }}
       />
       <Form.Description
-        title="Como enviar"
-        text={`Pressione ${platformCopy().submitKeys} para enviar. Esc volta para a conversa.`}
+        title="How to Send"
+        text={`Press ${platformCopy().submitKeys} to send. Esc goes back to the conversation.`}
       />
     </Form>
   );
@@ -275,9 +271,9 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
     syncToastRef.current = true;
     void showToast({
       style: Toast.Style.Success,
-      title: "Esta conversa já está no Hermes Desktop",
+      title: "This conversation is already in Hermes Desktop",
       primaryAction: {
-        title: "Abrir no Hermes Desktop",
+        title: "Open in Hermes Desktop",
         onAction: (toast) => {
           void openHermesDesktop(url);
           void toast.hide();
@@ -304,13 +300,13 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
     const queued = turns.filter((turn) => turn.state.kind === "queued");
     if (queued.length > 0) {
       const confirmed = await confirmAlert({
-        title: "Descartar as mensagens que ainda não foram enviadas?",
+        title: "Discard the messages that have not been sent yet?",
         message:
           queued.length === 1
-            ? "Você tem 1 mensagem esperando nesta conversa. Trocar de conversa apaga o que está esperando; o que já foi enviado continua no Hermes."
-            : `Você tem ${queued.length} mensagens esperando nesta conversa. Trocar de conversa apaga o que está esperando; o que já foi enviado continua no Hermes.`,
-        primaryAction: { title: "Trocar de conversa", style: Alert.ActionStyle.Destructive },
-        dismissAction: { title: "Continuar aqui" },
+            ? "You have 1 message waiting in this conversation. Switching conversations drops what is waiting; what was already sent stays in Hermes."
+            : `You have ${queued.length} messages waiting in this conversation. Switching conversations drops what is waiting; what was already sent stays in Hermes.`,
+        primaryAction: { title: "Switch Conversation", style: Alert.ActionStyle.Destructive },
+        dismissAction: { title: "Stay Here" },
         rememberUserChoice: false,
       });
       if (!confirmed) {
@@ -321,7 +317,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
     }
     if (liveTurn !== undefined) {
       // A tarefa continua viva do lado do Hermes: só o acompanhamento local é largado.
-      await showToast({ title: "A tarefa continua rodando no Hermes mesmo se você fechar o Raycast." });
+      await showToast({ title: "The task keeps going inside Hermes even if you close Raycast." });
     }
     conversation.switchSession(next, chosen?.title ?? undefined);
     setPinnedId(undefined);
@@ -333,15 +329,15 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
     setConcurrentNotice(warn);
     if (warn) {
       await showToast({
-        title: "Esta conversa foi usada há pouco no Hermes Desktop",
-        message: "Se ela estiver aberta lá, espere a resposta terminar antes de continuar por aqui.",
+        title: "This conversation was used in Hermes Desktop a moment ago",
+        message: "If it is open there, wait for that answer to finish before going on here.",
       });
     }
   }
 
   async function copyText(text: string): Promise<void> {
     await Clipboard.copy(text);
-    await showHUD("Resposta copiada");
+    await showHUD("Answer copied");
   }
 
   async function branch(): Promise<void> {
@@ -350,9 +346,9 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
       await forkSession(sessionId);
       await showToast({
         style: Toast.Style.Success,
-        title: "Nova conversa criada a partir desta",
+        title: "New conversation created from this one",
         // O filho é carimbado `source: "api_server"` pelo servidor e não é patchável (R7).
-        message: "Esta nova conversa não aparece na lista principal do Hermes Desktop.",
+        message: "This new conversation does not show up in the main Hermes Desktop list.",
       });
     } catch (err) {
       await showToast({
@@ -365,11 +361,11 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
   /* ─────────────────────── Blocos de ação reutilizados ─────────────────────── */
 
   /** A PRIMEIRA ação de todo painel. Sem `shortcut`: é ela que o `Enter` aciona. */
-  const sendAction = <Action title="Enviar" icon={Icon.SpeechBubble} onAction={() => sendText(searchText)} />;
+  const sendAction = <Action title="Send" icon={Icon.SpeechBubble} onAction={() => sendText(searchText)} />;
 
   const modeAction = (
     <Action
-      title={mode === "resposta" ? "Ver etapas" : "Ver resposta"}
+      title={mode === "resposta" ? "See the Steps" : "See the Answer"}
       icon={mode === "resposta" ? Icon.List : Icon.Text}
       shortcut={SHORTCUTS.toggleSteps}
       onAction={() => setMode((value) => (value === "resposta" ? "etapas" : "resposta"))}
@@ -380,19 +376,19 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
     return (
       <ActionPanel.Section>
         <Action.Push
-          title="Escrever mensagem longa"
+          title="Write a Long Message"
           icon={Icon.Pencil}
           target={<LongMessageForm initialText={searchText} onSend={sendText} />}
         />
         <Action
-          title="Nova conversa"
+          title="New Conversation"
           icon={Icon.Plus}
           shortcut={SHORTCUTS.newConversation}
           onAction={() => void changeSession(undefined)}
         />
         {conversation.hasOlder ? (
           <Action
-            title="Carregar parte anterior da conversa"
+            title="Load the Earlier Part of the Conversation"
             icon={Icon.ArrowUp}
             shortcut={SHORTCUTS.loadOlder}
             onAction={() => void conversation.loadOlder()}
@@ -400,7 +396,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
         ) : null}
         {desktopUrl !== undefined ? (
           <Action.Open
-            title="Abrir no Hermes Desktop"
+            title="Open in Hermes Desktop"
             icon={Icon.Desktop}
             target={desktopUrl}
             shortcut={SHORTCUTS.openInDesktop}
@@ -408,7 +404,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
         ) : null}
         {sessionId !== undefined ? (
           <Action.Push
-            title="Renomear conversa"
+            title="Rename the Conversation"
             icon={Icon.Pencil}
             shortcut={SHORTCUTS.rename}
             target={
@@ -421,7 +417,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
         ) : null}
         {sessionId !== undefined ? (
           <Action
-            title="Ramificar conversa"
+            title="Branch the Conversation"
             icon={Icon.Layers}
             shortcut={SHORTCUTS.branch}
             onAction={() => void branch()}
@@ -429,7 +425,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
         ) : null}
         {sessionId !== undefined ? (
           <Action.Push
-            title="Ver mensagens e ferramentas"
+            title="See Messages and Tools"
             icon={Icon.WrenchScrewdriver}
             shortcut={SHORTCUTS.viewMessages}
             target={<SessionDetail session={{ id: sessionId, title: sessionTitle ?? null }} />}
@@ -444,13 +440,13 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
     return (
       <ActionPanel.Section>
         <Action
-          title={showTechnical ? "Ocultar detalhes técnicos" : "Mostrar detalhes técnicos"}
+          title={showTechnical ? "Hide Technical Details" : "Show Technical Details"}
           icon={showTechnical ? Icon.EyeDisabled : Icon.Eye}
           shortcut={SHORTCUTS.showTechnical}
           onAction={() => setShowTechnical((value) => !value)}
         />
         <Action.CopyToClipboard
-          title="Copiar detalhes técnicos"
+          title="Copy Technical Details"
           content={technicalBlock({
             endpoint: conversation.baseUrl,
             runId: conversation.runId,
@@ -460,7 +456,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
           shortcut={SHORTCUTS.copyTechnical}
         />
         <Action
-          title="Ver tarefas em andamento"
+          title="See Tasks in Progress"
           icon={Icon.Hourglass}
           shortcut={SHORTCUTS.activeRuns}
           onAction={() => void openActiveRuns()}
@@ -490,7 +486,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
 
           {isLive && conversation.approval !== undefined ? (
             <Action.Push
-              title="Responder pedido de aprovação"
+              title="Answer the Approval Request"
               icon={Icon.Lock}
               target={
                 <ApprovalView
@@ -502,7 +498,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
                   conversationTitle={sessionTitle ?? NO_TITLE}
                   sessionId={sessionId}
                   onResolved={(_choice, resolved) => conversation.approvalResolved(resolved)}
-                  // §7.4 `Ver etapas da tarefa`: esta tela É a tarefa; trocar o modo faz o
+                  // §7.4 `See the Task Steps`: esta tela É a tarefa; trocar o modo faz o
                   // `Esc` do usuário voltar direto para as etapas.
                   onShowSteps={() => setMode("etapas")}
                 />
@@ -513,7 +509,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
           {/* E23: reassina o stream da MESMA tarefa; nunca dispara outra execução. */}
           {isLive && !finished && conversation.streamFailure?.canReattach === true ? (
             <Action
-              title="Acompanhar de novo"
+              title="Follow It Again"
               icon={Icon.ArrowClockwise}
               shortcut={SHORTCUTS.refresh}
               onAction={conversation.reattach}
@@ -522,7 +518,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
 
           {isLive && !finished ? (
             <Action
-              title="Parar"
+              title="Stop"
               icon={Icon.Stop}
               style={Action.Style.Destructive}
               shortcut={SHORTCUTS.stop}
@@ -535,7 +531,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
           {/* Steer só é aceito com o estado exatamente `running` (armadilha 22). */}
           {isLive && status === "running" ? (
             <Action.Push
-              title="Orientar execução"
+              title="Guide the Task"
               icon={Icon.Compass}
               shortcut={SHORTCUTS.steer}
               target={<SteerForm onSend={conversation.steer} />}
@@ -544,7 +540,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
 
           {queued && turn !== undefined ? (
             <Action
-              title="Remover da fila"
+              title="Remove from the Queue"
               icon={Icon.Trash}
               shortcut={SHORTCUTS.remove}
               // Sem `confirmAlert`: nada é destruído no servidor e o texto volta
@@ -555,7 +551,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
 
           {queued && turn !== undefined ? (
             <Action
-              title="Editar antes de enviar"
+              title="Edit Before Sending"
               icon={Icon.Pencil}
               onAction={() => {
                 setSearchText(turn.message);
@@ -568,8 +564,8 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
             <Action
               title={
                 finished && (turn.state.kind === "past" || status === "completed")
-                  ? "Copiar resposta"
-                  : "Copiar o que já veio"
+                  ? "Copy the Answer"
+                  : "Copy the Partial Answer"
               }
               icon={Icon.Clipboard}
               shortcut={SHORTCUTS.copy}
@@ -579,17 +575,17 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
 
           {finished && hasText && turn !== undefined ? (
             <Action.Paste
-              title="Colar no aplicativo ativo"
+              title="Paste into the Active App"
               icon={Icon.Text}
               content={turn.answer}
               shortcut={SHORTCUTS.paste}
-              onPaste={() => void showHUD("Resposta colada")}
+              onPaste={() => void showHUD("Answer pasted")}
             />
           ) : null}
 
           {finished && canRetry && turn !== undefined ? (
             <Action
-              title="Tentar novamente"
+              title="Try Again"
               icon={Icon.ArrowClockwise}
               shortcut={SHORTCUTS.refresh}
               onAction={() => conversation.retry(turn.id)}
@@ -615,11 +611,11 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
     if (conversation.approval !== undefined) {
       notes.push(
         [
-          "> 🔐 **O Hermes precisa da sua permissão para continuar.**",
+          "> 🔐 **Hermes needs your permission to carry on.**",
           ">",
-          `> ${conversation.approval.fields.description ?? "Ele quer executar um comando no seu computador."}`,
+          `> ${conversation.approval.fields.description ?? "It wants to run a command on your computer."}`,
           ">",
-          "> Abra **Responder pedido de aprovação** para ver o comando e decidir.",
+          "> Open **Answer the Approval Request** to see the command and decide.",
         ].join("\n"),
       );
     }
@@ -627,7 +623,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
       notes.push(OFFLINE_NOTE);
     }
     if (mode === "resposta" && conversation.activeTool !== undefined) {
-      notes.push(`> 🔧 Usando ${conversation.activeTool}…`);
+      notes.push(`> 🔧 Using ${conversation.activeTool}…`);
     }
     return notes;
   }
@@ -686,7 +682,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
     if (!finished || !wentWell) {
       accessories.push({ tag: { value: appearance.label, color: appearance.color } });
     } else if (duration !== undefined) {
-      accessories.push({ text: duration, tooltip: "Quanto tempo esta resposta levou" });
+      accessories.push({ text: duration, tooltip: "How long this answer took" });
     }
 
     // Nomes das ferramentas usadas, extraídos das próprias linhas de Etapas (§6.3).
@@ -704,15 +700,15 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
             markdown={turnDetailMarkdown(turn, isLive)}
             metadata={
               <List.Item.Detail.Metadata>
-                <List.Item.Detail.Metadata.TagList title="Estado">
+                <List.Item.Detail.Metadata.TagList title="State">
                   <List.Item.Detail.Metadata.TagList.Item text={appearance.label} {...tagTone(appearance)} />
                 </List.Item.Detail.Metadata.TagList>
-                <List.Item.Detail.Metadata.Label title="Conversa" text={sessionTitle ?? NO_TITLE} />
-                <List.Item.Detail.Metadata.Label title="Modelo" text={conversation.model ?? "Padrão do Hermes"} />
-                <List.Item.Detail.Metadata.Label title="Sincronização" text="Aparece no Hermes Desktop" />
-                {duration !== undefined ? <List.Item.Detail.Metadata.Label title="Duração" text={duration} /> : null}
+                <List.Item.Detail.Metadata.Label title="Conversation" text={sessionTitle ?? NO_TITLE} />
+                <List.Item.Detail.Metadata.Label title="Model" text={conversation.model ?? "Hermes default"} />
+                <List.Item.Detail.Metadata.Label title="Sync" text="Shows up in Hermes Desktop" />
+                {duration !== undefined ? <List.Item.Detail.Metadata.Label title="Duration" text={duration} /> : null}
                 {mode === "etapas" && usedTools.length > 0 ? (
-                  <List.Item.Detail.Metadata.TagList title="Etapas">
+                  <List.Item.Detail.Metadata.TagList title="Steps">
                     {usedTools.slice(0, 6).map((tool) => (
                       <List.Item.Detail.Metadata.TagList.Item key={tool} text={tool} />
                     ))}
@@ -742,7 +738,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
       <List navigationTitle={COMMAND_TITLE} isLoading={false}>
         <List.EmptyView
           icon={Icon.Warning}
-          title="Não foi possível perguntar"
+          title="Could Not Ask"
           description={error.userMessage}
           actions={
             <ActionPanel>
@@ -753,7 +749,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
                   <AutoDetectAction onDone={() => (failed ? conversation.retry(failed.id) : undefined)} />
                 ) : null}
                 <Action
-                  title="Tentar novamente"
+                  title="Try Again"
                   icon={Icon.ArrowClockwise}
                   shortcut={SHORTCUTS.refresh}
                   onAction={() => (failed ? conversation.retry(failed.id) : undefined)}
@@ -762,13 +758,13 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
               </ActionPanel.Section>
               <ActionPanel.Section>
                 <Action
-                  title={showTechnical ? "Ocultar detalhes técnicos" : "Mostrar detalhes técnicos"}
+                  title={showTechnical ? "Hide Technical Details" : "Show Technical Details"}
                   icon={showTechnical ? Icon.EyeDisabled : Icon.Eye}
                   shortcut={SHORTCUTS.showTechnical}
                   onAction={() => setShowTechnical((value) => !value)}
                 />
                 <Action.CopyToClipboard
-                  title="Copiar detalhes técnicos"
+                  title="Copy Technical Details"
                   content={technical}
                   shortcut={SHORTCUTS.copyTechnical}
                 />
@@ -797,12 +793,12 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
       filtering={false}
       searchText={searchText}
       onSearchTextChange={setSearchText}
-      searchBarPlaceholder={turns.length === 0 ? "Pergunte alguma coisa…" : "Pergunte outra coisa…"}
+      searchBarPlaceholder={turns.length === 0 ? "Ask something…" : "Ask something else…"}
       selectedItemId={pinnedId}
       searchBarAccessory={
         <List.Dropdown
           key={dropdownNonce}
-          tooltip="Conversa"
+          tooltip="Conversation"
           value={sessionId ?? NEW_CONVERSATION}
           onChange={(value) => {
             const next = value === NEW_CONVERSATION ? undefined : value;
@@ -812,7 +808,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
             );
           }}
         >
-          <List.Dropdown.Item value={NEW_CONVERSATION} title="Nova conversa" icon={Icon.Plus} />
+          <List.Dropdown.Item value={NEW_CONVERSATION} title="New Conversation" icon={Icon.Plus} />
           {sessionId !== undefined && !currentIsListed ? (
             <List.Dropdown.Item
               value={sessionId}
@@ -835,11 +831,11 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
           `EmptyView` carregando a ação de enviar, `Enter` não faria nada na conversa vazia. */}
       <List.EmptyView
         icon={conversation.isLoadingHistory ? Icon.SpeechBubble : { source: "cmd-ask-hermes.png" }}
-        title={conversation.isLoadingHistory ? "Carregando a conversa" : "Comece a conversa"}
+        title={conversation.isLoadingHistory ? "Loading the Conversation" : "Start the Conversation"}
         description={
           conversation.isLoadingHistory
-            ? "Buscando as mensagens desta conversa no Hermes."
-            : `Escreva sua pergunta na barra acima e pressione Enter. ${SYNC_PROMISE}`
+            ? "Fetching the messages of this conversation from Hermes."
+            : `Write your question in the bar above and press Enter. ${SYNC_PROMISE}`
         }
         actions={turnActions()}
       />
@@ -848,7 +844,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
         <List.Item
           icon={Icon.Warning}
           title={HISTORY_FAILED_TITLE}
-          subtitle="Você pode continuar escrevendo normalmente."
+          subtitle="You can keep writing as usual."
           detail={<List.Item.Detail markdown={HISTORY_FAILED_NOTE} />}
           actions={turnActions()}
         />
@@ -857,14 +853,14 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
       {conversation.hasOlder ? (
         <List.Item
           icon={Icon.ArrowUp}
-          title="Carregar parte anterior da conversa"
-          subtitle={`Traz as ${RENDER_TURN_LIMIT} trocas anteriores a estas.`}
+          title="Load the Earlier Part of the Conversation"
+          subtitle={`Brings the ${RENDER_TURN_LIMIT} exchanges before these.`}
           detail={
-            <List.Item.Detail markdown={`Esta conversa tem mais trocas do que as ${turns.length} já mostradas.`} />
+            <List.Item.Detail markdown={`This conversation has more exchanges than the ${turns.length} shown here.`} />
           }
           actions={
             <ActionPanel>
-              {/* Só `Enviar` aqui: `Carregar parte anterior da conversa` já vem da seção da
+              {/* Só `Enviar` aqui: `Load the Earlier Part of the Conversation` já vem da seção da
                   conversa, com o mesmo `Ctrl+Shift+H`. Duas entradas iguais no mesmo painel
                   fazem o atalho parecer ambíguo e a lista de ações, descuidada. */}
               <ActionPanel.Section>{sendAction}</ActionPanel.Section>

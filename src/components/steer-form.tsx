@@ -1,5 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- literais em pt-BR da UX-SPEC §6.7. */
-
 /**
  * `Orientar execução` (UX-SPEC §6.7) — o formulário, um só para a extensão inteira.
  *
@@ -7,7 +5,7 @@
  * a lista de execuções) e cada uma tinha escrito o seu próprio formulário, com validações e
  * mensagens de erro diferentes. Aqui o componente é PURO: ele valida, envia pelo `onSend`
  * que recebeu e volta. Quem chama decide o transporte, porque as três telas têm fontes de
- * estado diferentes — `useRunStream` já registra a etapa "🧭 Orientação enviada" no fio,
+ * estado diferentes — `useRunStream` já registra a etapa "🧭 Guidance sent" no fio,
  * enquanto as outras duas só têm o `run_id`.
  *
  * Armadilha 22: o servidor só aceita orientação com o estado EXATAMENTE `running`; fora
@@ -21,9 +19,9 @@ import { toHermesError } from "../lib/errors";
 import { steerRun } from "../lib/hermes-api";
 
 /** E14 — literal da UX-SPEC §5.2. */
-const EMPTY_TEXT = "Escreva a orientação antes de enviar.";
+const EMPTY_TEXT = "Write your guidance before sending.";
 /** E13 — literal da UX-SPEC §5.2, para o 409 sem `code` reconhecível. */
-const NOT_RUNNING_TEXT = "Não dá para orientar esta tarefa agora. Isso só funciona enquanto ela está executando.";
+const NOT_RUNNING_TEXT = "This task cannot be guided right now. That only works while it is working.";
 
 /**
  * Envia a orientação e dá o retorno visível ao usuário. É o transporte padrão para quem só
@@ -33,7 +31,7 @@ const NOT_RUNNING_TEXT = "Não dá para orientar esta tarefa agora. Isso só fun
 export async function steerAndReport(runId: string, text: string): Promise<void> {
   try {
     await steerRun(runId, text);
-    await showHUD("Orientação enviada");
+    await showHUD("Guidance sent");
   } catch (err) {
     const error = toHermesError(err, `POST /v1/runs/${runId}/steer`);
     await showToast({
@@ -72,17 +70,17 @@ export function SteerForm({ onSend }: SteerFormProps): ReactElement {
 
   return (
     <Form
-      navigationTitle="Orientar execução"
+      navigationTitle="Guide the Task"
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Enviar orientação" icon={Icon.Compass} onSubmit={() => void submit()} />
+          <Action.SubmitForm title="Send Guidance" icon={Icon.Compass} onSubmit={() => void submit()} />
         </ActionPanel>
       }
     >
       <Form.TextArea
         id="orientacao"
-        title="O que você quer ajustar"
-        placeholder="Ex.: seja mais breve e foque no custo."
+        title="What Do You Want to Adjust"
+        placeholder="E.g. be briefer and focus on the cost."
         autoFocus
         value={text}
         error={error}

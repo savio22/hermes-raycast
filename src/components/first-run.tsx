@@ -1,10 +1,3 @@
-/*
- * `prefer-title-case` é uma regra de inglês. Todo texto visível desta extensão é
- * pt-BR literal da UX-SPEC, e §10.1 exige frase com maiúscula só na primeira palavra
- * ("Copiar detalhes técnicos", nunca "Copiar Detalhes Técnicos").
- */
-/* eslint-disable @raycast/prefer-title-case */
-
 /**
  * A superfície de PRIMEIRO USO (UX-SPEC §3), em um lugar só.
  *
@@ -58,11 +51,11 @@ import { SHORTCUTS } from "./shortcuts";
 /* ───────────────────────── Textos literais da UX-SPEC ─────────────────────── */
 
 export const E1_TEXT =
-  "Não foi possível conectar ao Hermes. Verifique se o Hermes API Server está ativo e se a URL e a chave estão corretas.";
-export const E2_TEXT = "O Hermes não aceitou a chave de acesso. Ela pode ter mudado desde a última vez.";
+  "Could not connect to Hermes. Check that the Hermes API Server is on, and that the address and the key are right.";
+export const E2_TEXT = "Hermes did not accept the access key. It may have changed since the last time.";
 export const E3_TEXT =
-  "Encontrei um programa nesse endereço, mas não é o Hermes API Server. Confira o endereço nas configurações.";
-export const E26_TEXT = "Não consegui ler o arquivo de configuração do Hermes. Você pode configurar manualmente.";
+  "I found a program at that address, but it is not the Hermes API Server. Check the address in the settings.";
+export const E26_TEXT = "I could not read the Hermes configuration file. You can set it up by hand.";
 
 /* ──────────────────────────── Utilidades pequenas ─────────────────────────── */
 
@@ -74,12 +67,12 @@ export function hostOf(baseUrl: string): string {
   }
 }
 
-/** `19/08/2026 14:32:07` — formato literal do bloco de detalhes técnicos (§5.1). */
+/** `2026-08-19 14:32:07` — formato literal do bloco de detalhes técnicos (§5.1). */
 export function timestamp(): string {
   const now = new Date();
   const pad = (value: number): string => String(value).padStart(2, "0");
   return (
-    `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ` +
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ` +
     `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
   );
 }
@@ -114,7 +107,7 @@ export function errorCopy(error: HermesError): { text: string; uxId?: string } {
 }
 
 export function technicalBlock(text: string): string {
-  return ["### Detalhes técnicos", "", "```", text, "```"].join("\n");
+  return ["### Technical details", "", "```", text, "```"].join("\n");
 }
 
 /* ────────────────────────── Ações compartilhadas ──────────────────────────── */
@@ -123,7 +116,7 @@ export function AutoDetectAction({ title, onDone }: { title?: string; onDone?: (
   const { push } = useNavigation();
   return (
     <Action
-      title={title ?? "Detectar configuração automaticamente"}
+      title={title ?? "Detect the Setup Automatically"}
       icon={Icon.MagnifyingGlass}
       shortcut={SHORTCUTS.autoDetect}
       onAction={() => push(<AutoDetectScreen onDone={onDone} />)}
@@ -133,15 +126,15 @@ export function AutoDetectAction({ title, onDone }: { title?: string; onDone?: (
 
 export function ManualSetupAction() {
   const { push } = useNavigation();
-  // Sem atalho de propósito (§3.4): `Ctrl+Shift+A` já significa `Abrir configurações`
+  // Sem atalho de propósito (§3.4): `Ctrl+Shift+A` já significa `Open Settings`
   // em toda a extensão e um mesmo atalho não pode ter dois significados.
-  return <Action title="Configurar manualmente" icon={Icon.Book} onAction={() => push(<ManualSetupScreen />)} />;
+  return <Action title="Manual Setup" icon={Icon.Book} onAction={() => push(<ManualSetupScreen />)} />;
 }
 
 export function OpenHermesFolderAction({ hermesHome }: { hermesHome: string }) {
   return (
     <Action.Open
-      title="Abrir a pasta do Hermes"
+      title="Open the Hermes Folder"
       target={hermesHome}
       icon={Icon.Folder}
       shortcut={SHORTCUTS.hermesFolder}
@@ -152,9 +145,9 @@ export function OpenHermesFolderAction({ hermesHome }: { hermesHome: string }) {
 export function CopyTechnicalAction({ technical }: { technical: string }) {
   return (
     <Action.CopyToClipboard
-      title="Copiar detalhes técnicos"
+      title="Copy Technical Details"
       // Já sanitizado na origem: nenhum Bearer, nenhuma chave, nem por acidente.
-      content={technical === "" ? "Ainda não há detalhes técnicos: a verificação está em andamento." : technical}
+      content={technical === "" ? "No technical details yet: the check is still going." : technical}
       shortcut={SHORTCUTS.copyTechnical}
       icon={Icon.Clipboard}
     />
@@ -164,21 +157,21 @@ export function CopyTechnicalAction({ technical }: { technical: string }) {
 export function ForgetKeyAction({ onDone }: { onDone?: () => void }) {
   return (
     <Action
-      title="Esquecer a chave detectada"
+      title="Forget the Detected Key"
       icon={Icon.Trash}
       style={Action.Style.Destructive}
       shortcut={SHORTCUTS.remove}
       onAction={async () => {
         const confirmed = await confirmAlert({
-          title: "Esquecer a chave detectada?",
-          message: "O Raycast vai apagar a chave guardada neste computador. Você pode detectar de novo quando quiser.",
-          primaryAction: { title: "Esquecer a chave", style: Alert.ActionStyle.Destructive },
+          title: "Forget the detected key?",
+          message: "Raycast will delete the key stored on this computer. You can detect it again whenever you want.",
+          primaryAction: { title: "Forget the Key", style: Alert.ActionStyle.Destructive },
           dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
           rememberUserChoice: false,
         });
         if (!confirmed) return;
         await forgetDetectedApiKey();
-        await showToast({ style: Toast.Style.Success, title: "Chave removida deste computador." });
+        await showToast({ style: Toast.Style.Success, title: "Key removed from this computer." });
         onDone?.();
       }}
     />
@@ -189,17 +182,17 @@ export function BackAction() {
   const { pop } = useNavigation();
   // `Esc` já volta e é reservado pelo Raycast (§9.1): a ação existe para não ficar
   // órfã do painel, sem roubar o atalho.
-  return <Action title="Voltar" icon={Icon.ArrowLeft} onAction={pop} />;
+  return <Action title="Go Back" icon={Icon.ArrowLeft} onAction={pop} />;
 }
 
 /* ─────────────────── Tela 2: primeiro uso, sem chave (§3.4) ───────────────── */
 
 const FIRST_RUN_BODY = [
-  "Para usar esta extensão, o Raycast precisa de uma chave de acesso do Hermes que está instalado neste computador. Isso é feito uma única vez.",
+  "To use this extension, Raycast needs an access key from the Hermes installed on this computer. This is done only once.",
   "",
-  '**O jeito mais fácil:** pressione Enter em "Detectar configuração automaticamente". O Raycast procura a chave no seu Hermes, testa a conexão e guarda a chave em segurança. A chave não é exibida em nenhum momento.',
+  '**The easiest way:** press Enter on "Detect the Setup Automatically". Raycast looks for the key in your Hermes, tests the connection and stores the key safely. The key is never shown.',
   "",
-  'Se preferir fazer manualmente, escolha "Configurar manualmente" no painel de ações.',
+  'If you would rather do it by hand, choose "Manual Setup" in the action panel.',
 ].join("\n");
 
 /**
@@ -225,28 +218,28 @@ export async function probeHermesPresence(): Promise<HermesPresence> {
     const endpoint = await resolveBaseUrl();
     return { kind: "encontrado", host: hostOf(endpoint.baseUrl), version: endpoint.version };
   } catch (err) {
-    const error = toHermesError(err, "procura pelo Hermes");
+    const error = toHermesError(err, "looking for Hermes");
     return error instanceof HermesWrongServerError ? { kind: "outroServidor" } : { kind: "ausente" };
   }
 }
 
 /** A primeira linha muda com o que a sondagem achou; o convite ao Enter é sempre o mesmo. */
 export function firstRunMarkdown(presence: HermesPresence): string {
-  return ["# Conecte o Raycast ao seu Hermes", "", presenceLine(presence), "", FIRST_RUN_BODY].join("\n");
+  return ["# Connect Raycast to your Hermes", "", presenceLine(presence), "", FIRST_RUN_BODY].join("\n");
 }
 
 function presenceLine(presence: HermesPresence): string {
   switch (presence.kind) {
     case "procurando":
-      return "_Procurando o Hermes neste computador…_";
+      return "_Looking for Hermes on this computer…_";
     case "encontrado":
-      return `**Achei o Hermes ${presence.version} aqui**, em ${presence.host}. Falta só a chave de acesso.`;
+      return `**Found Hermes ${presence.version} here**, at ${presence.host}. All that is missing is the access key.`;
     case "outroServidor":
-      return '**Tem um programa respondendo nesse endereço, mas não é o Hermes.** Confira o endereço em "Abrir configurações" antes de continuar.';
+      return '**Something is answering at that address, but it is not Hermes.** Check the address in "Open Settings" before going on.';
     case "ausente":
       return (
-        "**O Hermes não respondeu neste computador.** Ligue o Hermes antes de continuar: sem ele no ar a " +
-        'conexão não pode ser testada. Se o seu Hermes usa outro endereço, ajuste em "Abrir configurações".'
+        "**Hermes did not answer on this computer.** Turn Hermes on before going on: with it down the " +
+        'connection cannot be tested. If your Hermes uses another address, change it in "Open Settings".'
       );
   }
 }
@@ -279,7 +272,7 @@ export function FirstRunScreen({ navigationTitle, onDone }: { navigationTitle: s
           <AutoDetectAction onDone={onDone} />
           <ManualSetupAction />
           <Action
-            title="O que é isso?"
+            title="What Is This?"
             icon={Icon.QuestionMarkCircle}
             shortcut={SHORTCUTS.showTechnical}
             onAction={() => push(<WhyKeyScreen />)}
@@ -346,16 +339,14 @@ async function detectConfiguration(): Promise<DetectionResult> {
   const envExists = folderExists && (await pathExists(envPath));
 
   const note = (extra: string): string =>
-    sanitizeTechnical([`Pasta do Hermes: ${hermesHome}`, `Momento: ${timestamp()}`, extra].join("\n"));
+    sanitizeTechnical([`Hermes folder: ${hermesHome}`, `Moment: ${timestamp()}`, extra].join("\n"));
 
   if (!folderExists || !envExists) {
     return {
       kind: "semArquivo",
       hermesHome,
       folderExists,
-      technical: note(
-        `Pasta existe: ${folderExists ? "sim" : "não"}. Arquivo .env existe: ${envExists ? "sim" : "não"}.`,
-      ),
+      technical: note(`Folder exists: ${folderExists ? "yes" : "no"}. File .env exists: ${envExists ? "yes" : "no"}.`),
     };
   }
 
@@ -365,7 +356,7 @@ async function detectConfiguration(): Promise<DetectionResult> {
       kind: "semLeitura",
       hermesHome,
       envPath,
-      technical: note(`O arquivo ${envPath} existe, mas não pôde ser aberto para leitura.`),
+      technical: note(`The file ${envPath} exists, but could not be opened for reading.`),
     };
   }
 
@@ -375,7 +366,7 @@ async function detectConfiguration(): Promise<DetectionResult> {
       kind: "semChave",
       hermesHome,
       envPath,
-      technical: note("O arquivo .env foi lido, mas não tem uma linha API_SERVER_KEY= com valor."),
+      technical: note("The .env file was read, but it has no API_SERVER_KEY= line with a value."),
     };
   }
 
@@ -387,7 +378,7 @@ async function detectConfiguration(): Promise<DetectionResult> {
     if (!isHermesAgent(info)) {
       throw new HermesWrongServerError({
         userMessage: E3_TEXT,
-        technical: `GET ${endpoint.baseUrl}/health respondeu platform="${info.platform}", status="${info.status}".`,
+        technical: `GET ${endpoint.baseUrl}/health answered platform="${info.platform}", status="${info.status}".`,
         recovery: "open_preferences",
       });
     }
@@ -412,19 +403,19 @@ async function detectConfiguration(): Promise<DetectionResult> {
       // `[key]` aqui é a segunda passada de redação: garante que nem um eco do valor
       // sobreviva no texto copiável.
       technical: sanitizeTechnical(
-        [`Pasta do Hermes: ${hermesHome}`, `Endereço: ${endpoint.baseUrl}`, `Momento: ${timestamp()}`].join("\n"),
+        [`Hermes folder: ${hermesHome}`, `Address: ${endpoint.baseUrl}`, `Moment: ${timestamp()}`].join("\n"),
         [key],
       ),
     };
   } catch (err) {
-    const error = toHermesError(err, "detecção automática");
+    const error = toHermesError(err, "automatic detection");
     const technical = sanitizeTechnical(
       [
-        `Pasta do Hermes: ${hermesHome}`,
-        `Endereço: ${baseUrl ?? "não resolvido"}`,
-        `Resposta: ${error.httpStatus ?? "-"}`,
-        `Código: ${error.code ?? "-"}`,
-        `Momento: ${timestamp()}`,
+        `Hermes folder: ${hermesHome}`,
+        `Address: ${baseUrl ?? "not resolved"}`,
+        `Answer: ${error.httpStatus ?? "-"}`,
+        `Code: ${error.code ?? "-"}`,
+        `Moment: ${timestamp()}`,
         "",
         error.technical,
       ].join("\n"),
@@ -441,67 +432,67 @@ function detectionMarkdown(result: DetectionResult): string {
   switch (result.kind) {
     case "sucesso":
       return [
-        "# Pronto, está conectado",
+        "# All set, you are connected",
         "",
-        "Encontrei o Hermes deste computador e a conexão funcionou.",
+        "I found the Hermes on this computer and the connection worked.",
         "",
-        `- Endereço: ${hostOf(result.baseUrl)}`,
-        `- Versão do Hermes: ${result.version}`,
-        "- Chave de acesso: encontrada, testada e guardada em segurança",
+        `- Address: ${hostOf(result.baseUrl)}`,
+        `- Hermes version: ${result.version}`,
+        "- Access key: found, tested and stored safely",
         "",
-        "A chave ficou guardada no armazenamento protegido do Raycast e não é exibida em nenhuma tela.",
+        "The key is kept in the protected Raycast storage and is never shown on any screen.",
         ...(result.preferenceWins
           ? [
               "",
               // §3.3: dizer a verdade sobre QUAL chave vai ser usada. Sem isto o usuário
               // veria "conectado" e continuaria tomando erro, porque a preferência antiga
               // é que segue valendo.
-              'Atenção: existe uma chave preenchida em "Chave do Hermes" nas configurações, e é ela que os comandos vão usar. Apague o campo se quiser que a chave detectada valha.',
+              'Careful: there is a key filled in under "Hermes Key" in the settings, and that is the one the commands will use. Clear the field if you want the detected key to win.',
             ]
           : []),
         "",
-        "Suas conversas do Raycast vão aparecer também no Hermes Desktop.",
+        "Your Raycast conversations will show up in Hermes Desktop too.",
       ].join("\n");
 
     case "semArquivo":
       return [
-        "# Não encontrei o Hermes neste computador",
+        "# I could not find Hermes on this computer",
         "",
-        "Procurei em:",
+        "I looked in:",
         "",
         result.hermesHome,
         "",
-        "e não achei o arquivo de configuração do Hermes.",
+        "and did not find the Hermes configuration file.",
         "",
-        "Isso costuma acontecer quando o Hermes está instalado em outra pasta ou ainda não foi instalado.",
+        "This usually happens when Hermes is installed in another folder, or has not been installed yet.",
       ].join("\n");
 
     case "semChave":
       return [
-        "# Achei o Hermes, mas não achei a chave",
+        "# I found Hermes, but not the key",
         "",
-        "O arquivo de configuração existe, mas não tem a linha da chave de acesso.",
+        "The configuration file exists, but it has no access key line.",
         "",
-        `Arquivo: ${result.envPath}`,
-        "Linha procurada: uma linha que começa com API_SERVER_KEY=",
+        `File: ${result.envPath}`,
+        "Line looked for: one that starts with API_SERVER_KEY=",
         "",
-        "Abra o Hermes Desktop uma vez e deixe o Hermes ligar. Ele cria essa chave sozinho na primeira execução.",
+        "Open Hermes Desktop once and let Hermes start. It creates that key on its own the first time.",
       ].join("\n");
 
     case "semLeitura":
-      return ["# Não consegui abrir o arquivo do Hermes", "", E26_TEXT, "", `Arquivo: ${result.envPath}`].join("\n");
+      return ["# I could not open the Hermes file", "", E26_TEXT, "", `File: ${result.envPath}`].join("\n");
 
     case "recusada":
       return [
-        "# A chave encontrada não foi aceita",
+        "# The key I found was not accepted",
         "",
-        "Encontrei uma chave no seu Hermes, mas o Hermes recusou essa chave.",
+        "I found a key in your Hermes, but Hermes rejected it.",
         "",
-        "Normalmente isso significa que o Hermes está rodando com uma configuração diferente da que está salva em disco. Feche e abra o Hermes Desktop e tente de novo.",
+        "That usually means Hermes is running with a different setup from the one saved on disk. Close and open Hermes Desktop and try again.",
       ].join("\n");
 
     case "offline":
-      return ["# Não foi possível conectar", "", result.text].join("\n");
+      return ["# Could not connect", "", result.text].join("\n");
   }
 }
 
@@ -527,9 +518,9 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
 
     void (async () => {
       // §3.2: a ação nunca é silenciosa — o Toast animado é obrigatório.
-      toast = await showToast({ style: Toast.Style.Animated, title: "Procurando a configuração do Hermes…" });
+      toast = await showToast({ style: Toast.Style.Animated, title: "Looking for the Hermes setup…" });
       const outcome = await detectConfiguration().catch((err: unknown) => {
-        const error = toHermesError(err, "detecção automática");
+        const error = toHermesError(err, "automatic detection");
         const failure: DetectionResult = {
           kind: "offline",
           hermesHome: "",
@@ -545,7 +536,7 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
       setResult(outcome);
       if (outcome.kind === "sucesso") {
         toast.style = Toast.Style.Success;
-        toast.title = "Conectado ao Hermes";
+        toast.title = "Connected to Hermes";
       } else {
         await toast.hide();
       }
@@ -561,8 +552,8 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
     return (
       <Detail
         isLoading
-        navigationTitle="Detectar configuração automaticamente"
-        markdown={["# Detectar configuração automaticamente", "", "_Procurando a configuração do Hermes…_"].join("\n")}
+        navigationTitle="Detect the Setup Automatically"
+        markdown={["# Detect the setup automatically", "", "_Looking for the Hermes setup…_"].join("\n")}
         actions={
           <ActionPanel>
             <ManualSetupAction />
@@ -584,13 +575,7 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
   // primária quando repetir resolve (§3.5 B, C, D) e `Configurar manualmente` é a
   // primária quando repetir não vai resolver (§3.5 A e E26).
   const retryAction = (
-    <Action
-      key="tentar"
-      title="Tentar de novo"
-      icon={Icon.ArrowClockwise}
-      shortcut={SHORTCUTS.refresh}
-      onAction={again}
-    />
+    <Action key="tentar" title="Try Again" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={again} />
   );
   const manualAction = <ManualSetupAction key="manual" />;
   const mainActions: ReactElement[] = [];
@@ -599,7 +584,7 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
     mainActions.push(
       <Action
         key="continuar"
-        title="Continuar"
+        title="Continue"
         icon={Icon.CheckCircle}
         onAction={() => {
           pop();
@@ -608,7 +593,7 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
       />,
       <Action
         key="testar"
-        title="Testar de novo"
+        title="Test Again"
         icon={Icon.ArrowClockwise}
         shortcut={SHORTCUTS.testConnection}
         onAction={again}
@@ -625,7 +610,7 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
     mainActions.push(
       <Action.CopyToClipboard
         key="caminho"
-        title="Copiar o caminho do arquivo"
+        title="Copy the File Path"
         content={result.envPath}
         shortcut={SHORTCUTS.copyPath}
         icon={Icon.Clipboard}
@@ -636,14 +621,14 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
 
   return (
     <Detail
-      navigationTitle="Detectar configuração automaticamente"
+      navigationTitle="Detect the Setup Automatically"
       markdown={markdown}
       actions={
         <ActionPanel>
           <ActionPanel.Section>{mainActions}</ActionPanel.Section>
-          <ActionPanel.Section title="Detalhes técnicos">
+          <ActionPanel.Section title="Technical Details">
             <Action
-              title={showTechnical ? "Ocultar detalhes técnicos" : "Mostrar detalhes técnicos"}
+              title={showTechnical ? "Hide Technical Details" : "Show Technical Details"}
               icon={showTechnical ? Icon.EyeDisabled : Icon.Eye}
               shortcut={SHORTCUTS.showTechnical}
               onAction={() => setShowTechnical((value) => !value)}
@@ -665,37 +650,37 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
 
 export function manualMarkdown(hermesHome: string, copy: PlatformCopy = platformCopy()): string {
   return [
-    "# Configurar manualmente",
+    "# Manual setup",
     "",
-    "Você vai copiar uma linha de um arquivo de texto. Não precisa de terminal.",
+    "You are going to copy one line out of a text file. No terminal needed.",
     "",
-    "**1. Abra a pasta do Hermes**",
+    "**1. Open the Hermes folder**",
     "",
-    `Use a ação "Abrir a pasta do Hermes" aqui embaixo. O ${copy.fileManager} abre em:`,
+    `Use the "Open the Hermes Folder" action below. ${copy.fileManager} opens at:`,
     "",
     hermesHome,
     "",
-    "**2. Abra o arquivo chamado `.env`**",
+    "**2. Open the file called `.env`**",
     "",
-    `Clique com o botão direito no arquivo \`.env\` e escolha "Abrir com" → "${copy.plainTextEditor}".`,
+    `Right-click the \`.env\` file and choose "Open with" → "${copy.plainTextEditor}".`,
     copy.showHiddenFilesHint,
     "",
-    "**3. Procure a linha que começa com `API_SERVER_KEY=`**",
+    "**3. Look for the line that starts with `API_SERVER_KEY=`**",
     "",
-    `No ${copy.plainTextEditor}, pressione ${copy.findKeys}, digite \`API_SERVER_KEY\` e pressione Enter.`,
-    "A linha se parece com isto:",
+    `In ${copy.plainTextEditor}, press ${copy.findKeys}, type \`API_SERVER_KEY\` and press Enter.`,
+    "The line looks like this:",
     "",
     "API_SERVER_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "",
-    "**4. Copie só o que vem depois do sinal de igual**",
+    "**4. Copy only what comes after the equals sign**",
     "",
-    `Selecione o texto depois do \`=\`, copie com ${copy.copyKeys} e feche o ${copy.plainTextEditor} sem salvar.`,
+    `Select the text after the \`=\`, copy it with ${copy.copyKeys} and close ${copy.plainTextEditor} without saving.`,
     "",
-    "**5. Cole nas configurações da extensão**",
+    "**5. Paste it into the extension settings**",
     "",
-    'Use a ação "Abrir configurações" e cole no campo "Chave do Hermes".',
+    'Use the "Open Settings" action and paste it into the "Hermes Key" field.',
     "",
-    "Guarde essa chave como uma senha: quem tiver ela consegue conversar com o seu Hermes.",
+    "Treat that key like a password: anyone who has it can talk to your Hermes.",
   ].join("\n");
 }
 
@@ -723,7 +708,7 @@ export function ManualSetupScreen() {
   return (
     <Detail
       isLoading={hermesHome === undefined}
-      navigationTitle="Configurar manualmente"
+      navigationTitle="Manual Setup"
       markdown={manualMarkdown(hermesHome ?? "…")}
       actions={
         <ActionPanel>
@@ -731,14 +716,14 @@ export function ManualSetupScreen() {
           <OpenPreferencesAction />
           {hermesHome === undefined ? null : (
             <Action.CopyToClipboard
-              title="Copiar o caminho do arquivo"
+              title="Copy the File Path"
               // O CAMINHO, nunca o conteúdo do arquivo (§3.7).
               content={path.join(hermesHome, ".env")}
               shortcut={SHORTCUTS.copyPath}
               icon={Icon.Clipboard}
             />
           )}
-          <AutoDetectAction title="Tentar detecção automática" />
+          <AutoDetectAction title="Try Automatic Detection" />
           <BackAction />
         </ActionPanel>
       }
@@ -749,17 +734,17 @@ export function ManualSetupScreen() {
 /* ─────────────────────── Tela 5: `O que é isso?` (§3.9) ───────────────────── */
 
 const WHY_KEY_MARKDOWN = [
-  "# Por que uma chave?",
+  "# Why a key?",
   "",
-  "O Hermes que roda no seu computador só aceita pedidos de programas que apresentem uma chave. Isso evita que qualquer site ou aplicativo aberto na sua máquina converse com o seu agente sem você saber.",
+  "The Hermes running on your computer only takes requests from programs that present a key. That stops any site or app open on your machine from talking to your agent without you knowing.",
   "",
-  'A chave fica só no seu computador. Ela nunca é enviada para a internet por esta extensão, nunca aparece em telas, mensagens de erro ou registros, e você pode removê-la a qualquer momento em "Esquecer a chave detectada".',
+  'The key stays only on your computer. This extension never sends it to the internet, it never shows up on screens, error messages or logs, and you can remove it at any time with "Forget the Detected Key".',
 ].join("\n");
 
 export function WhyKeyScreen() {
   return (
     <Detail
-      navigationTitle="Por que uma chave?"
+      navigationTitle="Why a Key?"
       markdown={WHY_KEY_MARKDOWN}
       actions={
         <ActionPanel>

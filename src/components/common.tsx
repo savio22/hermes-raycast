@@ -1,12 +1,8 @@
-/* eslint-disable @raycast/prefer-title-case -- a UX-SPEC §10.1 exige título de ação em
-   frase, em pt-BR ("Copiar resposta", nunca "Copiar Resposta"); a regra é calibrada para o
-   Title Case do inglês e `ray lint --fix` reescreve a copy do produto sem ela. */
-
 /**
  * As poucas peças que TODA tela usa e que não podem divergir entre comandos.
  *
  * Existe porque quatro telas foram escritas em paralelo e cada uma redigitou a frase da
- * sincronia e a ação `Abrir configurações`. Um literal da UX-SPEC copiado em cinco arquivos
+ * sincronia e a ação `Open Settings`. Um literal da UX-SPEC copiado em cinco arquivos
  * é um literal que vai divergir na primeira revisão de texto: aqui ele tem um dono só.
  */
 
@@ -24,16 +20,16 @@ import type { ReactElement } from "react";
 import { SHORTCUTS } from "./shortcuts";
 
 /** UX-SPEC §10.3 — frase canônica da sincronia, usada sem variação. */
-export const SYNC_PROMISE = "Suas conversas do Raycast também aparecem no Hermes Desktop.";
+export const SYNC_PROMISE = "Your Raycast conversations show up in Hermes Desktop too.";
 
 /** Nome exibido de uma conversa sem título. */
-export const NO_TITLE = "Sem título";
+export const NO_TITLE = "Untitled";
 
-/** §5.1 regra 3: `Abrir configurações` está em toda tela, sempre com o mesmo atalho. */
+/** §5.1 regra 3: `Open Settings` está em toda tela, sempre com o mesmo atalho. */
 export function OpenPreferencesAction(): ReactElement {
   return (
     <Action
-      title="Abrir configurações"
+      title="Open Settings"
       icon={Icon.Gear}
       shortcut={SHORTCUTS.preferences}
       onAction={openExtensionPreferences}
@@ -49,13 +45,13 @@ export function OpenModelsAction(): ReactElement {
     } catch {
       await showToast({
         style: Toast.Style.Failure,
-        title: "Não foi possível abrir os modelos",
-        message: 'Procure por "Modelos do Hermes" na busca do Raycast.',
+        title: "Could Not Open Models",
+        message: 'Search for "Hermes Models" in Raycast.',
       });
     }
   }
 
-  return <Action title="Escolher modelo" icon={Icon.ComputerChip} onAction={() => void openModels()} />;
+  return <Action title="Choose Model" icon={Icon.ComputerChip} onAction={() => void openModels()} />;
 }
 
 /**
@@ -73,8 +69,8 @@ export async function openHermesDesktop(url: string): Promise<void> {
   } catch {
     await showToast({
       style: Toast.Style.Failure,
-      title: "Não consegui abrir o Hermes Desktop",
-      message: "Verifique se o Hermes Desktop está instalado neste computador.",
+      title: "Could Not Open Hermes Desktop",
+      message: "Check that Hermes Desktop is installed on this computer.",
     });
   }
 }

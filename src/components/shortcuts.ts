@@ -78,7 +78,7 @@ export const SHORTCUTS = {
   copyTechnical: perPlatform({ modifiers: ["ctrl", "alt"], key: "c" }, { modifiers: ["cmd", "opt"], key: "c" }),
   /** `Atualizar` / `Tentar novamente`. */
   refresh: Keyboard.Shortcut.Common.Refresh,
-  /** `Abrir configurações`. */
+  /** `Open Settings`. */
   preferences: perPlatform({ modifiers: ["ctrl", "shift"], key: "a" }, { modifiers: ["cmd", "shift"], key: "a" }),
   /** `Testar de novo` / `Testar conexão`. */
   testConnection: perPlatform({ modifiers: ["ctrl", "shift"], key: "t" }, { modifiers: ["cmd", "shift"], key: "t" }),
@@ -109,7 +109,7 @@ export const SHORTCUTS = {
   /** `Arquivar conversa` / `Desarquivar conversa`. */
   archive: perPlatform({ modifiers: ["alt"], key: "a" }, { modifiers: ["opt"], key: "a" }),
   /**
-   * `Carregar parte anterior da conversa` — significado novo, atalho novo (§9.1).
+   * `Load the Earlier Part of the Conversation` — significado novo, atalho novo (§9.1).
    * Não colide com nada da tabela §9.2 nem com o que o Raycast reserva.
    */
   loadOlder: perPlatform({ modifiers: ["ctrl", "shift"], key: "h" }, { modifiers: ["cmd", "shift"], key: "h" }),

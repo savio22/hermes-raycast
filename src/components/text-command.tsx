@@ -1,7 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- todos os títulos de ação são literais em
-   pt-BR da UX-SPEC (§10.3): "Tentar novamente", "Abrir configurações". A §10.1 manda
-   escrever em frase; Title Case do inglês desfiguraria a interface. */
-
 /**
  * A casca dos comandos de texto da fase 2 (`ask-selection`, `summarize-clipboard`,
  * `fix-clipboard`, `translate-clipboard`).
@@ -42,14 +38,14 @@ import { type PlatformCopy, platformCopy } from "../lib/platform";
  */
 export { MAX_INPUT_CHARS } from "../lib/input-safety";
 
-const LONG_INPUT_TOAST = "O texto é muito longo: preservei o começo e o fim e removi só o meio.";
+const LONG_INPUT_TOAST = "The text is very long: I kept the beginning and the end and removed only the middle.";
 
 /**
  * Estado vazio dos três comandos de área de transferência, em um lugar só. A tecla de
  * copiar é a do sistema (`Ctrl+C` no Windows, `Cmd+C` no macOS).
  */
 export function copyFirstHint(copy: PlatformCopy = platformCopy()): string {
-  return `Copie o texto que você quer trabalhar (\`${copy.copyKeys}\`) e chame este comando de novo.`;
+  return `Copy the text you want to work on (\`${copy.copyKeys}\`) and run this command again.`;
 }
 
 export type TextSource = "selecao" | "area-de-transferencia";
@@ -145,12 +141,7 @@ export function TextCommand(props: TextCommandProps): ReactElement {
         actions={
           <ActionPanel>
             <ActionPanel.Section>
-              <Action
-                title="Tentar novamente"
-                icon={Icon.ArrowClockwise}
-                shortcut={SHORTCUTS.refresh}
-                onAction={recapture}
-              />
+              <Action title="Try Again" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={recapture} />
               <OpenPreferencesAction />
             </ActionPanel.Section>
           </ActionPanel>
@@ -167,9 +158,9 @@ export function TextCommand(props: TextCommandProps): ReactElement {
         markdown={`# ${confirmation.title}\n\n${confirmation.description}`}
         actions={
           <ActionPanel>
-            <Action title="Enviar nesta direção" icon={Icon.ArrowRight} onAction={() => setConfirmed(true)} />
+            <Action title="Send in This Direction" icon={Icon.ArrowRight} onAction={() => setConfirmed(true)} />
             <Action
-              title="Escolher outra direção"
+              title="Pick Another Direction"
               icon={Icon.Pencil}
               onAction={() => {
                 setConfirmed(false);

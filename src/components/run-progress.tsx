@@ -1,7 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- a UX-SPEC §10.1 exige título de ação em
-   frase, em pt-BR ("Copiar resposta", nunca "Copiar Resposta"); a regra é calibrada para o
-   Title Case do inglês e `ray lint --fix` reescreve a copy do produto sem ela. */
-
 /**
  * `RunProgressView` — acompanhar uma execução do Hermes que JÁ EXISTE.
  *
@@ -108,9 +104,9 @@ export function shorten(text: string, max: number): string {
   return clean.length <= max ? clean : `${clean.slice(0, max).trimEnd()}…`;
 }
 
-/** UX-SPEC §10.1: número com vírgula decimal. */
+/** Número com ponto decimal, como manda o inglês. */
 function decimal(value: number, digits = 1): string {
-  return value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 /**
@@ -165,21 +161,21 @@ export interface TechnicalContext {
  */
 export function technicalDetails(ctx: TechnicalContext): string {
   const lines = [
-    `Identificador da tarefa: ${ctx.runId}`,
-    ctx.sessionId !== undefined ? `Conversa: ${ctx.sessionId}` : undefined,
-    ctx.status !== undefined ? `Estado: ${ctx.status}` : undefined,
-    ctx.lastEvent !== undefined ? `Último evento: ${ctx.lastEvent}` : undefined,
-    ctx.error?.httpStatus !== undefined ? `Resposta: ${ctx.error.httpStatus}` : undefined,
-    ctx.error?.code ? `Código: ${ctx.error.code}` : undefined,
-    ctx.error !== undefined ? `Detalhe: ${ctx.error.technical}` : undefined,
-    `Momento: ${new Date().toLocaleString("pt-BR")}`,
+    `Task id: ${ctx.runId}`,
+    ctx.sessionId !== undefined ? `Conversation: ${ctx.sessionId}` : undefined,
+    ctx.status !== undefined ? `State: ${ctx.status}` : undefined,
+    ctx.lastEvent !== undefined ? `Last event: ${ctx.lastEvent}` : undefined,
+    ctx.error?.httpStatus !== undefined ? `Answer: ${ctx.error.httpStatus}` : undefined,
+    ctx.error?.code ? `Code: ${ctx.error.code}` : undefined,
+    ctx.error !== undefined ? `Detail: ${ctx.error.technical}` : undefined,
+    `Moment: ${new Date().toLocaleString("en-US")}`,
   ].filter((line): line is string => line !== undefined);
 
   return sanitizeTechnical(lines.join("\n"));
 }
 
 function technicalMarkdown(ctx: TechnicalContext): string {
-  return ["### Detalhes técnicos", "", "```", technicalDetails(ctx), "```"].join("\n");
+  return ["### Technical details", "", "```", technicalDetails(ctx), "```"].join("\n");
 }
 
 /* ═══════════════════════════ Tela de erro reutilizável ═══════════════════════════ */
@@ -205,10 +201,10 @@ export function ErrorDetail(props: {
            era um bloco de texto sem nenhum sinal visual.
            O rótulo NÃO é adivinhado: `recovery === "start_hermes"` é a própria
            classificação de "o Hermes não está no ar", e só nesse caso a condição é
-           "Sem conexão" (§4.3) — nos demais o que houve foi uma falha, e chamar tudo de
-           "Sem conexão" seria mentir sobre a causa. O par ícone+cor sai de `status.ts`. */
+           "No connection" (§4.3) — nos demais o que houve foi uma falha, e chamar tudo de
+           "No connection" seria mentir sobre a causa. O par ícone+cor sai de `status.ts`. */
         <Detail.Metadata>
-          <Detail.Metadata.TagList title="Estado">
+          <Detail.Metadata.TagList title="State">
             {props.error.recovery === "start_hermes" ? (
               <Detail.Metadata.TagList.Item text={NO_CONNECTION.label} {...tagTone(NO_CONNECTION)} />
             ) : (
@@ -221,26 +217,26 @@ export function ErrorDetail(props: {
         <ActionPanel>
           {props.onRetry !== undefined && (
             <Action
-              title="Tentar novamente"
+              title="Try Again"
               icon={Icon.ArrowClockwise}
               shortcut={SHORTCUTS.refresh}
               onAction={props.onRetry}
             />
           )}
           <Action
-            title="Abrir configurações"
+            title="Open Settings"
             icon={Icon.Gear}
             shortcut={SHORTCUTS.preferences}
             onAction={openExtensionPreferences}
           />
           <Action
-            title={showTechnical ? "Ocultar detalhes técnicos" : "Mostrar detalhes técnicos"}
+            title={showTechnical ? "Hide Technical Details" : "Show Technical Details"}
             icon={showTechnical ? Icon.EyeDisabled : Icon.Eye}
             shortcut={SHORTCUTS.showTechnical}
             onAction={() => setShowTechnical(!showTechnical)}
           />
           <Action.CopyToClipboard
-            title="Copiar detalhes técnicos"
+            title="Copy Technical Details"
             content={technicalDetails(ctx)}
             shortcut={SHORTCUTS.copyTechnical}
           />
@@ -320,7 +316,7 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
       return { ...state, text: action.text, isLoading: false };
 
     case "tool-started": {
-      const line = action.preview ? `🔧 Usando ${action.tool} — ${action.preview}` : `🔧 Usando ${action.tool}`;
+      const line = action.preview ? `🔧 Using ${action.tool} — ${action.preview}` : `🔧 Using ${action.tool}`;
       const tools = state.tools.includes(action.tool) ? state.tools : [...state.tools, action.tool];
       return withStep({ ...state, currentTool: action.tool, tools }, line);
     }
@@ -328,8 +324,8 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
     case "tool-completed": {
       // Armadilha 28: falha de ferramenta chega como `tool.completed` com `error: true`.
       const line = action.failed
-        ? `⚠️ ${action.tool} falhou depois de ${decimal(action.duration)} s`
-        : `✅ ${action.tool} concluído em ${decimal(action.duration)} s`;
+        ? `⚠️ ${action.tool} failed after ${decimal(action.duration)} s`
+        : `✅ ${action.tool} finished in ${decimal(action.duration)} s`;
       const currentTool = state.currentTool === action.tool ? undefined : state.currentTool;
       return withStep({ ...state, currentTool }, line);
     }
@@ -349,7 +345,7 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
           pendingApprovals: state.pendingApprovals + 1,
           status: "waiting_for_approval",
         },
-        "🔐 O Hermes pediu sua aprovação",
+        "🔐 Hermes asked for your approval",
       );
 
     case "approval-loaded":
@@ -372,12 +368,12 @@ function reduce(state: RunViewState, action: RunViewAction): RunViewState {
           // servidor, que é o desempate da armadilha 19.
           status: "running",
         },
-        `🔐 Aprovação respondida: ${APPROVAL_CHOICE_LABEL[action.choice]}`,
+        `🔐 Approval answered: ${APPROVAL_CHOICE_LABEL[action.choice]}`,
       );
     }
 
     case "steered":
-      return withStep(state, "🧭 Orientação enviada");
+      return withStep(state, "🧭 Guidance sent");
 
     case "polled": {
       const run = action.run;
@@ -566,9 +562,9 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
             onSubagent: (event) => {
               if (cancelled) return;
               if (event.event === "subagent.start") {
-                dispatch({ type: "subagent", line: `👥 Tarefa auxiliar iniciada: ${event.goal ?? "sem descrição"}` });
+                dispatch({ type: "subagent", line: `👥 Helper task started: ${event.goal ?? "no description"}` });
               } else if (event.event === "subagent.complete") {
-                dispatch({ type: "subagent", line: `👥 Tarefa auxiliar concluída: ${event.summary ?? "sem resumo"}` });
+                dispatch({ type: "subagent", line: `👥 Helper task finished: ${event.summary ?? "no summary"}` });
               }
             },
             onApprovalRequest: (request) => {
@@ -610,8 +606,8 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
           type: "notice",
           text:
             error.httpStatus === 404
-              ? "Perdi o acompanhamento ao vivo desta tarefa, mas ela continua rodando no Hermes."
-              : "A conexão com o Hermes caiu no meio da resposta. A tarefa continua rodando no Hermes.",
+              ? "I lost the live view of this task, but it is still going inside Hermes."
+              : "The connection to Hermes dropped in the middle of the answer. The task is still going inside Hermes.",
         });
       }
     })();
@@ -742,8 +738,8 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
     } catch {
       await showToast({
         style: Toast.Style.Failure,
-        title: "Não foi possível abrir a tela de perguntas.",
-        message: 'Procure por "Perguntar ao Hermes" na busca do Raycast.',
+        title: "Could not open the question screen.",
+        message: 'Search for "Ask Hermes" in Raycast.',
       });
     }
   }
@@ -755,9 +751,9 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
       await forkSession(sessionId);
       await showToast({
         style: Toast.Style.Success,
-        title: "Nova conversa criada a partir desta",
+        title: "New conversation created from this one",
         // O filho é carimbado `source: "api_server"` pelo servidor e não é patchável (R7).
-        message: "Esta nova conversa não aparece na lista principal do Hermes Desktop.",
+        message: "This new conversation does not show up in the main Hermes Desktop list.",
       });
     } catch (err) {
       await showToast({
@@ -770,18 +766,18 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
   async function handleStop(): Promise<void> {
     // Sem `confirmAlert`: a UX-SPEC §6.6 item 6 é explícita — nada é destruído e a
     // confirmação atrasaria a única saída de emergência do usuário.
-    const toast = await showToast({ style: Toast.Style.Animated, title: "Parando a tarefa…" });
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Stopping the task…" });
     try {
       await stopRun(runId);
       dispatch({ type: "stopping" });
       toast.style = Toast.Style.Success;
-      toast.title = "Tarefa parada";
+      toast.title = "Task stopped";
     } catch (err) {
       const error = toHermesError(err, "stopRun");
       if (error.httpStatus === 404) {
         // Armadilha 21: 404 aqui significa "a tarefa já tinha terminado", nunca erro.
         toast.style = Toast.Style.Success;
-        toast.title = "Tarefa parada";
+        toast.title = "Task stopped";
         refresh();
         return;
       }
@@ -820,15 +816,15 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
       })}
       metadata={
         <Detail.Metadata>
-          <Detail.Metadata.Label title="Estado" text={label} icon={statusImage(appearance)} />
-          <Detail.Metadata.Label title="Conversa" text={title ?? "Sem título"} />
-          <Detail.Metadata.Label title="Modelo" text={state.model ?? "Padrão do Hermes"} />
-          {sessionId !== undefined && <Detail.Metadata.Label title="Sincronização" text="Aparece no Hermes Desktop" />}
+          <Detail.Metadata.Label title="State" text={label} icon={statusImage(appearance)} />
+          <Detail.Metadata.Label title="Conversation" text={title ?? "Untitled"} />
+          <Detail.Metadata.Label title="Model" text={state.model ?? "Hermes default"} />
+          {sessionId !== undefined && <Detail.Metadata.Label title="Sync" text="Shows up in Hermes Desktop" />}
           {state.durationSeconds !== undefined && (
-            <Detail.Metadata.Label title="Duração" text={`${Math.round(state.durationSeconds)} s`} />
+            <Detail.Metadata.Label title="Duration" text={`${Math.round(state.durationSeconds)} s`} />
           )}
           {mode === "etapas" && state.tools.length > 0 && (
-            <Detail.Metadata.TagList title="Etapas">
+            <Detail.Metadata.TagList title="Steps">
               {state.tools.slice(-6).map((tool) => (
                 <Detail.Metadata.TagList.Item key={tool} text={tool} />
               ))}
@@ -841,7 +837,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
           <ActionPanel.Section>
             {state.status === "waiting_for_approval" && !terminal && (
               <Action.Push
-                title="Responder pedido de aprovação"
+                title="Answer the Approval Request"
                 icon={Icon.Lock}
                 target={
                   <ApprovalView
@@ -850,10 +846,10 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
                     pendingCount={Math.max(state.pendingApprovals, 1)}
                     detailsLost={state.approvalLoaded && state.approval === undefined}
                     taskPreview={shorten(prompt, 60)}
-                    conversationTitle={title ?? "Sem título"}
+                    conversationTitle={title ?? "Untitled"}
                     sessionId={sessionId}
                     onResolved={(choice, resolved) => dispatch({ type: "approval-responded", choice, resolved })}
-                    // §7.4: `Ver etapas da tarefa` — esta tela JÁ é a tarefa, então basta
+                    // §7.4: `See the Task Steps` — esta tela JÁ é a tarefa, então basta
                     // trocar o modo; o `Esc` do usuário volta para cá com as etapas à vista.
                     onShowSteps={() => setMode("etapas")}
                   />
@@ -862,10 +858,10 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
             )}
             {terminal && state.text !== "" && (
               <Action.CopyToClipboard
-                title="Copiar resposta"
+                title="Copy the Answer"
                 content={state.text}
                 shortcut={SHORTCUTS.copy}
-                onCopy={() => void showHUD("Resposta copiada")}
+                onCopy={() => void showHUD("Answer copied")}
               />
             )}
             {terminal && state.text !== "" && (
@@ -873,24 +869,24 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
                  acontecia sem nenhuma confirmação visível, e o item 12 do checklist
                  ("cópia e colagem") reprovava só nesta tela. */
               <Action.Paste
-                title="Colar no aplicativo ativo"
+                title="Paste into the Active App"
                 icon={Icon.Text}
                 content={state.text}
                 shortcut={SHORTCUTS.paste}
-                onPaste={() => void showHUD("Resposta colada")}
+                onPaste={() => void showHUD("Answer pasted")}
               />
             )}
             {!terminal && state.text !== "" && (
               <Action.CopyToClipboard
-                title="Copiar o que já veio"
+                title="Copy the Partial Answer"
                 content={state.text}
                 shortcut={SHORTCUTS.copy}
-                onCopy={() => void showHUD("Resposta copiada")}
+                onCopy={() => void showHUD("Answer copied")}
               />
             )}
             {desktopUrl !== undefined && (
               <Action.Open
-                title="Abrir no Hermes Desktop"
+                title="Open in Hermes Desktop"
                 icon={Icon.Desktop}
                 target={desktopUrl}
                 shortcut={SHORTCUTS.openInDesktop}
@@ -901,7 +897,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
           <ActionPanel.Section>
             {!terminal && (
               <Action
-                title="Parar"
+                title="Stop"
                 icon={Icon.Stop}
                 style={Action.Style.Destructive}
                 shortcut={SHORTCUTS.stop}
@@ -911,7 +907,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
             {state.status === "running" && (
               // Armadilha 22: fora de `running` o servidor recusa a orientação com 409.
               <Action.Push
-                title="Orientar execução"
+                title="Guide the Task"
                 icon={Icon.Compass}
                 shortcut={SHORTCUTS.steer}
                 target={
@@ -925,12 +921,12 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
               />
             )}
             <Action
-              title={mode === "etapas" ? "Ver resposta" : "Ver etapas"}
+              title={mode === "etapas" ? "See the Answer" : "See the Steps"}
               icon={mode === "etapas" ? Icon.Text : Icon.List}
               shortcut={SHORTCUTS.toggleSteps}
               onAction={() => setMode(mode === "etapas" ? "resposta" : "etapas")}
             />
-            <Action title="Atualizar" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
+            <Action title="Refresh" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
           </ActionPanel.Section>
 
           <ActionPanel.Section>
@@ -938,7 +934,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
                 §2.1.3 por força da §2.4.2, então as ações pós-conclusão valem aqui igual. */}
             {canContinue && (
               <Action
-                title="Continuar esta conversa"
+                title="Continue This Conversation"
                 icon={Icon.SpeechBubble}
                 shortcut={SHORTCUTS.continueConversation}
                 onAction={() => void continueConversation()}
@@ -947,14 +943,14 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
             <Action
               // §10.3: a frase canônica é `Nova conversa`. `Nova tarefa` era um segundo
               // nome para o mesmo `Ctrl+N` que `ask.tsx` já chamava de `Nova conversa`.
-              title="Nova conversa"
+              title="New Conversation"
               icon={Icon.Plus}
               shortcut={SHORTCUTS.newConversation}
               onAction={() => void launchCommand({ name: "run-task", type: LaunchType.UserInitiated })}
             />
             {terminal && sessionId !== undefined && (
               <Action
-                title="Ramificar conversa"
+                title="Branch the Conversation"
                 icon={Icon.Repeat}
                 shortcut={SHORTCUTS.branch}
                 onAction={() => void branch()}
@@ -962,7 +958,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
             )}
             {sessionId !== undefined && (
               <Action.Push
-                title="Renomear conversa"
+                title="Rename the Conversation"
                 icon={Icon.Pencil}
                 shortcut={SHORTCUTS.rename}
                 target={
@@ -974,14 +970,14 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
               />
             )}
             <Action
-              title="Ver tarefas em andamento"
+              title="See Tasks in Progress"
               icon={Icon.List}
               shortcut={SHORTCUTS.activeRuns}
               onAction={() => void launchCommand({ name: "active-runs", type: LaunchType.UserInitiated })}
             />
             {state.pendingSteer !== undefined && (
               <Action
-                title="Enviar como nova pergunta"
+                title="Send as a New Question"
                 icon={Icon.Compass}
                 onAction={() =>
                   void launchCommand({
@@ -994,29 +990,27 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
             )}
             {sessionId !== undefined && (
               // §8.4: o `hermes://` pode não estar registrado. O identificador é o plano B.
-              <Action.CopyToClipboard title="Copiar identificador da conversa" content={sessionId} />
+              <Action.CopyToClipboard title="Copy the Conversation ID" content={sessionId} />
             )}
           </ActionPanel.Section>
 
           <ActionPanel.Section>
             <Action
-              title={showTechnical ? "Ocultar detalhes técnicos" : "Mostrar detalhes técnicos"}
+              title={showTechnical ? "Hide Technical Details" : "Show Technical Details"}
               icon={showTechnical ? Icon.EyeDisabled : Icon.Eye}
               shortcut={SHORTCUTS.showTechnical}
               onAction={() => setShowTechnical(!showTechnical)}
             />
             <Action
-              title="Copiar detalhes técnicos"
+              title="Copy Technical Details"
               icon={Icon.Clipboard}
               shortcut={SHORTCUTS.copyTechnical}
               onAction={() => {
-                void Clipboard.copy(technicalDetails(technicalContext)).then(() =>
-                  showHUD("Detalhes técnicos copiados"),
-                );
+                void Clipboard.copy(technicalDetails(technicalContext)).then(() => showHUD("Technical details copied"));
               }}
             />
             <Action
-              title="Abrir configurações"
+              title="Open Settings"
               icon={Icon.Gear}
               shortcut={SHORTCUTS.preferences}
               onAction={openExtensionPreferences}
@@ -1049,20 +1043,20 @@ function buildMarkdown(input: MarkdownInput): string {
   /* Avisos: sempre no topo, sempre em bloco de citação, nunca apagando o que já foi lido. */
   if (!attachStream && !terminal) {
     blocks.push(
-      "> Acompanhando esta tarefa em modo simples. O texto que passou enquanto o Raycast estava fechado não pode ser recuperado, mas o resultado final aparece aqui.",
+      "> Following this task in simple mode. The text that went by while Raycast was closed cannot be recovered, but the final result shows up here.",
     );
   }
   if (state.stopping) {
     blocks.push(
-      "> Pedido de parada enviado. O Hermes está encerrando com segurança — isso pode levar alguns segundos se ele estiver no meio de uma ferramenta.",
+      "> Stop request sent. Hermes is shutting down safely — that can take a few seconds if it is in the middle of a tool.",
     );
   }
   if (state.status === "waiting_for_approval" && !terminal) {
-    blocks.push("> 🔐 **O Hermes precisa da sua permissão para continuar.**");
+    blocks.push("> 🔐 **Hermes needs your permission to carry on.**");
   }
   if (state.pendingApprovals > 1) {
     blocks.push(
-      `> Existem ${state.pendingApprovals} pedidos de aprovação nesta tarefa. Sua resposta vale para o mais antigo deles.`,
+      `> There are ${state.pendingApprovals} approval requests in this task. Your answer applies to the oldest of them.`,
     );
   }
   for (const notice of state.notices) blocks.push(`> ${notice}`);
@@ -1071,30 +1065,28 @@ function buildMarkdown(input: MarkdownInput): string {
   if (mode === "etapas") {
     // Etapas = uma linha por evento, em linguagem simples. Nunca JSON, nunca log cru
     // (UX-SPEC §6.3); o que é técnico mora atrás de "Mostrar detalhes técnicos".
-    blocks.push(
-      state.steps.length > 0 ? state.steps.map((step) => step.line).join("\n\n") : "_Nenhuma etapa até agora._",
-    );
+    blocks.push(state.steps.length > 0 ? state.steps.map((step) => step.line).join("\n\n") : "_No steps yet._");
     if (terminal && state.text !== "") blocks.push("---", state.text);
   } else {
-    if (state.currentTool !== undefined) blocks.push(`> 🔧 Usando ${state.currentTool}…`);
+    if (state.currentTool !== undefined) blocks.push(`> 🔧 Using ${state.currentTool}…`);
     if (state.text !== "") blocks.push(state.text);
     else if (terminal && !state.expired && state.runError === undefined) {
-      blocks.push("O Hermes terminou sem escrever uma resposta.");
-    } else if (!terminal) blocks.push(thinking ? "_O Hermes está pensando…_" : "_Preparando…_");
+      blocks.push("Hermes finished without writing an answer.");
+    } else if (!terminal) blocks.push(thinking ? "_Hermes is thinking…_" : "_Preparando…_");
   }
 
   /* E21 / E22 — o erro entra ABAIXO do que o usuário já leu (UX-SPEC §5.3). */
   if (state.runError !== undefined) {
-    blocks.push("---", `O Hermes não conseguiu concluir: ${state.runError}`);
+    blocks.push("---", `Hermes could not finish: ${state.runError}`);
   } else if (state.text.startsWith("⚠️ Provider authentication failed")) {
     blocks.push(
       "---",
-      "O modelo escolhido não está autenticado no Hermes. Abra o Hermes Desktop e configure o provedor, ou escolha outro modelo.",
+      "The model you picked is not authenticated in Hermes. Open Hermes Desktop and set up the provider, or pick another model.",
     );
   }
 
   if (state.pendingSteer !== undefined) {
-    blocks.push("> Sua orientação chegou depois que o Hermes terminou. Quer enviá-la como próxima pergunta?");
+    blocks.push("> Your guidance arrived after Hermes had finished. Do you want to send it as the next question?");
   }
 
   if (showTechnical) blocks.push("---", technicalMarkdown(technicalContext));

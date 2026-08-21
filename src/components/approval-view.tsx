@@ -1,6 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- os títulos de ação são literais em pt-BR da
-   UX-SPEC §7.4 ("Aprovar só esta vez", "Negar"); Title Case os desfiguraria. */
-
 /**
  * Tela de aprovação (UX-SPEC §7) — a superfície de segurança da extensão.
  *
@@ -66,10 +63,10 @@ export function isDestructive(patternKeys: readonly string[]): boolean {
 }
 
 const RISK_DESTRUCTIVE =
-  "> ⛔ **Ação destrutiva.** Este comando pode apagar ou sobrescrever arquivos de forma definitiva. Só aprove se você entende exatamente o que ele faz.";
-const RISK_SENSITIVE =
-  "> ⚠️ **Ação sensível.** Este comando pode alterar arquivos ou executar programas no seu computador.";
-const RISK_SMART_DENIED = "> 🛑 **O Hermes recomendou negar esta ação.** Aprovar vale só para esta única vez.";
+  "> ⛔ **Destructive action.** This command can delete or overwrite files for good. Only approve it if you understand exactly what it does.";
+const RISK_SENSITIVE = "> ⚠️ **Sensitive action.** This command can change files or run programs on your computer.";
+const RISK_SMART_DENIED =
+  "> 🛑 **Hermes recommended denying this action.** Approving it counts for this one time only.";
 
 /**
  * Cerca de código maior que a maior sequência de crases do conteúdo.
@@ -96,15 +93,15 @@ function inlineText(value: string): string {
 }
 
 const TIMEOUT_NOTE =
-  "O Hermes está parado esperando sua resposta. Se ninguém responder, ele desiste sozinho depois de alguns minutos.";
+  "Hermes is stopped, waiting for your answer. If nobody answers, it gives up on its own after a few minutes.";
 
-const DETAILS_LOST = `# Aprovação pendente
+const DETAILS_LOST = `# Approval pending
 
-O Hermes está esperando uma resposta sua para continuar.
+Hermes is waiting for an answer from you before it carries on.
 
 ${approvalDetailsLostHint()}
 
-${approvalActionHint()} Você pode pedir a tarefa de novo e deixar o Raycast aberto para ver o pedido completo.
+${approvalActionHint()} You can ask for the task again and leave Raycast open to see the full request.
 `;
 
 export interface ApprovalViewProps {
@@ -121,7 +118,7 @@ export interface ApprovalViewProps {
   /** Chamado depois do POST, com quantos pedidos o servidor resolveu de uma vez. */
   onResolved: (choice: ApprovalChoice, resolved: number) => void;
   /**
-   * `Ver etapas da tarefa` (`Ctrl+T`, §7.4). Quem chama decide o que "ver as etapas"
+   * `See the Task Steps` (`Ctrl+T`, §7.4). Quem chama decide o que "ver as etapas"
    * significa na sua pilha de navegação: voltar para a tela da execução em modo Etapas
    * (`ask`, `run-progress`) ou abri-la por cima (`Execuções do Hermes`).
    */
@@ -139,31 +136,31 @@ interface ChoiceSpec {
 /** §7.4 — título, atalho, estilo e confirmação de cada `choice` que o servidor pode mandar. */
 const CHOICE_SPECS: Record<ApprovalChoice, ChoiceSpec> = {
   once: {
-    title: "Aprovar só esta vez",
+    title: "Approve Just This Once",
     icon: Icon.Check,
     // Sem atalho: é a ação primária (Enter) quando o servidor a oferece primeiro.
   },
   session: {
-    title: "Aprovar durante esta execução",
+    title: "Approve for This Task",
     icon: Icon.Clock,
     shortcut: SHORTCUTS.approveSession,
     confirm: {
-      title: "Aprovar durante toda esta execução?",
-      message: "O Hermes vai poder repetir comandos parecidos até esta tarefa terminar, sem perguntar de novo.",
-      primaryAction: { title: "Aprovar durante esta execução", style: Alert.ActionStyle.Default },
+      title: "Approve for This Whole Task?",
+      message: "Hermes will be able to repeat similar commands until this task ends, without asking again.",
+      primaryAction: { title: "Approve for This Task", style: Alert.ActionStyle.Default },
       dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
     },
   },
   always: {
-    title: "Aprovar sempre este tipo de comando",
+    title: "Always Approve This Kind of Command",
     icon: Icon.ExclamationMark,
     shortcut: SHORTCUTS.approveAlways,
     style: Action.Style.Destructive,
     confirm: {
-      title: "Aprovar sempre este tipo de comando?",
+      title: "Always Approve This Kind of Command?",
       message:
-        "Comandos parecidos com este passam a ser executados sem pedir sua permissão, agora e no futuro, em qualquer conversa. A regra vale para o padrão do comando, não só para este texto exato. Você pode desfazer isso no Hermes Desktop.",
-      primaryAction: { title: "Aprovar sempre", style: Alert.ActionStyle.Destructive },
+        "Commands similar to this one will run without asking your permission, now and in the future, in any conversation. The rule applies to the command pattern, not only to this exact text. You can undo this in Hermes Desktop.",
+      primaryAction: { title: "Always Approve", style: Alert.ActionStyle.Destructive },
       dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
       // Uma confirmação lembrada anularia a própria confirmação (§7.4).
       rememberUserChoice: false,
@@ -182,7 +179,7 @@ function buildMarkdown(props: ApprovalViewProps): string {
 
   const queueWarning =
     pendingCount > 1
-      ? `\n> Existem ${pendingCount} pedidos de aprovação nesta tarefa. Sua resposta vale para o mais antigo deles.\n`
+      ? `\n> There are ${pendingCount} approval requests in this task. Your answer applies to the oldest of them.\n`
       : "";
 
   if (detailsLost) return `${DETAILS_LOST}${queueWarning}\n${TIMEOUT_NOTE}\n`;
@@ -190,26 +187,25 @@ function buildMarkdown(props: ApprovalViewProps): string {
   const risk =
     fields.smart_denied === true ? RISK_SMART_DENIED : isDestructive(patternKeys) ? RISK_DESTRUCTIVE : RISK_SENSITIVE;
 
-  const command = fields.command ?? "(o Hermes não informou o comando)";
+  const command = fields.command ?? "(Hermes did not say what the command is)";
   const fence = codeFence(command);
-  const description =
-    fields.description === undefined ? "o Hermes não explicou o motivo." : inlineText(fields.description);
+  const description = fields.description === undefined ? "Hermes did not explain why." : inlineText(fields.description);
 
-  return `# O Hermes precisa da sua permissão
+  return `# Hermes needs your permission
 
-Ele quer executar este comando no seu computador:
+It wants to run this command on your computer:
 
 ${fence}
 ${command}
 ${fence}
 
-**Por que estamos perguntando:** ${description}
+**Why we are asking:** ${description}
 
 ${risk}
 
 ${approvalActionHint()}
 
-Se você não reconhece este comando ou não pediu nada parecido, escolha **Negar**.
+If you do not recognize this command, or did not ask for anything like it, choose **Deny**.
 ${queueWarning}
 ${TIMEOUT_NOTE}
 `;
@@ -240,9 +236,10 @@ export function ApprovalView(props: ApprovalViewProps) {
       onResolved(choice, response.resolved);
       await showToast({
         style: Toast.Style.Success,
-        title: choice === "deny" ? "Negado. O Hermes vai seguir sem essa ação." : "Aprovado. O Hermes vai continuar.",
+        title:
+          choice === "deny" ? "Denied. Hermes will carry on without that action." : "Approved. Hermes will continue.",
         // A API resolve a fila inteira quando os pedidos são equivalentes (§7.5).
-        message: response.resolved > 1 ? `${response.resolved} pedidos foram respondidos de uma vez.` : undefined,
+        message: response.resolved > 1 ? `${response.resolved} requests were answered at once.` : undefined,
       });
       pop();
     } catch (err) {
@@ -256,18 +253,18 @@ export function ApprovalView(props: ApprovalViewProps) {
 
   /** §6.6 item 6: `Parar` não tem `confirmAlert` — é a saída de emergência. */
   async function stop(): Promise<void> {
-    const toast = await showToast({ style: Toast.Style.Animated, title: "Parando a tarefa…" });
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Stopping the task…" });
     try {
       await stopRun(runId);
       toast.style = Toast.Style.Success;
-      toast.title = "Tarefa parada";
+      toast.title = "Task stopped";
       pop();
     } catch (err) {
       const hermes = toHermesError(err, `POST /v1/runs/${runId}/stop`);
       // Armadilha 21: 404 aqui significa "a tarefa já tinha terminado", nunca erro.
       if (hermes.httpStatus === 404) {
         toast.style = Toast.Style.Success;
-        toast.title = "Tarefa parada";
+        toast.title = "Task stopped";
         pop();
         return;
       }
@@ -292,7 +289,7 @@ export function ApprovalView(props: ApprovalViewProps) {
 
   return (
     <Detail
-      navigationTitle="Aprovação necessária"
+      navigationTitle="Approval Needed"
       isLoading={isResponding}
       markdown={buildMarkdown(props)}
       metadata={
@@ -301,19 +298,17 @@ export function ApprovalView(props: ApprovalViewProps) {
               Hermes a mexer na máquina — e era a única sem nenhum ícone ou cor. O estado
               vem do mesmo par ícone+cor de `status.ts`, no âmbar que o Hermes reserva ao
               "aja agora"; `Label` só aceita cor do enum, então o estado vira `TagList`. */}
-          <Detail.Metadata.TagList title="Estado">
+          <Detail.Metadata.TagList title="State">
             <Detail.Metadata.TagList.Item
               text={runStatusLabel("waiting_for_approval")}
               {...tagTone(RUN_STATUS_APPEARANCE.waiting_for_approval)}
             />
           </Detail.Metadata.TagList>
-          <Detail.Metadata.Label title="Tarefa" text={taskPreview} icon={Icon.Hourglass} />
-          <Detail.Metadata.Label title="Conversa" text={conversationTitle} icon={Icon.SpeechBubble} />
+          <Detail.Metadata.Label title="Task" text={taskPreview} icon={Icon.Hourglass} />
+          <Detail.Metadata.Label title="Conversation" text={conversationTitle} icon={Icon.SpeechBubble} />
           {/* `pattern_key` cru de propósito: é o identificador confiável do tipo de bloqueio. */}
-          {patternKey ? <Detail.Metadata.Label title="Tipo de bloqueio" text={patternKey} icon={Icon.Lock} /> : null}
-          {fields.request_id ? (
-            <Detail.Metadata.Label title="Identificador" text={fields.request_id.slice(0, 8)} />
-          ) : null}
+          {patternKey ? <Detail.Metadata.Label title="Block Type" text={patternKey} icon={Icon.Lock} /> : null}
+          {fields.request_id ? <Detail.Metadata.Label title="Identifier" text={fields.request_id.slice(0, 8)} /> : null}
         </Detail.Metadata>
       }
       actions={
@@ -335,12 +330,12 @@ export function ApprovalView(props: ApprovalViewProps) {
           </ActionPanel.Section>
           <ActionPanel.Section>
             {fields.command ? (
-              <Action.CopyToClipboard title="Copiar comando" content={fields.command} shortcut={SHORTCUTS.copy} />
+              <Action.CopyToClipboard title="Copy Command" content={fields.command} shortcut={SHORTCUTS.copy} />
             ) : null}
-            {/* §7.4: `Ver etapas da tarefa` faz parte da tabela de ações desta tela. */}
+            {/* §7.4: `See the Task Steps` faz parte da tabela de ações desta tela. */}
             {onShowSteps !== undefined ? (
               <Action
-                title="Ver etapas da tarefa"
+                title="See the Task Steps"
                 icon={Icon.List}
                 shortcut={SHORTCUTS.toggleSteps}
                 onAction={onShowSteps}
@@ -350,7 +345,7 @@ export function ApprovalView(props: ApprovalViewProps) {
                 uma das saídas oferecidas — senão a tela vira um beco sem saída. */}
             {showStop ? (
               <Action
-                title="Parar tarefa"
+                title="Stop the Task"
                 icon={Icon.Stop}
                 style={Action.Style.Destructive}
                 shortcut={SHORTCUTS.stop}
@@ -359,15 +354,15 @@ export function ApprovalView(props: ApprovalViewProps) {
             ) : null}
             {desktopUrl ? (
               <Action.Open
-                title="Abrir no Hermes Desktop"
+                title="Open in Hermes Desktop"
                 icon={Icon.Desktop}
                 target={desktopUrl}
                 shortcut={SHORTCUTS.openInDesktop}
               />
             ) : null}
-            {/* §5.1 regra 3 / §9.2: `Abrir configurações` existe em TODA tela. */}
+            {/* §5.1 regra 3 / §9.2: `Open Settings` existe em TODA tela. */}
             <Action
-              title="Abrir configurações"
+              title="Open Settings"
               icon={Icon.Gear}
               shortcut={SHORTCUTS.preferences}
               onAction={openExtensionPreferences}

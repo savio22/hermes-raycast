@@ -1,5 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- literais em pt-BR da UX-SPEC §2.2/§2.3. */
-
 /**
  * `Renomear conversa` (UX-SPEC §2.2 e §2.3) — um formulário só para as três telas que
  * oferecem a ação (lista de conversas, detalhe da conversa e a tela de resposta do
@@ -48,8 +46,8 @@ export function RenameSessionForm({
     validation: {
       titulo: (value) => {
         const title = (value ?? "").trim();
-        if (title === "") return "Escreva um nome para a conversa.";
-        if (title.length > MAX_TITLE_LENGTH) return `Escolha um nome mais curto: até ${MAX_TITLE_LENGTH} caracteres.`;
+        if (title === "") return "Write a name for the conversation.";
+        if (title.length > MAX_TITLE_LENGTH) return `Pick a shorter name: up to ${MAX_TITLE_LENGTH} characters.`;
         return undefined;
       },
     },
@@ -59,7 +57,7 @@ export function RenameSessionForm({
       try {
         const { session: updated } = await updateSession(session.id, { title: values.titulo.trim() });
         toast.style = Toast.Style.Success;
-        toast.title = "Conversa renomeada";
+        toast.title = "Conversation Renamed";
         onRenamed?.(updated);
         pop();
       } catch (err) {
@@ -79,25 +77,25 @@ export function RenameSessionForm({
 
   return (
     <Form
-      navigationTitle="Renomear conversa"
+      navigationTitle="Rename Conversation"
       isLoading={isSaving}
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Salvar novo nome" icon={Icon.Check} onSubmit={handleSubmit} />
+          <Action.SubmitForm title="Save New Name" icon={Icon.Check} onSubmit={handleSubmit} />
           <OpenPreferencesAction />
         </ActionPanel>
       }
     >
       <Form.TextField
         {...itemProps.titulo}
-        title="Nome da conversa"
-        placeholder="Ex.: Resumo do relatório de agosto"
-        info="Cada conversa do Hermes precisa de um nome diferente de todas as outras."
+        title="Conversation Name"
+        placeholder="E.g. Summary of the August report"
+        info="Every Hermes conversation needs a name different from all the others."
         autoFocus
       />
       <Form.Description
-        title="Onde isso aparece"
-        text={`O novo nome aparece aqui e no Hermes Desktop. ${SYNC_PROMISE}`}
+        title="Where This Shows Up"
+        text={`The new name shows up here and in Hermes Desktop. ${SYNC_PROMISE}`}
       />
     </Form>
   );

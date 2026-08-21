@@ -60,8 +60,8 @@ test("contadores e rótulos do seletor ficam compactos sem perder a data", () =>
   assert.equal(compactConversationCount(1), "1 conversation");
   assert.equal(compactConversationCount(12), "12 conversations");
 
-  const label = conversationDropdownLabel("Uma conversa com um título muito, muito comprido", "há 2 h");
-  assert.equal(label.endsWith(" · há 2 h"), true);
+  const label = conversationDropdownLabel("Uma conversa com um título muito, muito comprido", "2 h ago");
+  assert.equal(label.endsWith(" · 2 h ago"), true);
   assert.equal(Array.from(label).length <= 56, true);
 });
 
@@ -167,7 +167,7 @@ test("manifesto expõe comandos úteis por nomes e palavras que o usuário procu
 });
 
 test("Actions oferece um caminho explícito para o comando real de modelos", () => {
-  assert.match(commonSource, /title="Escolher modelo"/);
+  assert.match(commonSource, /title="Choose Model"/);
   assert.match(commonSource, /name:\s*["']models["']/);
 });
 
@@ -180,7 +180,7 @@ test("aprovação explica que as escolhas ficam em Actions e não inventa botõe
 });
 
 test("aprovação sem detalhes mantém somente a saída segura e filtra choices próprias", () => {
-  assert.doesNotMatch(approvalSource, /Aprovar mesmo sem ver os detalhes/);
+  assert.doesNotMatch(approvalSource, /Approve Without Seeing the Details/i);
   assert.match(approvalSource, /Object\.hasOwn\(CHOICE_SPECS, c\)/);
 });
 
@@ -213,7 +213,7 @@ test("o passo a passo manual não nomeia programa do Windows em texto fixo", () 
 
   // Os nomes saem de `platformCopy()`; um literal aqui voltaria a mandar o usuário de Mac
   // abrir o Bloco de Notas.
-  for (const proibido of ["Bloco de Notas", "Explorador", "TextEdit", "Finder", "Ctrl+", "Cmd+"]) {
+  for (const proibido of ["Notepad", "File Explorer", "TextEdit", "Finder", "Ctrl+", "Cmd+"]) {
     assert.ok(!literais.includes(proibido), `manualMarkdown não pode fixar "${proibido}" no texto de tela`);
   }
   assert.match(corpo, /copy\.plainTextEditor/);
