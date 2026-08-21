@@ -14,8 +14,13 @@ checagem automatizada não substitui essa validação manual.
 Para abrir o comando direto, sem procurar na busca:
 
 ```bash
-powershell -c "Start-Process 'raycast://extensions/sam/hermes/ask-hermes'"
+powershell -c "Start-Process 'raycast://extensions/savio22/hermes/ask-hermes'"
 ```
+
+O `savio22` aí é o `author` do `package.json`, que virou o namespace do deeplink. Ele mudou de
+`sam` para `savio22` em 2026-08-21, para bater com a conta da Raycast Store. **Se um `npm run dev`
+antigo ainda estiver registrado, o Raycast pode continuar atendendo pelo caminho velho e ignorar o
+novo** — rode `npm run dev` de novo antes de concluir que o deeplink quebrou.
 
 ---
 
