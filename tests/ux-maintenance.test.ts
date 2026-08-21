@@ -129,11 +129,12 @@ test("o bloco Windows nunca usa cmd/opt e o bloco macOS nunca usa alt/windows", 
   }
 });
 
-test("no macOS `Parar` divide a tecla com `Common.Pin`, e as duas nunca se encontram", () => {
-  // `stop` é Cmd+Shift+P no macOS, que é também o `Common.Pin`. A §9.3 permite isso
-  // enquanto os dois significados não aparecerem na mesma tela: `Fixar conversa` só existe
-  // na lista de conversas, que não tem execução para parar. Este teste é o que impede
-  // uma edição futura de colocar `Parar` lá dentro sem perceber a colisão.
+test("a lista de conversas fixa, e não tem execução para parar", () => {
+  // Este teste já foi outra coisa: guardava uma colisão entre `stop` e `Common.Pin` no
+  // macOS que não existe — `Common.Pin` é `Cmd+.`, não `Cmd+Shift+P`. Colisão de teclas
+  // agora é assunto de `tests/shortcuts.test.ts`, que compara teclas de verdade em vez de
+  // texto. O que sobra aqui é a afirmação de tela, que continua valendo por si: a lista de
+  // conversas não executa nada, então `Parar` não tem o que fazer nela.
   assert.match(sessionsSource, /SHORTCUTS\.pin/);
   assert.doesNotMatch(sessionsSource, /SHORTCUTS\.stop/);
 });

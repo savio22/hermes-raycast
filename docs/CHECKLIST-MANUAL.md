@@ -89,19 +89,32 @@ Sem tocar no mouse, em nenhum momento:
 - [ ] o Toast com ação (`Esta conversa já está no Hermes Desktop`) responde ao atalho sem tirar o
       foco da lista
 
-**Refaça este item no Windows depois da mudança para macOS.** Os atalhos customizados deixaram de
-ser um objeto simples e passaram a ser declarados por sistema
-(`perPlatform({ Windows }, { macOS })`, em `src/components/shortcuts.ts`). As teclas do Windows não
-mudaram — mas quem resolve a forma nova é o aplicativo do Raycast, e um atalho que ele não entenda é
-**ignorado em silêncio**, sem erro e sem aviso. Basta disparar alguns pelo teclado para saber:
+**A forma `{ Windows, macOS }` já não é suspeita — foi conferida no runtime, não no teclado.**
+Os atalhos customizados deixaram de ser um objeto simples e passaram a ser declarados por sistema
+(`perPlatform({ Windows }, { macOS })`, em `src/components/shortcuts.ts`). A pergunta era se o
+aplicativo do Raycast 2.0.3 honra essa forma, já que um atalho que ele não entenda é ignorado em
+silêncio. Honra, e a prova está no arquivo que o próprio app injeta quando a extensão faz
+`import { Keyboard } from "@raycast/api"`:
+
+    C:\Program Files\WindowsApps\Raycast.Raycast_2.0.3.0_x64__qypenmj9wpt2a      Raycastpi
+
+ode_modules\@raycastpi\index.js
+
+Nele, (a) o validador de atalho aceita explicitamente `{ modifiers, key }`, `{ macOS, Windows }` e
+`{ macOS, windows }`; (b) **todos** os `Keyboard.Shortcut.Common.*` são declarados nessa mesma forma
+`{ macOS, Windows }` — ou seja, é o caminho que o app usa para si mesmo; (c) a comparação com os
+atalhos reservados desmonta os dois blocos. Não há como a forma ser ignorada sem que os `Common.*`
+parem de funcionar junto.
+
+Ainda assim vale disparar meia dúzia pelo teclado, porque isso custa um minuto e cobre o que
+nenhuma leitura cobre — o atalho chegar à ação certa:
 
 - [ ] `Ctrl+T` (`Ver etapas`), `Ctrl+Shift+P` (`Parar`) e `Ctrl+Shift+Enter`
       (`Continuar esta conversa`) continuam funcionando
 - [ ] `Ctrl+Shift+A` (`Abrir configurações`) e `Ctrl+Alt+C` (`Copiar detalhes técnicos`) idem
 - [ ] `Alt+Shift+E` / `Alt+Shift+S` na tela de aprovação idem
-- [ ] se algum tiver sumido do painel ou parado de responder, o problema é a forma
-      `{ Windows, macOS }` nesta versão do Raycast — e a correção é voltar `shortcuts.ts` para
-      objetos simples só no Windows, registrando aqui a versão do Raycast em que falhou
+- [ ] se algum tiver sumido do painel ou parado de responder, registre aqui a versão do Raycast:
+      seria a evidência contra a leitura acima, e aí sim `shortcuts.ts` volta a objetos simples
 
 ---
 
@@ -242,10 +255,16 @@ Todos os atalhos customizados foram escolhidos lendo as tabelas do Raycast, não
 interessa aqui é colisão: um atalho que o sistema ou o Raycast já reserva simplesmente não funciona,
 e nada avisa.
 
+**Metade disso já está resolvida por teste.** `tests/shortcuts.test.ts` resolve os 28 atalhos para
+teclas concretas nos dois sistemas e reprova se algum encostar noutro ou na lista `Reserved` do
+Raycast — que veio do runtime do app, não da documentação. O que sobra para o Mac é o que aquela
+lista **não** cobre: as teclas que o macOS reserva para si, fora do Raycast.
+
 - [ ] `Cmd+T` (`Ver etapas` / `Ver resposta`) dentro de uma execução.
 - [ ] `Cmd+Shift+Enter` (`Continuar esta conversa`) na lista de conversas.
-- [ ] `Cmd+Shift+P` (`Parar`) numa execução em andamento. **Atenção:** é a mesma tecla do
-      `Common.Pin`; confirme que numa tela de execução ela para, e na lista de conversas ela fixa.
+- [ ] `Cmd+Shift+P` (`Parar`) numa execução em andamento. (A versão anterior deste passo mandava
+      confirmar que era a mesma tecla do `Common.Pin`. Não é: `Common.Pin` é `Cmd+.`. Ignore
+      qualquer nota antiga sobre essa colisão — ela nunca existiu.)
 - [ ] `Cmd+Shift+H` (`Carregar parte anterior da conversa`) numa conversa longa — `Cmd+H` sozinho
       esconde aplicativo no macOS, então é o mais suspeito da lista.
 - [ ] `Cmd+Opt+C` (`Copiar detalhes técnicos`) numa tela de erro.

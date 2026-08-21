@@ -15,10 +15,18 @@
  * monta, e é por isso que a mesma constante serve às duas plataformas sem ramo em runtime.
  *
  * `Keyboard.Shortcut.Common.*` é preferido onde existe equivalente semântico, porque o
- * próprio Raycast já traduz esses para as teclas de cada sistema (07 §8.4): `Common.Copy`
- * é `Ctrl+Shift+C` no Windows e `Cmd+Shift+C` no macOS; `Common.New` é `Ctrl+N`/`Cmd+N`;
+ * próprio Raycast já traduz esses para as teclas de cada sistema (07 §8.4). Os valores,
+ * Windows/macOS, lidos do runtime que o app 2.0.3 injeta — não da documentação:
+ * `Common.Copy` é `Ctrl+Shift+C`/`Cmd+Shift+C`; `Common.New`, `Ctrl+N`/`Cmd+N`;
  * `Common.Open`, `Ctrl+O`/`Cmd+O`; `Common.Refresh`, `Ctrl+R`/`Cmd+R`; `Common.Edit`,
- * `Ctrl+E`/`Cmd+E`; `Common.CopyPath`, `Alt+Shift+C`/`Cmd+Shift+,`.
+ * `Ctrl+E`/`Cmd+E`; `Common.CopyPath`, `Alt+Shift+C`/`Cmd+Ctrl+C`; `Common.Pin`,
+ * `Ctrl+.`/`Cmd+.`; `Common.Remove`, `Ctrl+D`/`Ctrl+X` — sim, `Ctrl+X` no Mac, é escolha
+ * do Raycast e a única exceção à regra do `cmd` acima.
+ *
+ * Esses valores NÃO são legíveis pelo `tsc` nem pelo `node --test`: o `@raycast/api` do
+ * `node_modules` só tem tipos. Estão transcritos, com a origem anotada, em
+ * `tests/helpers/raycast-api-stub.mjs`, e `tests/shortcuts.test.ts` resolve a tabela toda
+ * contra eles. Um comentário aqui não é fonte da verdade; aquele teste é.
  *
  * O mapeamento macOS **não** é uma troca cega de `ctrl` por `cmd`: `alt` vira `opt` (é a
  * mesma tecla física no Mac, mas o nome que a API espera é `opt`), e cada combinação foi
@@ -53,11 +61,11 @@ export const SHORTCUTS = {
   /**
    * `Parar`.
    *
-   * No macOS `Cmd+Shift+P` é também o `Common.Pin`, que esta extensão usa em
-   * `Fixar conversa`. A §9.3 já admite a mesma tecla com dois significados quando eles
-   * nunca aparecem na mesma tela, e é o caso: `Fixar conversa` só existe na lista de
-   * conversas (`sessions.tsx`), que não tem execução para parar. `tests/ux-maintenance`
-   * trava essa separação, para que ela não se perca numa edição futura.
+   * Não divide tecla com nada. Uma versão anterior deste comentário afirmava que
+   * `Cmd+Shift+P` era também o `Common.Pin` do macOS e construía uma justificativa de §9.3
+   * em cima disso; `Common.Pin` é `Cmd+.`. A colisão nunca existiu, e o que a checava era
+   * texto, não teclas. Quem confere agora é `tests/shortcuts.test.ts`, resolvendo os dois
+   * atalhos para teclas concretas nos dois sistemas.
    */
   stop: perPlatform({ modifiers: ["ctrl", "shift"], key: "p" }, { modifiers: ["cmd", "shift"], key: "p" }),
   /** `Orientar execução`. */
@@ -96,7 +104,7 @@ export const SHORTCUTS = {
   approveSession: perPlatform({ modifiers: ["alt", "shift"], key: "e" }, { modifiers: ["opt", "shift"], key: "e" }),
   /** `Aprovar sempre este tipo de comando` — ação destrutiva. */
   approveAlways: perPlatform({ modifiers: ["alt", "shift"], key: "s" }, { modifiers: ["opt", "shift"], key: "s" }),
-  /** `Fixar conversa` / `Desafixar conversa` — `Common.Pin` é `Ctrl+.`/`Cmd+Shift+P`. */
+  /** `Fixar conversa` / `Desafixar conversa` — `Common.Pin` é `Ctrl+.`/`Cmd+.`. */
   pin: Keyboard.Shortcut.Common.Pin,
   /** `Arquivar conversa` / `Desarquivar conversa`. */
   archive: perPlatform({ modifiers: ["alt"], key: "a" }, { modifiers: ["opt"], key: "a" }),
