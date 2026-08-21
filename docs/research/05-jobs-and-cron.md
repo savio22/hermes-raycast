@@ -6,16 +6,16 @@ Research target: the `/api/jobs*` and `/api/cron/fire` HTTP surface of the Herme
 
 | Short name | Absolute path |
 |---|---|
-| `api_server.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\gateway\platforms\api_server.py` |
-| `cron/jobs.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\cron\jobs.py` |
-| `cron/scheduler.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\cron\scheduler.py` |
-| `cron/scheduler_provider.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\cron\scheduler_provider.py` |
-| `cron/executions.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\cron\executions.py` |
-| `hermes_time.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\hermes_time.py` |
-| `tools/cronjob_tools.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\tools\cronjob_tools.py` |
-| `chronos/verify.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\plugins\cron_providers\chronos\verify.py` |
-| `test_api_server_jobs.py` | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\tests\gateway\test_api_server_jobs.py` |
-| chronos contract doc | `C:\Users\SAM\AppData\Local\hermes\hermes-agent\docs\chronos-managed-cron-contract.md` |
+| `api_server.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\gateway\platforms\api_server.py` |
+| `cron/jobs.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\cron\jobs.py` |
+| `cron/scheduler.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\cron\scheduler.py` |
+| `cron/scheduler_provider.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\cron\scheduler_provider.py` |
+| `cron/executions.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\cron\executions.py` |
+| `hermes_time.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\hermes_time.py` |
+| `tools/cronjob_tools.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\tools\cronjob_tools.py` |
+| `chronos/verify.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\plugins\cron_providers\chronos\verify.py` |
+| `test_api_server_jobs.py` | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\tests\gateway\test_api_server_jobs.py` |
+| chronos contract doc | `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\docs\chronos-managed-cron-contract.md` |
 
 **Live probes** were done against the running server on `http://127.0.0.1:8642` with `curl`, GET only. Server banner: `Server: Python/3.11 aiohttp/3.14.3`, `{"status": "ok", "platform": "hermes-agent", "version": "0.20.4"}`.
 
@@ -251,7 +251,7 @@ job = {
 | `preflight_alerted`, `drift_alerted`, `last_fire_error` | present only transiently | popped on a successful run (`cron/jobs.py:2444-2450`). |
 | `latest_execution` | object or `null` | **Only added by `list_jobs`** — see §3.2. |
 
-**Important:** these fields are *not guaranteed present*. Older records on disk lack fields added later. Verified on the real local store `C:\Users\SAM\AppData\Local\hermes\cron\jobs.json`: its single job record has these keys and **no** `failure_streak`, `monitor_script`, `monitor_url`, `monitor_state`, `attach_to_session`:
+**Important:** these fields are *not guaranteed present*. Older records on disk lack fields added later. Verified on the real local store `C:\Users\<usuario>\AppData\Local\hermes\cron\jobs.json`: its single job record has these keys and **no** `failure_streak`, `monitor_script`, `monitor_url`, `monitor_state`, `attach_to_session`:
 
 ```json
 ["id","name","prompt","skills","skill","model","provider","provider_snapshot","model_snapshot","base_url","script","no_agent","context_from","schedule","schedule_display","repeat","enabled","state","paused_at","paused_reason","created_at","next_run_at","last_run_at","last_status","last_error","last_delivery_error","deliver","origin","enabled_toolsets","workdir","fire_claim"]

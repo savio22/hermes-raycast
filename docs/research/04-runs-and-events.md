@@ -1,7 +1,7 @@
 # Hermes RUNS API + EVENT STREAM — ground truth for the Raycast extension
 
 **Research date:** 2026-08-19
-**Source of truth:** `C:\Users\SAM\AppData\Local\hermes\hermes-agent` (read-only reference).
+**Source of truth:** `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent` (read-only reference).
 Primary file: `gateway/platforms/api_server.py` (7638 lines).
 Test file: `tests/gateway/test_api_server_runs.py` (802 lines).
 Live probes against `http://127.0.0.1:8642` (Hermes API server, aiohttp 3.14.3, Python 3.11, Hermes `0.20.4`).
@@ -82,11 +82,11 @@ OpenAI-style envelope used by every other error (§0.4).
 
 **Where the key lives (path + name only, never the value):**
 
-* Env / dotenv file: `C:\Users\SAM\AppData\Local\hermes\.env`, variable name **`API_SERVER_KEY`**
+* Env / dotenv file: `C:\Users\<usuario>\AppData\Local\hermes\.env`, variable name **`API_SERVER_KEY`**
   (present at line 478 of that file).
 * Read in code at `api_server.py:1383`:
   `self._api_key: str = extra.get("key", _get_scoped_secret("API_SERVER_KEY", ""))` — i.e. the
-  config key `platforms.api_server.key` in `C:\Users\SAM\AppData\Local\hermes\config.yaml` takes
+  config key `platforms.api_server.key` in `C:\Users\<usuario>\AppData\Local\hermes\config.yaml` takes
   precedence, otherwise the scoped secret `API_SERVER_KEY`.
 * The server refuses to start without it, including on loopback (`api_server.py:7388-7431`),
   minimum length 16 (`api_server.py:7415`).

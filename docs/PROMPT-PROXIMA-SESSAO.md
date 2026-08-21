@@ -1,5 +1,5 @@
 Continue a extensão Raycast do Hermes, em
-C:\Users\SAM\Desktop\Projetos\Plugin RayCast
+C:\Users\<usuario>\Desktop\Projetos\Plugin RayCast
 
 ## O QUE JÁ ESTÁ PRONTO
 
@@ -117,9 +117,9 @@ Para abrir um comando sem procurar na busca:
 ## AMBIENTE
 
 - Hermes v0.20.4, com código-fonte completo em
-  `C:\Users\SAM\AppData\Local\hermes\hermes-agent`. É melhor que a documentação pública.
+  `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent`. É melhor que a documentação pública.
 - Gateway ao vivo em `http://127.0.0.1:8642`.
-- A chave está em `C:\Users\SAM\AppData\Local\hermes\.env`, nome `API_SERVER_KEY`.
+- A chave está em `C:\Users\<usuario>\AppData\Local\hermes\.env`, nome `API_SERVER_KEY`.
   Pode lê-la para variável de shell; **nunca** imprima, registre nem escreva o valor.
 - Raycast Windows 2.0.3, Node 22.22.2 (o do Raycast), React 19.2.1.
 

@@ -26,14 +26,14 @@
 | Bundled Node.js for extensions | **22.22.2** | `(Get-Item "…\Raycast\backend\node.exe").VersionInfo.ProductVersion` → `22.22.2` |
 | Bundled React (runtime) | **19.2.1** | string `"19.2.1"` in `…\Raycast\api\node_modules\react\react.production.js` |
 | Bundled react-reconciler | 19.0.0 | string `"19.0.0"` in `…\Raycast\api\node_modules\react-reconciler\react-reconciler.production.js` |
-| Raycast user data root | `C:\Users\SAM\AppData\Local\Raycast\` | dir listing |
-| Local/dev extension root (what the app reads) | `C:\Users\SAM\.config\raycast\extensions\` | `function Au(){return Zs.join(TXt(),".config","raycast")}` and `function $t(e){return Zs.join(Au(),"extensions",e.uuid\|\|e.name)}` in `…\Raycast\backend\index.mjs` |
-| Per-extension support dir (`environment.supportPath`) | `C:\Users\SAM\AppData\Local\Raycast\extensions\<uuid>\` | dir listing; matches `function ns(e){return Zs.join(te.SUPPORT_DIR,"extensions",e.uuid\|\|e.name)}` in `backend\index.mjs` |
+| Raycast user data root | `C:\Users\<usuario>\AppData\Local\Raycast\` | dir listing |
+| Local/dev extension root (what the app reads) | `C:\Users\<usuario>\.config\raycast\extensions\` | `function Au(){return Zs.join(TXt(),".config","raycast")}` and `function $t(e){return Zs.join(Au(),"extensions",e.uuid\|\|e.name)}` in `…\Raycast\backend\index.mjs` |
+| Per-extension support dir (`environment.supportPath`) | `C:\Users\<usuario>\AppData\Local\Raycast\extensions\<uuid>\` | dir listing; matches `function ns(e){return Zs.join(te.SUPPORT_DIR,"extensions",e.uuid\|\|e.name)}` in `backend\index.mjs` |
 | `Cache` on-disk directory name | `com.raycast.api.cache` (inside supportPath) | observed dir `…\AppData\Local\Raycast\extensions\c460fc92-…\com.raycast.api.cache\`; string in `…\Raycast\api\node_modules\@raycast\api\index.js` |
 | Latest `@raycast/api` on npm | **2.0.3** (published 2026-08-19T13:22:18Z) | `npm view @raycast/api version` → `2.0.3`; `npm view @raycast/api dist-tags` → `{"latest":"2.0.3","latest-v0":"0.71.7"}` |
 | Previous 1.x line | `1.104.25` (2026-08-18) | `npm view @raycast/api time` |
 | Latest `@raycast/utils` on npm | **2.3.0** | `npm view @raycast/utils version` |
-| `@raycast/api` versions actually used by the 8 extensions installed on this Windows machine | `^1.77.1`, `^1.100.2`, `^1.104.2`, `^1.104.3`, `^1.104.6`, `^1.104.8`, `^1.104.13`, `^1.104.19` — **none is 2.x** | grep of each `C:\Users\SAM\.config\raycast\extensions\<uuid>\package.json` |
+| `@raycast/api` versions actually used by the 8 extensions installed on this Windows machine | `^1.77.1`, `^1.100.2`, `^1.104.2`, `^1.104.3`, `^1.104.6`, `^1.104.8`, `^1.104.13`, `^1.104.19` — **none is 2.x** | grep of each `C:\Users\<usuario>\.config\raycast\extensions\<uuid>\package.json` |
 | `@raycast/api` pinned by the scaffold template shipped **inside** Raycast 2.0.3 | `"@raycast/api": "^1.104.20"`, `"@raycast/utils": "^2.2.7"` | `…\Raycast\api\template\package.json` |
 
 > **Version guidance:** the template that Raycast for Windows 2.0.3 itself writes when you scaffold an
@@ -51,7 +51,7 @@
 | Official manifest JSON Schema | `https://www.raycast.com/schemas/extension.json` (`$id: https://raycast.com/schemas/extension.json`) — this is the schema `ray lint` / `ray validate` use (`--schema` flag overrides it) |
 | Scaffold template shipped with the Windows app | `C:\Program Files\WindowsApps\Raycast.Raycast_2.0.3.0_x64__qypenmj9wpt2a\Raycast\api\template\` |
 | Raycast-provided runtime `@raycast/api` (what extensions actually load) | `…\Raycast\api\node_modules\@raycast\api\index.js` (986 KB, single file) |
-| Symlink extensions resolve `node_modules` through | `C:\Users\SAM\.config\raycast\extensions\node_modules` → `C:\Program Files\WindowsApps\Raycast.Raycast_2.0.3.0_x64__qypenmj9wpt2a\Raycast\api\node_modules` |
+| Symlink extensions resolve `node_modules` through | `C:\Users\<usuario>\.config\raycast\extensions\node_modules` → `C:\Program Files\WindowsApps\Raycast.Raycast_2.0.3.0_x64__qypenmj9wpt2a\Raycast\api\node_modules` |
 | TypeScript definitions (API surface) | `@raycast/api` npm tarball → `types/index.d.ts` (9519 lines in 2.0.3, 9100 in 1.104.25) |
 | `ray` CLI | `@raycast/api` npm tarball → `bin/run.js` (+ `bin/run.cmd` for Windows), `dist/commands/*` |
 | Docs index | `https://developers.raycast.com/llms.txt` (every page also available as `<url>.md`) |
@@ -516,7 +516,7 @@ Schema (`extension.json` → `properties.platforms`), literal:
 Independent confirmations:
 
 1. **On-disk, real extensions installed on this Windows machine** — e.g.
-   `C:\Users\SAM\.config\raycast\extensions\20c4bfd5-bd88-44e4-a270-815dac42e0f4\package.json`:
+   `C:\Users\<usuario>\.config\raycast\extensions\20c4bfd5-bd88-44e4-a270-815dac42e0f4\package.json`:
    ```json
    "platforms": [
      "macOS",
@@ -1195,7 +1195,7 @@ Evidence it is implemented natively on Raycast for **Windows** 2.0.3:
    `getSelectedText` request handler; also used by Raycast's own built-in "Selected Text"
    AI context extension (`static EXTENSION_ID = "selected-text"`, `displayName: "Selected Text"`).
 3. **A Store extension installed on this Windows machine actually calls it.**
-   `C:\Users\SAM\.config\raycast\extensions\65e6105d-7b4f-40fc-9a2b-80041aabaaa2\` — `remove-paywall`,
+   `C:\Users\<usuario>\.config\raycast\extensions\65e6105d-7b4f-40fc-9a2b-80041aabaaa2\` — `remove-paywall`,
    manifest `"platforms": ["macOS","Windows"]`, bundled `remove-paywall.js` contains:
    ```js
    async function h(e){let t;if(e)t=e;else try{t=await (0,l.getSelectedText)()}catch{t=await l.Clipboard.readText()}…}
@@ -1282,7 +1282,7 @@ Facts:
   Docs confirm: *"The default capacity is 10 MB."* (`api-reference/cache.md` line 171).
 * Stored on disk under the extension's support directory in `com.raycast.api.cache`.
   **Verified on this machine:**
-  `C:\Users\SAM\AppData\Local\Raycast\extensions\c460fc92-202d-49bf-b9c4-e486b58a0189\com.raycast.api.cache\`
+  `C:\Users\<usuario>\AppData\Local\Raycast\extensions\c460fc92-202d-49bf-b9c4-e486b58a0189\com.raycast.api.cache\`
   containing `index\journal`, `index\<key-id>`, and `<sha1>\<data-id>` blobs. Example `index\journal`
   content: `1\nlast-fetch 1AJtfxmqKZJ-wyf_5KIxX 49`, and a value blob literally:
   `"__raycast_cached_date__2026-04-27T16:38:04.120Z"`.
@@ -1676,7 +1676,7 @@ function vD(e,t,n){ return Zs.join(e, t === "tool" ? "tools" : "", `${n}.js`) }
 function MXt(){ return Zs.join(Au(), "node-compile-cache") }
 function vqn(){ return p3e.join(xqi(), ".config", "raycast-x") }      // legacy Windows-1.x root, migrated
 ```
-**Verified on disk** — `C:\Users\SAM\.config\raycast\`:
+**Verified on disk** — `C:\Users\<usuario>\.config\raycast\`:
 ```
 .config\raycast\
 ├── extensions\
@@ -1721,11 +1721,11 @@ case "flavorName":
 
 | Package | invocation | resulting scheme | resulting config/extension dir |
 | --- | --- | --- | --- |
-| `@raycast/api@2.0.3` | default (no `--target`) | `raycast-development` | `C:\Users\SAM\.config\raycast-development` ❌ |
-| `@raycast/api@2.0.3` | `--target release` | `raycast` | `C:\Users\SAM\.config\raycast` ✅ |
-| `@raycast/api@2.0.3` | `RAY_Target=x` | `raycast` | `C:\Users\SAM\.config\raycast` ✅ |
-| `@raycast/api@1.104.25` | default | `raycast` | `C:\Users\SAM\.config\raycast-x` (matches Raycast **for Windows 1.x**) |
-| `@raycast/api@1.104.25` | `--target release` | `raycast` | `C:\Users\SAM\.config\raycast` ✅ |
+| `@raycast/api@2.0.3` | default (no `--target`) | `raycast-development` | `C:\Users\<usuario>\.config\raycast-development` ❌ |
+| `@raycast/api@2.0.3` | `--target release` | `raycast` | `C:\Users\<usuario>\.config\raycast` ✅ |
+| `@raycast/api@2.0.3` | `RAY_Target=x` | `raycast` | `C:\Users\<usuario>\.config\raycast` ✅ |
+| `@raycast/api@1.104.25` | default | `raycast` | `C:\Users\<usuario>\.config\raycast-x` (matches Raycast **for Windows 1.x**) |
+| `@raycast/api@1.104.25` | `--target release` | `raycast` | `C:\Users\<usuario>\.config\raycast` ✅ |
 
 (1.104.25 has explicit Windows handling. Its `dist/config.js` ships **minified**, so the literal
 text is — *(quote corrected to the real shipped bytes, 2026-08-19)*:
@@ -1829,8 +1829,8 @@ Not a limitation but worth knowing: `@raycast/utils` is explicitly cross-platfor
 
 ## 18. Quick reference: real installed Windows extensions used as evidence
 
-All under `C:\Users\SAM\.config\raycast\extensions\` (bundle) with support dirs under
-`C:\Users\SAM\AppData\Local\Raycast\extensions\`:
+All under `C:\Users\<usuario>\.config\raycast\extensions\` (bundle) with support dirs under
+`C:\Users\<usuario>\AppData\Local\Raycast\extensions\`:
 
 | UUID dir | `name` | `platforms` | `@raycast/api` | Notable |
 | --- | --- | --- | --- | --- |

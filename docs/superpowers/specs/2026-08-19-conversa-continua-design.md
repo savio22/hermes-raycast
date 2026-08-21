@@ -36,7 +36,7 @@ Isto é lacuna de produto, não defeito. Nada na UX-SPEC prevê vários turnos n
 ## 2. A referência: o que o HUD mode do Hermes realmente é
 
 O usuário citou o "HUD mode" do Hermes como o modelo. Fomos ler o código-fonte
-(`C:\Users\SAM\AppData\Local\hermes\hermes-agent`). A definição literal:
+(`C:\Users\<usuario>\AppData\Local\hermes\hermes-agent`). A definição literal:
 
 > "HUD mode — the chrome-free floating chat. A transparent, frameless, always-on-top
 > window showing nothing but the REAL composer with the reply scrolling above it, so

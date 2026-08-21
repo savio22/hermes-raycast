@@ -900,7 +900,7 @@ Ações: `Continuar` (`Enter`, volta ao comando original e o executa),
 
 Procurei em:
 
-C:\Users\SAM\AppData\Local\hermes
+C:\Users\<usuario>\AppData\Local\hermes
 
 e não achei o arquivo de configuração do Hermes.
 
@@ -918,7 +918,7 @@ Ações: `Configurar manualmente` (`Enter`), `Tentar de novo` (`Ctrl+R`),
 
 O arquivo de configuração existe, mas não tem a linha da chave de acesso.
 
-Arquivo: C:\Users\SAM\AppData\Local\hermes\.env
+Arquivo: C:\Users\<usuario>\AppData\Local\hermes\.env
 Linha procurada: uma linha que começa com API_SERVER_KEY=
 
 Abra o Hermes Desktop uma vez e deixe o Hermes ligar. Ele cria essa chave sozinho na primeira execução.
@@ -964,7 +964,7 @@ Você vai copiar uma linha de um arquivo de texto. Não precisa de terminal.
 
 Use a ação "Abrir a pasta do Hermes" aqui embaixo. O Explorador de Arquivos abre em:
 
-C:\Users\SAM\AppData\Local\hermes
+C:\Users\<usuario>\AppData\Local\hermes
 
 **2. Abra o arquivo chamado `.env`**
 

@@ -2,8 +2,8 @@
 
 **Research date:** 2026-08-19
 **Hermes version observed live:** `0.20.4` (from `GET http://127.0.0.1:8642/health`)
-**Source tree (read-only reference):** `C:\Users\SAM\AppData\Local\hermes\hermes-agent`
-**Primary file:** `C:\Users\SAM\AppData\Local\hermes\hermes-agent\gateway\platforms\api_server.py`
+**Source tree (read-only reference):** `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent`
+**Primary file:** `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\gateway\platforms\api_server.py`
 
 > Every claim below carries a `file:line` citation or is labeled as an observed HTTP response.
 > Anything not verifiable is explicitly marked **UNVERIFIED**.
@@ -66,8 +66,8 @@ not from live authenticated calls. Each is labeled.
 
 | What | Location | Key name |
 |---|---|---|
-| Secret value | `C:\Users\SAM\AppData\Local\hermes\.env` | `API_SERVER_KEY` (verified present; value never opened) |
-| Optional config override | `C:\Users\SAM\AppData\Local\hermes\config.yaml` | `platforms.api_server.extra.key` (**not set** in the live config) |
+| Secret value | `C:\Users\<usuario>\AppData\Local\hermes\.env` | `API_SERVER_KEY` (verified present; value never opened) |
+| Optional config override | `C:\Users\<usuario>\AppData\Local\hermes\config.yaml` | `platforms.api_server.extra.key` (**not set** in the live config) |
 
 Live config block, verified (contains no secret):
 
@@ -1581,7 +1581,7 @@ literals and validation quoted below live in its synchronous body `_set_model_as
 **This route is NOT in `_http_route_table()`.** It lives on the Hermes **dashboard** FastAPI server.
 **UNVERIFIED:** the dashboard's port and auth on this machine (not probed).
 
-Writes `~/.hermes/config.yaml` (here: `C:\Users\SAM\AppData\Local\hermes\config.yaml`) and applies
+Writes `~/.hermes/config.yaml` (here: `C:\Users\<usuario>\AppData\Local\hermes\config.yaml`) and applies
 to **new sessions only** — the running chat is unaffected (docstring `web_server.py:7214-7218`).
 
 **Request body** — Pydantic `ModelAssignment` (`hermes_cli/web_models.py:122-148`):
@@ -1756,7 +1756,7 @@ Do not send `API_SERVER_KEY` to those.
 
 ```
 BASE = http://127.0.0.1:8642
-AUTH = Authorization: Bearer <API_SERVER_KEY from C:\Users\SAM\AppData\Local\hermes\.env>
+AUTH = Authorization: Bearer <API_SERVER_KEY from C:\Users\<usuario>\AppData\Local\hermes\.env>
 
 Bootstrap:
   GET  /health                    → no auth; {"status","platform","version"}

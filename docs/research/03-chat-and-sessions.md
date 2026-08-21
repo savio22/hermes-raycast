@@ -1,6 +1,6 @@
 # Hermes CHAT & SESSIONS API — ground truth for the Raycast extension
 
-**Source of truth:** `C:\Users\SAM\AppData\Local\hermes\hermes-agent\gateway\platforms\api_server.py` (7638 lines, aiohttp).
+**Source of truth:** `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent\gateway\platforms\api_server.py` (7638 lines, aiohttp).
 All `api_server.py:NNNN` citations below refer to that file unless another path is given.
 
 **Live server observed:** `http://127.0.0.1:8642` — `GET /health` → `{"status": "ok", "platform": "hermes-agent", "version": "0.20.4"}`.
@@ -26,13 +26,13 @@ Port `8644` is a *different* adapter (`GET /health` → `{"status": "ok", "platf
 | Default host | `127.0.0.1` | `api_server.py:151` (`DEFAULT_HOST`) |
 | Default port | `8642` | `api_server.py:152` (`DEFAULT_PORT`) |
 | Host/port config | `platforms.api_server.extra.host` / `.port` in `<HERMES_HOME>/config.yaml`, else env `API_SERVER_HOST` / `API_SERVER_PORT` | `api_server.py:1378-1382` |
-| Observed config | `platforms.api_server.extra` has `host` and `port` keys set (values not read) | `C:\Users\SAM\AppData\Local\hermes\config.yaml` ~line 555-560 |
+| Observed config | `platforms.api_server.extra` has `host` and `port` keys set (values not read) | `C:\Users\<usuario>\AppData\Local\hermes\config.yaml` ~line 555-560 |
 | Multiplex prefix | Every route is ALSO registered at `/p/{profile}<path>` | `api_server.py:7477-7478` |
 
 ### 0.2 Auth (required on every route below)
 
 - Header: `Authorization: Bearer <API_SERVER_KEY>`; timing-safe byte comparison. `api_server.py:1782-1837`.
-- **Where the key lives (PATH + NAME only, value never read):** env var name `API_SERVER_KEY`, defined in `C:\Users\SAM\AppData\Local\hermes\.env` (exactly one `^API_SERVER_KEY=` line present). Resolution: `extra["key"]` in config.yaml → scoped secret `API_SERVER_KEY` → `os.environ`. `api_server.py:1383`, `api_server.py:103-124`, `agent/secret_scope.py:132-154`.
+- **Where the key lives (PATH + NAME only, value never read):** env var name `API_SERVER_KEY`, defined in `C:\Users\<usuario>\AppData\Local\hermes\.env` (exactly one `^API_SERVER_KEY=` line present). Resolution: `extra["key"]` in config.yaml → scoped secret `API_SERVER_KEY` → `os.environ`. `api_server.py:1383`, `api_server.py:103-124`, `agent/secret_scope.py:132-154`.
 - `connect()` refuses to start the listener if the key is missing/weak/unverifiable — fatal, non-retryable, code `api_server_key_invalid`. `api_server.py:7440-7462`.
 - **Auth runs before body parsing** on the agent routes (the `@_admit_api_agent_request` decorator calls `_check_auth` first, `api_server.py:1119-1123`). Live-confirmed: posting malformed JSON without a key returns the 401 envelope, not a 400.
 
@@ -428,7 +428,7 @@ Real session-key value used in tests (shows the intended format): `"agent:main:w
 
 # B) Sessions CRUD (`/api/sessions*`)
 
-All of these persist to **`<HERMES_HOME>/state.db`** through `hermes_state.SessionDB` (`api_server.py:2193`: `SessionDB(db_path=home / "state.db")`). On this machine `HERMES_HOME` = `C:\Users\SAM\AppData\Local\hermes` (`hermes_constants.py:53-59`, Windows branch → `%LOCALAPPDATA%\hermes`; the directory contains `state.db`). **This is the same DB the Hermes Desktop sidebar reads** — see section C.
+All of these persist to **`<HERMES_HOME>/state.db`** through `hermes_state.SessionDB` (`api_server.py:2193`: `SessionDB(db_path=home / "state.db")`). On this machine `HERMES_HOME` = `C:\Users\<usuario>\AppData\Local\hermes` (`hermes_constants.py:53-59`, Windows branch → `%LOCALAPPDATA%\hermes`; the directory contains `state.db`). **This is the same DB the Hermes Desktop sidebar reads** — see section C.
 
 All handlers call `_check_auth` first, and any of them can return **503** `session_db_unavailable` if the DB cannot be opened.
 
@@ -964,7 +964,7 @@ Meaning, precisely:
 **The bridge is the database, not the HTTP surface.** Both servers open the same file:
 - `api_server.py:2193` → `SessionDB(db_path=home / "state.db")`, `home = get_hermes_home()`.
 - `hermes_cli/web_routers/sessions.py:103` → `_open_session_db_for_profile(profile, read_only=True)` → `SessionDB` over the same profile home.
-- On this machine: `C:\Users\SAM\AppData\Local\hermes\state.db` (`hermes_constants.py:53-59`, Windows → `%LOCALAPPDATA%\hermes`; the file exists in that directory).
+- On this machine: `C:\Users\<usuario>\AppData\Local\hermes\state.db` (`hermes_constants.py:53-59`, Windows → `%LOCALAPPDATA%\hermes`; the file exists in that directory).
 
 ## C.4 What Raycast must send for cross-visibility — the answer
 
