@@ -5,3 +5,4 @@ dist/
 .env
 raycast-env.d.ts
 .superpowers/
+_capturas-brutas/

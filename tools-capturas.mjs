@@ -19,6 +19,13 @@
 //       reduzida só se for maior que a tela, e então centralizada sobre um fundo sólido.
 //       Ampliar uma captura pequena a deixaria borrada, e a revisão da Store olha isso.
 //
+//   node tools-capturas.mjs ajustar <arquivo.png...> --ampliar
+//       libera a ampliação. Serve para imagem gerada (que não tem grão de captura real e
+//       aguenta esticar) e para quem já veio em 16:10, onde ampliar é melhor que deixar
+//       tarja preta dos dois lados. Quando a sobra fica em 4 px ou menos, a imagem é
+//       ajustada ao quadro exato — a distorção resultante é inferior a 0,2% e some, e o
+//       alternativo seria uma fresta escura na borda.
+//
 // O @resvg/resvg-js desenha `<image>` com data URI de PNG — foi conferido, não presumido.
 // Ele não está no package.json; é ferramenta de build, igual ao tools-gerar-icones.mjs:
 //   npm install --no-save @resvg/resvg-js
@@ -85,14 +92,21 @@ function conferir(pasta) {
   return reprovados;
 }
 
-function ajustar(entradas, { fundo, saida }) {
+function ajustar(entradas, { fundo, saida, ampliar }) {
   mkdirSync(saida, { recursive: true });
   for (const entrada of entradas) {
     const { largura, altura, bruto } = dimensoes(entrada);
-    // `contain`: cabe inteira. Sem ampliar — a escala nunca passa de 1.
-    const escala = Math.min(LARGURA / largura, ALTURA / altura, 1);
-    const l = Math.round(largura * escala);
-    const a = Math.round(altura * escala);
+    // `contain`: cabe inteira. Sem `--ampliar`, a escala nunca passa de 1.
+    const teto = ampliar ? Infinity : 1;
+    const escala = Math.min(LARGURA / largura, ALTURA / altura, teto);
+    let l = Math.round(largura * escala);
+    let a = Math.round(altura * escala);
+    // Sobra de poucos pixels vira fresta escura na borda, que fica pior do que a
+    // distorção de menos de 0,2% necessária para fechar o quadro.
+    if (ampliar && LARGURA - l <= 4 && ALTURA - a <= 4) {
+      l = LARGURA;
+      a = ALTURA;
+    }
     const x = Math.round((LARGURA - l) / 2);
     const y = Math.round((ALTURA - a) / 2);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${LARGURA}" height="${ALTURA}" viewBox="0 0 ${LARGURA} ${ALTURA}">
@@ -103,9 +117,14 @@ function ajustar(entradas, { fundo, saida }) {
     const destino = join(saida, basename(entrada));
     writeFileSync(destino, png);
     const conta = dimensoes(destino);
+    const comoFoi =
+      escala === 1
+        ? "centralizada, sem redimensionar"
+        : escala < 1
+          ? `reduzida a ${(escala * 100).toFixed(1)}%`
+          : `ampliada a ${(escala * 100).toFixed(1)}%`;
     console.log(
-      `${destino}  ${conta.largura} × ${conta.altura}  <-  ${basename(entrada)} ${largura} × ${altura}` +
-        (escala === 1 ? " (centralizada, sem redimensionar)" : ` (reduzida a ${(escala * 100).toFixed(1)}%)`),
+      `${destino}  ${conta.largura} × ${conta.altura}  <-  ${basename(entrada)} ${largura} × ${altura} (${comoFoi})`,
     );
   }
 }
@@ -121,12 +140,16 @@ if (modo === "conferir") {
   };
   const fundo = opcao("--fundo", FUNDO_PADRAO);
   const saida = opcao("--saida", PASTA_PADRAO);
-  const entradas = resto.filter((v, i) => !v.startsWith("--") && !resto[i - 1]?.startsWith("--"));
+  const ampliar = resto.includes("--ampliar");
+  const semValor = new Set(["--ampliar"]);
+  const entradas = resto.filter(
+    (v, i) => !v.startsWith("--") && !(resto[i - 1]?.startsWith("--") && !semValor.has(resto[i - 1])),
+  );
   if (entradas.length === 0) {
     console.error("Diga quais arquivos ajustar. Ex.: node tools-capturas.mjs ajustar C:/caminho/foto.png");
     process.exit(1);
   }
-  ajustar(entradas, { fundo, saida });
+  ajustar(entradas, { fundo, saida, ampliar });
 } else {
   console.error(`Modo desconhecido: ${modo}. Use 'conferir' ou 'ajustar'.`);
   process.exit(1);
