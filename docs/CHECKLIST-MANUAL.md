@@ -1,7 +1,11 @@
 # Checklist manual — a conversa contínua
 
-**Para quem está no teclado.** Este é o único item que não dá para automatizar: a janela do Raycast
-é desenhada pelo `Raycast.UIAccess.exe` e **não aparece em captura de tela** nesta máquina.
+**Para quem está no teclado.** Este é o único item que não dá para automatizar: no Windows a janela
+do Raycast é desenhada pelo `Raycast.UIAccess.exe` e **não aparece em captura de tela** nesta
+máquina.
+
+A extensão vale para macOS e Windows. Os cenários abaixo foram percorridos no **Windows 11**; a
+seção **macOS** existe justamente porque lá nada foi percorrido ainda.
 
 Antes de marcar qualquer cenário de integração, inicie o Hermes e confirme que ele responde
 `platform: "hermes-agent"` em `http://127.0.0.1:8642` (ou registre a porta descoberta). A
@@ -84,6 +88,20 @@ Sem tocar no mouse, em nenhum momento:
 - [ ] no `confirmAlert` de excluir conversa: `Enter` aciona a primária, `Esc` cancela
 - [ ] o Toast com ação (`Esta conversa já está no Hermes Desktop`) responde ao atalho sem tirar o
       foco da lista
+
+**Refaça este item no Windows depois da mudança para macOS.** Os atalhos customizados deixaram de
+ser um objeto simples e passaram a ser declarados por sistema
+(`perPlatform({ Windows }, { macOS })`, em `src/components/shortcuts.ts`). As teclas do Windows não
+mudaram — mas quem resolve a forma nova é o aplicativo do Raycast, e um atalho que ele não entenda é
+**ignorado em silêncio**, sem erro e sem aviso. Basta disparar alguns pelo teclado para saber:
+
+- [ ] `Ctrl+T` (`Ver etapas`), `Ctrl+Shift+P` (`Parar`) e `Ctrl+Shift+Enter`
+      (`Continuar esta conversa`) continuam funcionando
+- [ ] `Ctrl+Shift+A` (`Abrir configurações`) e `Ctrl+Alt+C` (`Copiar detalhes técnicos`) idem
+- [ ] `Alt+Shift+E` / `Alt+Shift+S` na tela de aprovação idem
+- [ ] se algum tiver sumido do painel ou parado de responder, o problema é a forma
+      `{ Windows, macOS }` nesta versão do Raycast — e a correção é voltar `shortcuts.ts` para
+      objetos simples só no Windows, registrando aqui a versão do Raycast em que falhou
 
 ---
 
@@ -179,6 +197,77 @@ estar **vazio** — se ele tiver algo, a preferência vence (§3.3) e a tela nem
       **primeira** ação, e ela resolve sem passar por `Tentar novamente`.
 - [ ] Nessa mesma tela, confira que **não** existe `Ver mensagens e ferramentas` no painel — as
       duas dividem `Ctrl+Shift+D` e nunca podem coexistir (`components/shortcuts.ts`).
+
+## macOS — nunca foi rodado (faça esta seção inteira num Mac)
+
+Esta seção existe porque a extensão passou a ser declarada para os dois sistemas
+(`"platforms": ["macOS", "Windows"]`) **sem que ninguém tenha aberto ela num Mac**. Os testes
+automatizados cobrem os dois caminhos de código injetando a plataforma, e é exatamente por isso que
+eles não substituem esta lista: nada aqui é sobre a lógica, e sim sobre o que o sistema faz com ela.
+
+Antes de começar, confirme que o Hermes está rodando no Mac e que a pasta `~/.hermes` existe.
+
+### M1. Descoberta em `~/.hermes`
+
+- [ ] Com a preferência `Endereço do Hermes` **em branco**, abra `Verificar conexão com Hermes`. Ele
+      precisa achar o Hermes sozinho e mostrar `127.0.0.1` com a porta certa.
+- [ ] Em `Configurar Hermes` → `Detectar configuração automaticamente`, a tela deve citar
+      `/Users/<voce>/.hermes` como a pasta procurada — nunca um caminho com `AppData`.
+- [ ] Renomeie `~/.hermes` por um instante (ou rode com `HERMES_HOME` apontando para outro lugar) e
+      confirme que a extensão usa o `HERMES_HOME`, não o padrão.
+
+### M2. Configuração manual com os programas do Mac
+
+- [ ] Em `Configurar manualmente`, o passo a passo precisa dizer **Finder** e **TextEdit**, e a tecla
+      de procurar precisa ser `Cmd+F`. Se aparecer "Bloco de Notas" ou "Ctrl+F", é bug.
+- [ ] A dica de arquivos ocultos precisa ser a do Finder (`Cmd+Shift+.`).
+- [ ] A ação `Abrir a pasta do Hermes` precisa abrir o **Finder** na pasta certa — e a pasta, nunca
+      o arquivo `.env`.
+
+### M3. O deep link `hermes://` (o ponto mais provável de falhar)
+
+O esquema é registrado pelo Hermes Desktop através do `Info.plist` do app. Nada disso foi verificado
+ao vivo no macOS: no Windows a verificação foi feita e está registrada como V-2.
+
+- [ ] Com o Hermes Desktop **aberto**, use `Abrir no Hermes Desktop` numa conversa. O app deve focar
+      exatamente aquela conversa.
+- [ ] Com o Hermes Desktop **fechado**, use a mesma ação. O esperado é o app abrir; se nada
+      acontecer, a extensão precisa dizer "Não consegui abrir o Hermes Desktop" — e **não** falhar
+      em silêncio nem mostrar erro em inglês.
+- [ ] Confirme que `Copiar identificador da conversa` continua no painel como saída manual.
+
+### M4. Os atalhos com `Cmd`
+
+Todos os atalhos customizados foram escolhidos lendo as tabelas do Raycast, não usando um Mac. O que
+interessa aqui é colisão: um atalho que o sistema ou o Raycast já reserva simplesmente não funciona,
+e nada avisa.
+
+- [ ] `Cmd+T` (`Ver etapas` / `Ver resposta`) dentro de uma execução.
+- [ ] `Cmd+Shift+Enter` (`Continuar esta conversa`) na lista de conversas.
+- [ ] `Cmd+Shift+P` (`Parar`) numa execução em andamento. **Atenção:** é a mesma tecla do
+      `Common.Pin`; confirme que numa tela de execução ela para, e na lista de conversas ela fixa.
+- [ ] `Cmd+Shift+H` (`Carregar parte anterior da conversa`) numa conversa longa — `Cmd+H` sozinho
+      esconde aplicativo no macOS, então é o mais suspeito da lista.
+- [ ] `Cmd+Opt+C` (`Copiar detalhes técnicos`) numa tela de erro.
+- [ ] `Opt+Shift+E` e `Opt+Shift+S` numa tela de aprovação.
+- [ ] `Cmd+Shift+A` (`Abrir configurações`) em qualquer tela.
+- [ ] Para cada um que falhar, anote a ação e o atalho: a correção é uma linha em
+      `src/components/shortcuts.ts`, no bloco `macOS`.
+
+### M5. Texto, clipboard e formulários
+
+- [ ] `Perguntar sobre seleção` com um trecho selecionado numa janela qualquer.
+- [ ] O mesmo comando **sem** seleção e **sem** nada copiado: o estado vazio precisa dizer `Cmd+C`,
+      nunca `Ctrl+C`, e não pode afirmar que a limitação é do Windows.
+- [ ] `Escrever mensagem longa`: a dica precisa dizer `Cmd+Enter`, e `Cmd+Enter` precisa enviar.
+- [ ] `Colar última resposta` com o cursor num campo de texto de outro aplicativo.
+
+### M6. Escopo de memória
+
+- [ ] Nas preferências, `Escopo de memória` deve estar **vazio**, com o texto de apoio
+      "Padrão do sistema".
+- [ ] Faça uma pergunta e confirme no Hermes que o cabeçalho `X-Hermes-Session-Key` chegou como
+      `raycast:macos:default`. Uma instalação de macOS não pode herdar `raycast:windows:default`.
 
 ## Publicação — as capturas de tela
 

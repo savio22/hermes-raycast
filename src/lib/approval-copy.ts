@@ -1,7 +1,10 @@
 /** Copy shared by the approval detail and its recovery state. */
 
-export function approvalActionHint(): string {
-  return "As escolhas ficam em Actions (Ctrl+K); use o painel para responder ao pedido.";
+import { type PlatformCopy, platformCopy } from "./platform";
+
+/** A tecla que abre o painel de ações é a do sistema: `Ctrl+K` no Windows, `Cmd+K` no macOS. */
+export function approvalActionHint(copy: PlatformCopy = platformCopy()): string {
+  return `As escolhas ficam em Actions (${copy.actionsKeys}); use o painel para responder ao pedido.`;
 }
 
 export function approvalDetailsLostHint(): string {

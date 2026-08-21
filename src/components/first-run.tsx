@@ -13,7 +13,9 @@
  *                            `NotConfigured` é o mesmo componente com o nome que os
  *                            comandos usam na guarda de configuração.
  *   AutoDetectScreen  §3.5 — a ação explícita `Detectar configuração automaticamente`.
- *   ManualSetupScreen §3.7 — o caminho sem terminal, com Explorador + Bloco de Notas.
+ *   ManualSetupScreen §3.7 — o caminho sem terminal, com o gerenciador de arquivos e o
+ *                            editor de texto DO SISTEMA em que a extensão está rodando
+ *                            (Explorador + Bloco de Notas, ou Finder + TextEdit).
  *   WhyKeyScreen      §3.9 — `O que é isso?`.
  *
  * REGRAS DE SEGREDO QUE GOVERNAM ESTE ARQUIVO (UX-SPEC §3.1, §3.6 e §5.1 regra 5):
@@ -47,6 +49,7 @@ import {
   toHermesError,
 } from "../lib/errors";
 import { health, listModels } from "../lib/hermes-api";
+import { type PlatformCopy, platformCopy } from "../lib/platform";
 import { resolveApiKey } from "../lib/preferences";
 import { forgetDetectedApiKey, saveDetectedApiKey } from "../lib/storage";
 import { OpenPreferencesAction } from "./common";
@@ -660,7 +663,7 @@ export function AutoDetectScreen({ onDone }: { onDone?: () => void }) {
 
 /* ────────────────── Tela 4: caminho manual, sem terminal (§3.7) ───────────── */
 
-function manualMarkdown(hermesHome: string): string {
+export function manualMarkdown(hermesHome: string, copy: PlatformCopy = platformCopy()): string {
   return [
     "# Configurar manualmente",
     "",
@@ -668,25 +671,25 @@ function manualMarkdown(hermesHome: string): string {
     "",
     "**1. Abra a pasta do Hermes**",
     "",
-    'Use a ação "Abrir a pasta do Hermes" aqui embaixo. O Explorador de Arquivos abre em:',
+    `Use a ação "Abrir a pasta do Hermes" aqui embaixo. O ${copy.fileManager} abre em:`,
     "",
     hermesHome,
     "",
     "**2. Abra o arquivo chamado `.env`**",
     "",
-    'Clique com o botão direito no arquivo `.env` e escolha "Abrir com" → "Bloco de Notas".',
-    'Se o arquivo não aparecer, no Explorador vá em "Exibir" e marque "Itens ocultos".',
+    `Clique com o botão direito no arquivo \`.env\` e escolha "Abrir com" → "${copy.plainTextEditor}".`,
+    copy.showHiddenFilesHint,
     "",
     "**3. Procure a linha que começa com `API_SERVER_KEY=`**",
     "",
-    "No Bloco de Notas, pressione Ctrl+F, digite `API_SERVER_KEY` e pressione Enter.",
+    `No ${copy.plainTextEditor}, pressione ${copy.findKeys}, digite \`API_SERVER_KEY\` e pressione Enter.`,
     "A linha se parece com isto:",
     "",
     "API_SERVER_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
     "",
     "**4. Copie só o que vem depois do sinal de igual**",
     "",
-    "Selecione o texto depois do `=`, copie com Ctrl+C e feche o Bloco de Notas sem salvar.",
+    `Selecione o texto depois do \`=\`, copie com ${copy.copyKeys} e feche o ${copy.plainTextEditor} sem salvar.`,
     "",
     "**5. Cole nas configurações da extensão**",
     "",
@@ -698,8 +701,11 @@ function manualMarkdown(hermesHome: string): string {
 
 /**
  * §3.7 — escrito para quem não vai abrir um terminal. `Abrir a pasta do Hermes` abre a
- * PASTA, nunca o arquivo: colocar o segredo na tela é escolha do usuário no Explorador,
- * não da extensão.
+ * PASTA, nunca o arquivo: colocar o segredo na tela é escolha do usuário no gerenciador
+ * de arquivos, não da extensão.
+ *
+ * O passo a passo nomeia os programas do sistema em que a extensão está rodando
+ * (`platformCopy()`), então um usuário de Mac nunca lê "Bloco de Notas".
  */
 export function ManualSetupScreen() {
   const [hermesHome, setHermesHome] = useState<string | undefined>(undefined);

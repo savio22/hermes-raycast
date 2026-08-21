@@ -39,6 +39,7 @@ const {
   readApiKeyFromEnvFile,
   resolveHermesHome,
   resolveBaseUrl,
+  defaultHermesHome,
   DEFAULT_PORT,
 } = discovery;
 
@@ -364,31 +365,131 @@ test("segurança: um HermesError construído com a chave no technical já nasce 
 
 /* ═════════════════════ 4. Ordem da descoberta e gate /health ═════════════════ */
 
-test("HERMES_HOME: env vence; senão gateway.pid; senão %LOCALAPPDATA%\\hermes", async () => {
-  const fs = fakeFs({
-    [path.join("C:", "AppData", "hermes", "gateway.pid")]: JSON.stringify({ hermes_home: HOME, pid: 42 }),
+/*
+ * A pasta padrão do Hermes muda com o sistema, e os testes NÃO podem depender do sistema
+ * em que estão rodando: `platform` e `homeDir` entram injetados, e `defaultHermesHome()`
+ * usa `path.win32`/`path.posix` explícitos para que o resultado seja o mesmo em qualquer
+ * máquina. Um teste do macOS aqui passa rodando no Windows, e é essa a intenção.
+ */
+const WINDOWS_HOME_DIR = path.win32.join("C:", "Users", "sam");
+const WINDOWS_ENV = { LOCALAPPDATA: path.win32.join(WINDOWS_HOME_DIR, "AppData", "Local") } as NodeJS.ProcessEnv;
+const WINDOWS_DEFAULT_HOME = path.win32.join(WINDOWS_HOME_DIR, "AppData", "Local", "hermes");
+const MAC_HOME_DIR = "/Users/sam";
+const MAC_DEFAULT_HOME = "/Users/sam/.hermes";
+
+test("pasta padrão: %LOCALAPPDATA%\\hermes no Windows, ~/.hermes no macOS", () => {
+  assert.equal(
+    defaultHermesHome({ env: WINDOWS_ENV, platform: "win32", homeDir: WINDOWS_HOME_DIR }),
+    WINDOWS_DEFAULT_HOME,
+  );
+
+  // Sem %LOCALAPPDATA% no ambiente: o mesmo caminho que o próprio Windows usaria.
+  assert.equal(
+    defaultHermesHome({ env: {} as NodeJS.ProcessEnv, platform: "win32", homeDir: WINDOWS_HOME_DIR }),
+    WINDOWS_DEFAULT_HOME,
+  );
+
+  assert.equal(
+    defaultHermesHome({ env: {} as NodeJS.ProcessEnv, platform: "darwin", homeDir: MAC_HOME_DIR }),
+    MAC_DEFAULT_HOME,
+  );
+
+  // Um %LOCALAPPDATA% herdado no ambiente não pode vazar para o ramo do macOS.
+  assert.equal(defaultHermesHome({ env: WINDOWS_ENV, platform: "darwin", homeDir: MAC_HOME_DIR }), MAC_DEFAULT_HOME);
+});
+
+test("HERMES_HOME do ambiente vence a pasta padrão e o gateway.pid, nos dois sistemas", async () => {
+  for (const platform of ["win32", "darwin"] as const) {
+    const fs = fakeFs({
+      [path.join(WINDOWS_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ hermes_home: "outro", pid: 42 }),
+      [path.join(MAC_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ hermes_home: "outro", pid: 42 }),
+    });
+
+    assert.equal(
+      await resolveHermesHome({
+        env: { HERMES_HOME: HOME } as NodeJS.ProcessEnv,
+        platform,
+        readTextFile: fs.readTextFile,
+      }),
+      HOME,
+      `HERMES_HOME deveria vencer em ${platform}`,
+    );
+  }
+});
+
+test("sem HERMES_HOME: gateway.pid.hermes_home da pasta padrão vence, nos dois sistemas", async () => {
+  const windowsFs = fakeFs({
+    [path.join(WINDOWS_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ hermes_home: HOME, pid: 42 }),
   });
-
-  assert.equal(
-    await resolveHermesHome({ env: { HERMES_HOME: HOME } as NodeJS.ProcessEnv, readTextFile: fs.readTextFile }),
-    HOME,
-  );
-
   assert.equal(
     await resolveHermesHome({
-      env: { LOCALAPPDATA: path.join("C:", "AppData") } as NodeJS.ProcessEnv,
-      readTextFile: fs.readTextFile,
+      env: WINDOWS_ENV,
+      platform: "win32",
+      homeDir: WINDOWS_HOME_DIR,
+      readTextFile: windowsFs.readTextFile,
     }),
     HOME,
   );
 
-  const semPid = fakeFs({});
+  const macFs = fakeFs({
+    [path.join(MAC_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ hermes_home: "/Volumes/Trabalho/hermes", pid: 42 }),
+  });
   assert.equal(
     await resolveHermesHome({
-      env: { LOCALAPPDATA: path.join("C:", "AppData") } as NodeJS.ProcessEnv,
-      readTextFile: semPid.readTextFile,
+      env: {} as NodeJS.ProcessEnv,
+      platform: "darwin",
+      homeDir: MAC_HOME_DIR,
+      readTextFile: macFs.readTextFile,
     }),
-    path.join("C:", "AppData", "hermes"),
+    "/Volumes/Trabalho/hermes",
+  );
+});
+
+test("sem HERMES_HOME e sem gateway.pid: sobra a pasta padrão do sistema", async () => {
+  const vazio = fakeFs({});
+
+  assert.equal(
+    await resolveHermesHome({
+      env: WINDOWS_ENV,
+      platform: "win32",
+      homeDir: WINDOWS_HOME_DIR,
+      readTextFile: vazio.readTextFile,
+    }),
+    WINDOWS_DEFAULT_HOME,
+  );
+
+  assert.equal(
+    await resolveHermesHome({
+      env: {} as NodeJS.ProcessEnv,
+      platform: "darwin",
+      homeDir: MAC_HOME_DIR,
+      readTextFile: vazio.readTextFile,
+    }),
+    MAC_DEFAULT_HOME,
+  );
+});
+
+test("gateway.pid corrompido ou sem hermes_home degrada para a pasta padrão", async () => {
+  const corrompido = fakeFs({ [path.join(MAC_DEFAULT_HOME, "gateway.pid")]: "{ isto nao e json" });
+  assert.equal(
+    await resolveHermesHome({
+      env: {} as NodeJS.ProcessEnv,
+      platform: "darwin",
+      homeDir: MAC_HOME_DIR,
+      readTextFile: corrompido.readTextFile,
+    }),
+    MAC_DEFAULT_HOME,
+  );
+
+  const semCampo = fakeFs({ [path.join(WINDOWS_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ pid: 42 }) });
+  assert.equal(
+    await resolveHermesHome({
+      env: WINDOWS_ENV,
+      platform: "win32",
+      homeDir: WINDOWS_HOME_DIR,
+      readTextFile: semCampo.readTextFile,
+    }),
+    WINDOWS_DEFAULT_HOME,
   );
 });
 

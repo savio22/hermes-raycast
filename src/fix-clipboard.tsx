@@ -2,13 +2,13 @@
  * `Corrigir texto do clipboard` — corrige o texto copiado e devolve só o texto corrigido.
  *
  * A instrução proíbe comentário de propósito: quem usa este comando quer colar o resultado
- * no lugar do original (`Ctrl+Shift+V`, dentro da conversa), e um "aqui está a versão
+ * no lugar do original (`Ctrl+Shift+V` / `Cmd+Shift+V`, dentro da conversa), e um "aqui está a versão
  * corrigida:" antes do texto teria de ser apagado à mão toda vez.
  */
 
 import { type ReactElement } from "react";
 
-import { TextCommand } from "./components/text-command";
+import { TextCommand, copyFirstHint } from "./components/text-command";
 import { buildUntrustedPrompt } from "./lib/input-safety";
 
 const COMMAND_TITLE = "Corrigir texto do clipboard";
@@ -24,7 +24,7 @@ export default function Command(): ReactElement {
       source="area-de-transferencia"
       buildMessage={(text) => buildUntrustedPrompt(INSTRUCTION, text)}
       emptyTitle="Não há nada copiado"
-      emptyDescription="Copie o texto que você quer trabalhar (`Ctrl+C`) e chame este comando de novo."
+      emptyDescription={copyFirstHint()}
     />
   );
 }

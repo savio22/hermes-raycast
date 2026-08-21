@@ -13,8 +13,11 @@ concurrency:
 jobs:
   check:
     name: Tests, types, lint and build
-    # Windows-first extension: the manifest declares "platforms": ["Windows"] and the
-    # release build path is Windows-specific, so CI runs where the product runs.
+    # The manifest declares "platforms": ["macOS", "Windows"], and the suite is written so
+    # both code paths are exercised on either runner: the platform is injected into the
+    # functions under test instead of being read from `process.platform`. CI stays on
+    # Windows because that is where the release build path has a system-specific trap
+    # (`--target release`) and where the extension has actually been used.
     runs-on: windows-latest
 
     steps:

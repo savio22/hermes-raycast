@@ -34,13 +34,18 @@ import {
   List,
   Toast,
   launchCommand,
-  open,
   showHUD,
   showToast,
 } from "@raycast/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { NO_TITLE, OpenModelsAction, OpenPreferencesAction, SYNC_PROMISE } from "./components/common";
+import {
+  NO_TITLE,
+  OpenModelsAction,
+  OpenPreferencesAction,
+  SYNC_PROMISE,
+  openHermesDesktop,
+} from "./components/common";
 import { AutoDetectAction } from "./components/first-run";
 import { RenameSessionForm } from "./components/rename-session-form";
 import { SHORTCUTS } from "./components/shortcuts";
@@ -865,7 +870,7 @@ export function SessionDetail({
                           "Abrindo no Hermes Desktop. Pode levar alguns segundos para a conversa aparecer lá.",
                         );
                       }
-                      await open(desktopUrl);
+                      await openHermesDesktop(desktopUrl);
                     }}
                   />
                   <CopySessionIdAction session={info} />

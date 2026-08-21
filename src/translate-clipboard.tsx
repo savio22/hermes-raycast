@@ -11,7 +11,7 @@
 import type { LaunchProps } from "@raycast/api";
 import { type ReactElement } from "react";
 
-import { TextCommand } from "./components/text-command";
+import { TextCommand, copyFirstHint } from "./components/text-command";
 import { buildUntrustedPrompt, inferTranslationDirection } from "./lib/input-safety";
 
 const COMMAND_TITLE = "Traduzir clipboard";
@@ -47,7 +47,7 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>): R
         };
       }}
       emptyTitle="Não há nada copiado"
-      emptyDescription="Copie o texto que você quer trabalhar (`Ctrl+C`) e chame este comando de novo."
+      emptyDescription={copyFirstHint()}
     />
   );
 }

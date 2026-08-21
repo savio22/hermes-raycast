@@ -37,8 +37,10 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: Windows, Raycast, Hermes Agent, and the extension commit. "Verificar conexão com Hermes" shows the Hermes version.
-      placeholder: Windows 11 26200 · Raycast 2.0.3 · Hermes 0.20.4 · commit abc1234
+      description: >
+        Operating system, Raycast, Hermes Agent, and the extension commit.
+        "Verificar conexão com Hermes" shows the Hermes version.
+      placeholder: Windows 11 26200 (or macOS 15.3) · Raycast 2.0.3 · Hermes 0.20.4 · commit abc1234
     validations:
       required: true
 

@@ -33,6 +33,7 @@ import { OpenPreferencesAction } from "./common";
 import { SHORTCUTS } from "./shortcuts";
 import { isConfigured } from "../lib/preferences";
 import { prepareInput } from "../lib/input-safety";
+import { type PlatformCopy, platformCopy } from "../lib/platform";
 
 /**
  * Teto do texto que acompanha a pergunta. Não é economia de tokens: um turno com 200 000
@@ -42,6 +43,14 @@ import { prepareInput } from "../lib/input-safety";
 export { MAX_INPUT_CHARS } from "../lib/input-safety";
 
 const LONG_INPUT_TOAST = "O texto é muito longo: preservei o começo e o fim e removi só o meio.";
+
+/**
+ * Estado vazio dos três comandos de área de transferência, em um lugar só. A tecla de
+ * copiar é a do sistema (`Ctrl+C` no Windows, `Cmd+C` no macOS).
+ */
+export function copyFirstHint(copy: PlatformCopy = platformCopy()): string {
+  return `Copie o texto que você quer trabalhar (\`${copy.copyKeys}\`) e chame este comando de novo.`;
+}
 
 export type TextSource = "selecao" | "area-de-transferencia";
 
@@ -67,8 +76,9 @@ interface Capture {
 
 /**
  * `ask-selection` tenta a seleção e cai para a área de transferência; os demais vão direto
- * à área de transferência. A queda existe porque a maioria das janelas do Windows não
- * entrega a seleção ao sistema, e exigir seleção transformaria o comando num sorteio.
+ * à área de transferência. A queda existe porque muita janela não entrega a seleção ao
+ * sistema — é a regra no Windows e acontece também no macOS, em aplicativo que não expõe
+ * texto por acessibilidade —, e exigir seleção transformaria o comando num sorteio.
  */
 async function capture(source: TextSource): Promise<Capture> {
   let found: string | undefined;
@@ -79,7 +89,8 @@ async function capture(source: TextSource): Promise<Capture> {
       if (selected.trim() !== "") found = selected;
     } catch {
       // Rejeitou: não havia seleção, ou a janela da frente não expõe texto ao sistema. Não
-      // é erro — é o caminho comum no Windows, e por isso a área de transferência vem já.
+      // é erro — é o caminho comum nos dois sistemas, e por isso a área de transferência
+      // vem logo em seguida, sem passar por tela de erro.
     }
   }
 

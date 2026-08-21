@@ -1,8 +1,8 @@
 # Contributing
 
-Thanks for looking. This is a small, opinionated codebase: a Raycast extension for Windows that
-talks to a **local** Hermes API Server. Most of the rules below exist because something already
-went wrong once.
+Thanks for looking. This is a small, opinionated codebase: a Raycast extension for macOS and
+Windows that talks to a **local** Hermes API Server. Most of the rules below exist because
+something already went wrong once.
 
 ## Before you start
 
@@ -15,12 +15,19 @@ went wrong once.
   screen copy, toasts, error messages — is pt-BR. Code identifiers and comments follow the
   surrounding file (comments are pt-BR too). Do not introduce English UI strings; if you want to
   add i18n, open an issue first, because that is a product decision, not a refactor.
-- **The extension is Windows-only and local-only.** It talks to `127.0.0.1` and nothing else. A
-  change that adds a remote mode or a second platform needs a discussion before code.
+- **The extension is local-only.** It talks to `127.0.0.1` and nothing else. A change that adds a
+  remote mode needs a discussion before code.
+- **One code base, two systems.** The manifest declares `"platforms": ["macOS", "Windows"]`.
+  What differs between them is deliberately confined to three places, and new differences belong
+  in the same three: `defaultHermesHome()` in `src/lib/discovery.ts` (where the Hermes files
+  live), `src/lib/platform.ts` (the wording that names system programs and keys), and
+  `perPlatform()` in `src/components/shortcuts.ts` (the keys themselves). **Do not add
+  `if (process.platform === ...)` to a screen** — pass the platform in, so a test can cover both
+  without a second machine.
 
 ## Setup
 
-Requirements: **Node.js 24+** and Raycast for Windows.
+Requirements: **Node.js 24+** and Raycast (macOS or Windows).
 
 ```bash
 npm install
@@ -30,8 +37,9 @@ npm install
 npm run dev
 ```
 
-`npm run dev` uses `--target release`. Every build script does. Without that flag the output lands
-in the old Raycast X path and Raycast reports `Missing executable`.
+`npm run dev` uses `--target release`. Every build script does. On Windows, without that flag the
+output lands in the old Raycast X path and Raycast reports `Missing executable`; on macOS the flag
+is harmless, so the scripts stay identical.
 
 ## Gates a change must pass
 
@@ -68,20 +76,24 @@ no Jest, no Vitest, no transform step. That is why Node 24 is a hard requirement
 
 Anything that touches a live Hermes — streaming, approvals, keyboard flows, the Raycast window
 itself — is **not** covered by the automated suite and cannot be verified by any automation
-available here. Walk [`docs/CHECKLIST-MANUAL.md`](docs/CHECKLIST-MANUAL.md) by hand on a Windows
-machine with Hermes running, and say in the PR which items you actually ran.
+available here. Walk [`docs/CHECKLIST-MANUAL.md`](docs/CHECKLIST-MANUAL.md) by hand on a machine
+with Hermes running, and say in the PR which items you actually ran **and on which system**. The
+checklist has a macOS section that has never been walked; if you are on a Mac, that is the most
+valuable thing you can contribute.
 
 ## Rules that are not details
 
-- **Never use the `cmd` modifier in a keyboard shortcut.** Windows ignores it silently, so the
-  shortcut simply does not exist and nothing tells you.
+- **Never put `cmd` in the Windows half of a keyboard shortcut.** Windows ignores it silently, so
+  the shortcut simply does not exist and nothing tells you. Custom shortcuts are declared as
+  `perPlatform(Windows, macOS)`; prefer `Keyboard.Shortcut.Common.*` wherever a semantic
+  equivalent exists, because Raycast already maps those per system.
 - **Never call a run's stop endpoint from a `useEffect` cleanup.** Unmounting a screen must cancel
   only the local reader. The task stays alive inside Hermes on purpose — closing the Raycast window
   is not a cancellation.
 - **Never log, render or copy the Hermes key.** It is redacted everywhere, including in the
   "technical details" payload. If you add a new error path, redact it there too.
-- **Every action needs a place in the `Ctrl+K` action panel.** No action may exist as a bare
-  shortcut.
+- **Every action needs a place in the `Ctrl+K` / `Cmd+K` action panel.** No action may exist as a
+  bare shortcut.
 
 ## Tests
 
@@ -104,8 +116,8 @@ Bug fixes come with a regression test that fails before the fix.
 
 ## Reporting bugs
 
-Include your Windows version, your Raycast version, the Hermes Agent version (`GET /health` reports
-it, and **Verificar conexão com Hermes** shows it), and the output of **Copiar detalhes técnicos**
-if a screen offered it. That payload is already redacted — check it once before pasting anyway.
+Include your operating system and its version, your Raycast version, the Hermes Agent version
+(`GET /health` reports it, and **Verificar conexão com Hermes** shows it), and the output of
+**Copiar detalhes técnicos** if a screen offered it. That payload is already redacted — check it once before pasting anyway.
 
 Security issues do not go in the issue tracker. See [SECURITY.md](SECURITY.md).

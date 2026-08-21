@@ -36,7 +36,6 @@ import {
   Toast,
   confirmAlert,
   launchCommand,
-  open,
   showHUD,
   showToast,
   useNavigation,
@@ -46,6 +45,7 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 
 import { useConversation, RENDER_TURN_LIMIT } from "../hooks/use-conversation";
 import { hermesDesktopSessionUrl } from "../lib/discovery";
+import { platformCopy } from "../lib/platform";
 import { sanitizeTechnical, toHermesError, type HermesError } from "../lib/errors";
 import { forkSession, listSessions } from "../lib/hermes-api";
 import { isTurnFinished, type Turn, type TurnMode } from "../lib/turns";
@@ -53,7 +53,7 @@ import { createTurnDerivationCache } from "../lib/turn-derivations";
 import type { Session } from "../lib/types";
 import { ApprovalView } from "./approval-view";
 import { AutoDetectAction } from "./first-run";
-import { NO_TITLE, OpenModelsAction, OpenPreferencesAction, SYNC_PROMISE } from "./common";
+import { NO_TITLE, OpenModelsAction, OpenPreferencesAction, SYNC_PROMISE, openHermesDesktop } from "./common";
 import { RenameSessionForm } from "./rename-session-form";
 import { statusImage, tagTone } from "./run-progress";
 import { SessionDetail, shouldWarnAboutRecentDesktopUse } from "../session-detail";
@@ -140,7 +140,8 @@ async function openActiveRuns(): Promise<void> {
 /**
  * `Escrever mensagem longa`. Existe porque o Raycast não expõe interceptação de tecla: na
  * barra de busca não há como quebrar linha. Aqui o `Enter` do `Form.TextArea` faz o que
- * fizer, e quem envia é `Ctrl+Enter` — a ação primária de um `Form`.
+ * fizer, e quem envia é a ação primária do `Form` — `Ctrl+Enter` no Windows, `Cmd+Enter`
+ * no macOS. O texto da dica sai de `platformCopy()` para não mentir em nenhum dos dois.
  */
 function LongMessageForm({
   initialText,
@@ -187,7 +188,10 @@ function LongMessageForm({
           if (error !== undefined) setError(undefined);
         }}
       />
-      <Form.Description title="Como enviar" text="Pressione Ctrl+Enter para enviar. Esc volta para a conversa." />
+      <Form.Description
+        title="Como enviar"
+        text={`Pressione ${platformCopy().submitKeys} para enviar. Esc volta para a conversa.`}
+      />
     </Form>
   );
 }
@@ -275,7 +279,7 @@ export function ConversationView(props: ConversationViewProps): ReactElement {
       primaryAction: {
         title: "Abrir no Hermes Desktop",
         onAction: (toast) => {
-          void open(url);
+          void openHermesDesktop(url);
           void toast.hide();
         },
       },

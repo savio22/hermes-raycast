@@ -1,81 +1,110 @@
 /**
- * A tabela de teclado da UX-SPEC §9.2, em um lugar só.
+ * A tabela de teclado da UX-SPEC §9.2, em um lugar só — agora para os dois sistemas.
  *
- * Duas regras que este módulo existe para garantir:
- * - **nunca `cmd`** — no Windows um atalho com `cmd` é silenciosamente ignorado
- *   (pesquisa 07 §8.1); aqui só entram `ctrl`, `shift` e `alt`;
+ * Três regras que este módulo existe para garantir:
  * - **um significado, um atalho** em toda a extensão (§9.1). Quem precisar de
  *   "Copiar detalhes técnicos" em outra tela importa `SHORTCUTS.copyTechnical`,
- *   em vez de redigitar `{ modifiers: ["ctrl", "alt"], key: "c" }` e divergir.
+ *   em vez de redigitar as teclas e divergir;
+ * - **nunca `cmd` no bloco Windows** — lá um atalho com `cmd` é silenciosamente
+ *   ignorado (pesquisa 07 §8.1). No Windows só entram `ctrl`, `shift` e `alt`;
+ * - **nunca `ctrl` sozinho como modificador principal no bloco macOS** — no Mac o
+ *   acelerador é `Cmd`, e `Ctrl` ali significa outra coisa.
+ *
+ * A separação NÃO é feita com `if (process.platform)`: a própria API do Raycast aceita
+ * um atalho na forma `{ Windows, macOS }` e resolve no host. É o que `perPlatform()`
+ * monta, e é por isso que a mesma constante serve às duas plataformas sem ramo em runtime.
  *
  * `Keyboard.Shortcut.Common.*` é preferido onde existe equivalente semântico, porque o
- * próprio Raycast já traduz esses para as teclas do Windows (07 §8.4): `Common.Copy` é
- * `Ctrl+Shift+C`, `Common.New` é `Ctrl+N`, `Common.Open` é `Ctrl+O`, `Common.Refresh` é
- * `Ctrl+R`, `Common.Edit` é `Ctrl+E`, `Common.CopyPath` é `Alt+Shift+C`.
+ * próprio Raycast já traduz esses para as teclas de cada sistema (07 §8.4): `Common.Copy`
+ * é `Ctrl+Shift+C` no Windows e `Cmd+Shift+C` no macOS; `Common.New` é `Ctrl+N`/`Cmd+N`;
+ * `Common.Open`, `Ctrl+O`/`Cmd+O`; `Common.Refresh`, `Ctrl+R`/`Cmd+R`; `Common.Edit`,
+ * `Ctrl+E`/`Cmd+E`; `Common.CopyPath`, `Alt+Shift+C`/`Cmd+Shift+,`.
  *
- * Atalho aqui é **acelerador**: toda ação também está no `ActionPanel` (`Ctrl+K`).
+ * O mapeamento macOS **não** é uma troca cega de `ctrl` por `cmd`: `alt` vira `opt` (é a
+ * mesma tecla física no Mac, mas o nome que a API espera é `opt`), e cada combinação foi
+ * conferida contra os `Common.*` do macOS para não nascer colidindo — ver a nota em `stop`.
+ *
+ * Atalho aqui é **acelerador**: toda ação também está no `ActionPanel` (`Ctrl+K`/`Cmd+K`).
  */
 
 import { Keyboard } from "@raycast/api";
+
+type Combo = { modifiers: Keyboard.KeyModifier[]; key: Keyboard.KeyEquivalent };
+
+/** Um atalho com teclas próprias em cada sistema, na forma que o Raycast resolve no host. */
+function perPlatform(Windows: Combo, macOS: Combo): Keyboard.Shortcut {
+  return { Windows, macOS };
+}
 
 export const SHORTCUTS = {
   /** `Copiar resposta` / `Copiar comando` / `Copiar o que já veio`. */
   copy: Keyboard.Shortcut.Common.Copy,
   /** `Colar no aplicativo ativo`. */
-  paste: { modifiers: ["ctrl", "shift"], key: "v" },
+  paste: perPlatform({ modifiers: ["ctrl", "shift"], key: "v" }, { modifiers: ["cmd", "shift"], key: "v" }),
   /** `Continuar esta conversa`. */
-  continueConversation: { modifiers: ["ctrl", "shift"], key: "return" },
+  continueConversation: perPlatform(
+    { modifiers: ["ctrl", "shift"], key: "return" },
+    { modifiers: ["cmd", "shift"], key: "return" },
+  ),
   /** `Nova conversa` / `Executar esta tarefa novamente`. */
   newConversation: Keyboard.Shortcut.Common.New,
   /** `Abrir no Hermes Desktop`. */
   openInDesktop: Keyboard.Shortcut.Common.Open,
-  /** `Parar`. */
-  stop: { modifiers: ["ctrl", "shift"], key: "p" },
+  /**
+   * `Parar`.
+   *
+   * No macOS `Cmd+Shift+P` é também o `Common.Pin`, que esta extensão usa em
+   * `Fixar conversa`. A §9.3 já admite a mesma tecla com dois significados quando eles
+   * nunca aparecem na mesma tela, e é o caso: `Fixar conversa` só existe na lista de
+   * conversas (`sessions.tsx`), que não tem execução para parar. `tests/ux-maintenance`
+   * trava essa separação, para que ela não se perca numa edição futura.
+   */
+  stop: perPlatform({ modifiers: ["ctrl", "shift"], key: "p" }, { modifiers: ["cmd", "shift"], key: "p" }),
   /** `Orientar execução`. */
-  steer: { modifiers: ["ctrl", "shift"], key: "g" },
+  steer: perPlatform({ modifiers: ["ctrl", "shift"], key: "g" }, { modifiers: ["cmd", "shift"], key: "g" }),
   /** `Ver etapas` / `Ver resposta`. */
-  toggleSteps: { modifiers: ["ctrl"], key: "t" },
+  toggleSteps: perPlatform({ modifiers: ["ctrl"], key: "t" }, { modifiers: ["cmd"], key: "t" }),
   /** `Mostrar detalhes técnicos`. */
-  showTechnical: { modifiers: ["ctrl", "shift"], key: "i" },
+  showTechnical: perPlatform({ modifiers: ["ctrl", "shift"], key: "i" }, { modifiers: ["cmd", "shift"], key: "i" }),
   /** `Copiar detalhes técnicos`. */
-  copyTechnical: { modifiers: ["ctrl", "alt"], key: "c" },
+  copyTechnical: perPlatform({ modifiers: ["ctrl", "alt"], key: "c" }, { modifiers: ["cmd", "opt"], key: "c" }),
   /** `Atualizar` / `Tentar novamente`. */
   refresh: Keyboard.Shortcut.Common.Refresh,
   /** `Abrir configurações`. */
-  preferences: { modifiers: ["ctrl", "shift"], key: "a" },
+  preferences: perPlatform({ modifiers: ["ctrl", "shift"], key: "a" }, { modifiers: ["cmd", "shift"], key: "a" }),
   /** `Testar de novo` / `Testar conexão`. */
-  testConnection: { modifiers: ["ctrl", "shift"], key: "t" },
+  testConnection: perPlatform({ modifiers: ["ctrl", "shift"], key: "t" }, { modifiers: ["cmd", "shift"], key: "t" }),
   /** `Detectar configuração automaticamente`. */
-  autoDetect: { modifiers: ["ctrl", "shift"], key: "d" },
+  autoDetect: perPlatform({ modifiers: ["ctrl", "shift"], key: "d" }, { modifiers: ["cmd", "shift"], key: "d" }),
   /** `Excluir conversa` / `Remover da lista` / `Esquecer a chave detectada`. */
   remove: Keyboard.Shortcut.Common.Remove,
   /** `Abrir a pasta do Hermes`. */
-  hermesFolder: { modifiers: ["ctrl", "shift"], key: "f" },
+  hermesFolder: perPlatform({ modifiers: ["ctrl", "shift"], key: "f" }, { modifiers: ["cmd", "shift"], key: "f" }),
   /** `Copiar o caminho do arquivo` — o caminho, nunca o conteúdo. */
   copyPath: Keyboard.Shortcut.Common.CopyPath,
   /** `Renomear conversa`. */
   rename: Keyboard.Shortcut.Common.Edit,
   /** `Ramificar conversa`. */
-  branch: { modifiers: ["ctrl", "shift"], key: "b" },
+  branch: perPlatform({ modifiers: ["ctrl", "shift"], key: "b" }, { modifiers: ["cmd", "shift"], key: "b" }),
   /** `Usar só na próxima pergunta` — §2.6. `Usar como modelo padrão` é o `Enter` da lista. */
-  nextTurnModel: { modifiers: ["ctrl", "shift"], key: "m" },
+  nextTurnModel: perPlatform({ modifiers: ["ctrl", "shift"], key: "m" }, { modifiers: ["cmd", "shift"], key: "m" }),
   /** `Ver tarefas em andamento`. */
-  activeRuns: { modifiers: ["ctrl", "shift"], key: "e" },
+  activeRuns: perPlatform({ modifiers: ["ctrl", "shift"], key: "e" }, { modifiers: ["cmd", "shift"], key: "e" }),
   /** `Negar` (aprovação). */
-  deny: { modifiers: ["ctrl", "shift"], key: "n" },
+  deny: perPlatform({ modifiers: ["ctrl", "shift"], key: "n" }, { modifiers: ["cmd", "shift"], key: "n" }),
   /** `Aprovar durante esta execução`. */
-  approveSession: { modifiers: ["alt", "shift"], key: "e" },
+  approveSession: perPlatform({ modifiers: ["alt", "shift"], key: "e" }, { modifiers: ["opt", "shift"], key: "e" }),
   /** `Aprovar sempre este tipo de comando` — ação destrutiva. */
-  approveAlways: { modifiers: ["alt", "shift"], key: "s" },
-  /** `Fixar conversa` / `Desafixar conversa` — `Common.Pin` é `Ctrl+.` no Windows. */
+  approveAlways: perPlatform({ modifiers: ["alt", "shift"], key: "s" }, { modifiers: ["opt", "shift"], key: "s" }),
+  /** `Fixar conversa` / `Desafixar conversa` — `Common.Pin` é `Ctrl+.`/`Cmd+Shift+P`. */
   pin: Keyboard.Shortcut.Common.Pin,
   /** `Arquivar conversa` / `Desarquivar conversa`. */
-  archive: { modifiers: ["alt"], key: "a" },
+  archive: perPlatform({ modifiers: ["alt"], key: "a" }, { modifiers: ["opt"], key: "a" }),
   /**
    * `Carregar parte anterior da conversa` — significado novo, atalho novo (§9.1).
    * Não colide com nada da tabela §9.2 nem com o que o Raycast reserva.
    */
-  loadOlder: { modifiers: ["ctrl", "shift"], key: "h" },
+  loadOlder: perPlatform({ modifiers: ["ctrl", "shift"], key: "h" }, { modifiers: ["cmd", "shift"], key: "h" }),
   /**
    * `Ver mensagens e ferramentas` — o detalhe da conversa, que virou ação secundária
    * (desenho da conversa contínua §12).
@@ -89,5 +118,5 @@ export const SHORTCUTS = {
    * conexão e no erro E2 em tela cheia — três telas que não têm conversa, e portanto não
    * têm mensagens para ver. **Nunca coloque as duas ações no mesmo `ActionPanel`.**
    */
-  viewMessages: { modifiers: ["ctrl", "shift"], key: "d" },
+  viewMessages: perPlatform({ modifiers: ["ctrl", "shift"], key: "d" }, { modifiers: ["cmd", "shift"], key: "d" }),
 } satisfies Record<string, Keyboard.Shortcut>;

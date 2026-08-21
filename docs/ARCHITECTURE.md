@@ -1,4 +1,24 @@
-# ARCHITECTURE.md — Hermes para Raycast (Windows): camadas não-UI
+# ARCHITECTURE.md — Hermes para Raycast (macOS e Windows): camadas não-UI
+
+> **Adendo — suporte a macOS.** Este documento foi escrito quando a extensão era declarada só para
+> Windows, e o restante do texto continua fiel a esse momento. O que mudou desde então, e vale mais
+> que qualquer trecho abaixo que contradiga:
+>
+> - o manifesto declara `"platforms": ["macOS", "Windows"]`;
+> - a §6 (descoberta) mantém a ordem `HERMES_HOME` → `gateway.pid.hermes_home` → **pasta padrão da
+>   plataforma**, e a pasta padrão passou a ser `%LOCALAPPDATA%\hermes` no Windows e `~/.hermes` no
+>   macOS. Quem resolve isso é `defaultHermesHome()`, que recebe plataforma e `homedir` por
+>   parâmetro para poder ser testada nos dois sistemas em qualquer máquina;
+> - a preferência `sessionKey` **deixou de ter `default` no manifesto**. O padrão é resolvido em
+>   código, por sistema (`raycast:windows:default` / `raycast:macos:default`), justamente para que
+>   ninguém que já usa a extensão seja migrado em silêncio;
+> - os atalhos customizados usam a forma `{ Windows, macOS }` da API do Raycast
+>   (`perPlatform()` em `src/components/shortcuts.ts`). A regra "nunca `cmd`" continua valendo —
+>   agora restrita ao bloco Windows;
+> - os textos que nomeiam programas e teclas do sistema saem de `src/lib/platform.ts`.
+>
+> Nada do contrato com o Hermes API Server mudou. **O caminho macOS não foi exercitado ao vivo:**
+> a validação manual continua sendo só de Windows 11 (ver `docs/CHECKLIST-MANUAL.md`).
 
 **Escopo deste documento.** Especificação técnica completa e auto-contida de tudo que fica em
 `src/lib/`: tipos, descoberta do servidor, cliente HTTP, parser SSE, erros, preferências,
@@ -15,7 +35,7 @@ código-fonte do Hermes.
 | Versão Hermes observada | `0.20.4` |
 | Runtime Raycast | Node **22.22.2**, React **19.2.1**, `fetch`/`AbortController`/`ReadableStream`/`TextDecoder` globais |
 | Deps | `"@raycast/api": "^1.104.20"`, `"@raycast/utils": "^2.2.7"` |
-| Plataforma | `"platforms": ["Windows"]` |
+| Plataforma | `"platforms": ["macOS", "Windows"]` (era só `["Windows"]`; ver o adendo no topo) |
 
 **Invariantes de segurança (valem em todo o código):**
 
@@ -1355,10 +1375,10 @@ Nunca renderize `e.message` cru, nunca renderize o corpo HTTP, nunca inclua head
   {
     "name": "sessionKey",
     "title": "Escopo de memória",
-    "description": "Identificador estável usado pelo Hermes para separar a memória de longo prazo desta origem.",
+    "description": "Identificador estável usado pelo Hermes para separar a memória de longo prazo desta origem. Em branco, a extensão usa o padrão do seu sistema: raycast:windows:default no Windows e raycast:macos:default no macOS.",
     "type": "textfield",
     "required": false,
-    "default": "raycast:windows:default"
+    "placeholder": "Padrão do sistema"
   },
   {
     "name": "defaultProvider",
@@ -1429,7 +1449,7 @@ export interface HermesPreferences {
   apiServerKey: string;
   /** undefined ⇒ usar auto-descoberta. Já normalizado (sem barra final, localhost → 127.0.0.1). */
   apiUrl?: string;
-  /** Sempre preenchido; default "raycast:windows:default". Máx. 256 chars. */
+  /** Sempre preenchido; em branco cai em `defaultSessionKey()`, que é por sistema. Máx. 256 chars. */
   sessionKey: string;
   defaultProvider?: string;
   defaultModel?: string;
@@ -1468,7 +1488,7 @@ export function getHermesPreferences(): HermesPreferences {
   return {
     apiServerKey: (raw.apiServerKey ?? "").trim(),
     apiUrl: raw.apiUrl ? normalizeBaseUrl(raw.apiUrl) : undefined,
-    sessionKey: (raw.sessionKey?.trim() || "raycast:windows:default").slice(0, 256),
+    sessionKey: (raw.sessionKey?.trim() || defaultSessionKey()).slice(0, 256),
     defaultProvider: raw.defaultProvider?.trim() || undefined,
     defaultModel: raw.defaultModel?.trim() || undefined,
     streamResponses: raw.streamResponses !== false,
@@ -1523,8 +1543,11 @@ S1  Cache em LocalStorage válido? (mesmo gateway pid + start_time, < 12 h)
 
 S2  Resolver HERMES_HOME:
       process.env.HERMES_HOME
-      || readJSON(%LOCALAPPDATA%\hermes\gateway.pid).hermes_home
-      || path.join(%LOCALAPPDATA% ?? ~/AppData/Local, "hermes")
+      || readJSON(<pasta padrão>/gateway.pid).hermes_home
+      || <pasta padrão>
+
+      <pasta padrão> = Windows: path.join(%LOCALAPPDATA% ?? ~/AppData/Local, "hermes")
+                       macOS:   path.join(~, ".hermes")
 
 S3  Lista ordenada de portas candidatas (deduplicada, na ordem):
       a) config.yaml → primeira que existir entre:
@@ -1635,18 +1658,31 @@ async function readTextSafe(filePath: string, deps?: DiscoveryDeps): Promise<str
   }
 }
 
-export function resolveLocalAppData(env: NodeJS.ProcessEnv = process.env): string {
+export function resolveLocalAppData(env: NodeJS.ProcessEnv = process.env, homeDir = homedir()): string {
   const localAppData = (env.LOCALAPPDATA ?? "").trim();
-  return localAppData !== "" ? localAppData : path.join(homedir(), "AppData", "Local");
+  return localAppData !== "" ? localAppData : path.win32.join(homeDir, "AppData", "Local");
 }
 
-/** HERMES_HOME → gateway.pid.hermes_home → %LOCALAPPDATA%\hermes */
+/**
+ * A pasta padrão da plataforma. `path.win32`/`path.posix` explícitos para que o resultado
+ * não dependa da máquina que roda o teste.
+ */
+export function defaultHermesHome(context: DefaultHermesHomeContext = {}): string {
+  const env = context.env ?? process.env;
+  const platform = context.platform ?? process.platform;
+  const home = context.homeDir ?? homedir();
+
+  if (platform === "win32") return path.win32.join(resolveLocalAppData(env, home), "hermes");
+  return path.posix.join(home, ".hermes");
+}
+
+/** HERMES_HOME → gateway.pid.hermes_home → pasta padrão da plataforma */
 export async function resolveHermesHome(deps?: DiscoveryDeps): Promise<string> {
   const env = deps?.env ?? process.env;
   const fromEnv = (env.HERMES_HOME ?? "").trim();
   if (fromEnv !== "") return fromEnv;
 
-  const fallback = path.join(resolveLocalAppData(env), "hermes");
+  const fallback = defaultHermesHome({ env, platform: deps?.platform, homeDir: deps?.homeDir });
   const pidRaw = await readTextSafe(path.join(fallback, "gateway.pid"), deps);
   if (pidRaw) {
     try {
@@ -3708,7 +3744,7 @@ filho) e um token de 32 bytes que **nunca** toca o disco. É inalcançável — 
 `discovery.ts`, nunca é hardcoded fora do fallback documentado.
 
 **R2 — Resolver `HERMES_HOME` e o perfil como o Hermes resolve, e ficar nesse perfil.**
-`HERMES_HOME` → senão `%LOCALAPPDATA%\hermes`. Perfil: `%APPDATA%\Hermes\active-profile.json` →
+`HERMES_HOME` → senão a pasta padrão da plataforma (`%LOCALAPPDATA%\hermes` no Windows, `~/.hermes` no macOS). Perfil: `%APPDATA%\Hermes\active-profile.json` →
 `<home>\active_profile` → `default`. Para perfil nomeado, toda rota também existe sob `/p/{perfil}`,
 **mas exige a `API_SERVER_KEY` daquele perfil** (falha fechada, 401).
 *Código:* MVP assume perfil `default` e rotas sem prefixo. `discovery.ts` já lê o `hermes_home` de

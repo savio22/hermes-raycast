@@ -49,16 +49,18 @@ Troque `hermes-raycast` se preferir outro nome. Só faça o `git push` depois do
 Settings → About (engrenagem no topo direito) → Topics:
 
 ```text
-raycast  hermes-agent  ai  typescript  windows
+raycast  hermes-agent  ai  typescript  windows  macos
 ```
 
-**Não use `macos`.** O manifesto é `"platforms": ["Windows"]` e o tópico atrairia quem não consegue
-instalar.
+O `macos` entrou junto com o suporte às duas plataformas: o manifesto é
+`"platforms": ["macOS", "Windows"]`. Se você preferir esperar a primeira validação num Mac
+(`docs/CHECKLIST-MANUAL.md`, seção macOS) antes de atrair usuários de lá, deixe o tópico de fora por
+enquanto — a descrição do repositório é que não pode mentir.
 
 Pelo `gh`, se preferir:
 
 ```bash
-gh repo edit --add-topic raycast --add-topic hermes-agent --add-topic ai --add-topic typescript --add-topic windows
+gh repo edit --add-topic raycast --add-topic hermes-agent --add-topic ai --add-topic typescript --add-topic windows --add-topic macos
 ```
 
 ## 3. Conferir o que vai no commit inicial

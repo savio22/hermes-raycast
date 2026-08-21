@@ -1,10 +1,24 @@
-# UX-SPEC — Hermes para Raycast (Windows)
+# UX-SPEC — Hermes para Raycast (macOS e Windows)
+
+> **Adendo — suporte a macOS.** Esta spec foi escrita para uma extensão só de Windows, e o corpo do
+> documento continua fiel àquele momento. O que mudou, e prevalece sobre qualquer trecho abaixo:
+>
+> - o manifesto declara `"platforms": ["macOS", "Windows"]`;
+> - a §3.7 (configuração manual) **não** pode nomear Explorador de Arquivos e Bloco de Notas em
+>   texto fixo: os nomes vêm de `src/lib/platform.ts` e viram Finder e TextEdit no Mac. O mesmo vale
+>   para `Ctrl+F`/`Cmd+F`, `Ctrl+C`/`Cmd+C`, `Ctrl+K`/`Cmd+K` e `Ctrl+Enter`/`Cmd+Enter`;
+> - a §9.2 (teclado) continua valendo letra por letra **no Windows**. Os atalhos customizados agora
+>   declaram também o bloco macOS, pela forma `{ Windows, macOS }` da API do Raycast;
+> - a preferência `sessionKey` perdeu o `default` do manifesto: o padrão é resolvido em código, por
+>   sistema, para não migrar em silêncio quem já usa a extensão.
+>
+> **O caminho macOS não foi validado ao vivo** — ver a seção macOS de `docs/CHECKLIST-MANUAL.md`.
 
 Especificação completa de experiência e interface. Este documento é a fonte da verdade de UI para o
 agente de implementação: nomes de comando, telas, estados, textos literais em pt-BR, atalhos e
 regras de sincronização com o Hermes Desktop.
 
-- Escopo atual: **15 comandos Windows**. Os sete fluxos-base do MVP continuam prioritários; os
+- Escopo atual: **15 comandos**, nos dois sistemas. Os sete fluxos-base do MVP continuam prioritários; os
   oito comandos de contexto, consulta e automação da antiga Fase 2 já têm telas e contratos
   documentados na seção §1.2. A Fase 3 continua somente como inventário.
 - Fontes: `INSTRUCOES_DO_PROJETO.md` (produto) e `docs/research/01..07` (fatos técnicos verificados).
@@ -34,7 +48,7 @@ Ordem de leitura recomendada: §0 → §4 (estados) → §10 (glossário) → §
 | D3 | `apiServerKey` seria obrigatória | Se `required: true`, o Raycast bloqueia o comando numa tela nativa antes do nosso onboarding. | `"required": false` em todas as preferências. O onboarding é nosso (§3). |
 | D4 | Sete rótulos de estado cobrem tudo | Uma run pode sumir do servidor (404 por reinício do gateway ou TTL de 1 h — 04 §7.1). Isso **não é** "Falhou". | Adicionamos **uma** condição de lista, não um estado: `Execução expirada`. Nunca chamar de "Falhou" (seria mentira) nem de "Cancelado". Ver §4.3. |
 | D5 | Aprovação deve mostrar "nome da ferramenta e argumentos" | O evento `approval.request` **não tem `tool_name` nem `args`** (04 §4.5). Traz `command`, `description`, `pattern_key(s)`. | A tela de aprovação mostra o **comando literal** e a **descrição do risco**. É proibido inventar/adivinhar nome de ferramenta. Ver §7. |
-| D6 | "Menu Bar" e AppleScript | Indisponíveis no Windows (07 §17). | Não usados. `"platforms": ["Windows"]`. |
+| D6 | "Menu Bar" e AppleScript | Indisponíveis no Windows (07 §17). | Não usados — e continuam não sendo, mesmo com `"platforms": ["macOS", "Windows"]`: um comando `menu-bar` ou um AppleScript só existiria em metade dos usuários. |
 | D7 | Chat via `/v1/chat/completions` | Não serve para conversas compartilhadas: ids opacos, sem lista (03 §E). | Nunca usado no MVP. |
 | D8 | Jobs no roadmap | `features.jobs_admin: false`, mas as rotas existem e respondem 200 ou 501 (D-04). | `Automações` está implementada: `200` lista, `501` explica indisponibilidade e `401` abre o primeiro uso. Nunca usar `features.jobs_admin` como gate. |
 
@@ -219,7 +233,7 @@ Hermes remoto; macOS.
 | `streamResponses` | `checkbox` | `Resposta` | `Mostrar a resposta enquanto ela é escrita` | `true` | `Desative se você preferir ver apenas a resposta pronta.` |
 | `defaultModel` | `textfield` | `Modelo padrão` | — | — | `Opcional. Deixe em branco para usar o modelo padrão configurado no Hermes.` |
 | `defaultProvider` | `textfield` | `Provedor padrão` | — | — | `Opcional. Só preencha se o suporte pediu ou se você sabe exatamente o que faz.` |
-| `sessionKey` | `textfield` | `Escopo de memória` | — | `raycast:windows:default` | `Avançado. Identifica a memória de longo prazo usada por esta extensão. Mude somente se souber o efeito.` |
+| `sessionKey` | `textfield` | `Escopo de memória` | — | _(sem `default` no manifesto; resolvido em código: `raycast:windows:default` / `raycast:macos:default`)_ | `Avançado. Identifica a memória de longo prazo usada por esta extensão. Mude somente se souber o efeito.` |
 | `maxHistoryItems` | `dropdown` (`25/50/100/200`) | `Itens por página` | — | `50` | `Quantas conversas carregar de uma vez nas listas.` |
 
 **`apiUrl` não tem default** (ARCHITECTURE D1): um valor preenchido desliga a auto-descoberta de
@@ -789,7 +803,9 @@ em arquivos do Hermes, e apenas dentro destes limites:
 | Guardar o valor em `LocalStorage` (banco criptografado do Raycast) | Guardar em `Cache`, em arquivo, em log, em Toast, em erro ou no clipboard |
 | Dizer "encontrei" | Exibir a chave, exibir prefixo/sufixo, exibir o tamanho |
 
-`<HERMES_HOME>` = `process.env.HERMES_HOME` || `path.join(process.env.LOCALAPPDATA, "hermes")` (01 §2.6).
+`<HERMES_HOME>` = `process.env.HERMES_HOME` || `gateway.pid.hermes_home` || pasta padrão da
+plataforma — `path.join(process.env.LOCALAPPDATA, "hermes")` no Windows (01 §2.6),
+`path.join(homedir(), ".hermes")` no macOS. Ver `defaultHermesHome()` em `src/lib/discovery.ts`.
 Parser da linha: `partition("=")`, remover `export ` inicial, aspas simples/duplas e `\r` final;
 arquivo lido com `utf-8-sig` (01 §2.7).
 
@@ -953,7 +969,10 @@ Ações: `Tentar de novo` (`Ctrl+R`), `Configurar manualmente` (sem atalho dedic
 
 ### 3.7 Caminho manual — sem terminal, passo a passo
 
-`Detail` (`navigationTitle`: `Configurar manualmente`). **Literal:**
+`Detail` (`navigationTitle`: `Configurar manualmente`). **Literal — na variante Windows.** Os
+nomes de programa e as teclas abaixo NÃO são literais fixos: eles saem de `platformCopy()`
+(`src/lib/platform.ts`) e viram Finder, TextEdit e `Cmd+F`/`Cmd+C` no macOS. O que é literal é a
+estrutura dos cinco passos e o resto das frases.
 
 ```markdown
 # Configurar manualmente
@@ -1590,8 +1609,10 @@ Não bloquear — apenas avisar.
 
 ### 9.1 Regras
 
-- **Nunca usar `cmd`.** No Windows um atalho com `cmd` é silenciosamente ignorado (07 §8.1).
-  Modificadores válidos: `ctrl`, `shift`, `alt`, `windows`. Só usamos os três primeiros.
+- **Nunca usar `cmd` no bloco Windows.** Lá um atalho com `cmd` é silenciosamente ignorado
+  (07 §8.1). Modificadores válidos no Windows: `ctrl`, `shift`, `alt`, `windows` — só usamos os
+  três primeiros. O bloco macOS, declarado junto pela forma `{ Windows, macOS }` da API, usa
+  `cmd`, `opt`, `ctrl` e `shift`.
 - Preferir `Keyboard.Shortcut.Common.*` quando existir equivalente semântico — o Raycast já traduz
   para Windows (07 §8.4).
 - Reservados pelo Raycast e proibidos para nós: `Enter` (ação primária), `Ctrl+K` (painel de ações),

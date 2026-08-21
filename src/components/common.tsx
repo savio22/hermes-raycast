@@ -10,7 +10,16 @@
  * é um literal que vai divergir na primeira revisão de texto: aqui ele tem um dono só.
  */
 
-import { Action, Icon, LaunchType, Toast, launchCommand, openExtensionPreferences, showToast } from "@raycast/api";
+import {
+  Action,
+  Icon,
+  LaunchType,
+  Toast,
+  launchCommand,
+  open,
+  openExtensionPreferences,
+  showToast,
+} from "@raycast/api";
 import type { ReactElement } from "react";
 import { SHORTCUTS } from "./shortcuts";
 
@@ -47,6 +56,27 @@ export function OpenModelsAction(): ReactElement {
   }
 
   return <Action title="Escolher modelo" icon={Icon.ComputerChip} onAction={() => void openModels()} />;
+}
+
+/**
+ * Abre o deep link `hermes://open/<id>` no Hermes Desktop.
+ *
+ * Existe por causa da §8.4: o esquema `hermes://` só fica registrado se o Hermes Desktop
+ * estiver instalado, e a falha não se comporta igual nos dois sistemas — no Windows quem
+ * avisa é o próprio sistema, no macOS o `open()` REJEITA. Sem o `catch`, o caminho macOS
+ * viraria uma rejeição não tratada dentro de um `onAction`. Aqui ela vira uma frase que
+ * diz o que fazer, e `Copiar identificador da conversa` continua ao lado como saída.
+ */
+export async function openHermesDesktop(url: string): Promise<void> {
+  try {
+    await open(url);
+  } catch {
+    await showToast({
+      style: Toast.Style.Failure,
+      title: "Não consegui abrir o Hermes Desktop",
+      message: "Verifique se o Hermes Desktop está instalado neste computador.",
+    });
+  }
 }
 
 /*

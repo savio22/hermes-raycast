@@ -8,7 +8,7 @@ Use GitHub's private reporting instead: the **Security** tab of this repository 
 vulnerability**. That opens a private advisory visible only to the maintainer and to you.
 
 Please include what you would want to receive: what an attacker can do, the steps to reproduce it,
-and the versions involved (extension commit, Raycast, Hermes Agent, Windows). If a proof of concept
+and the versions involved (extension commit, Raycast, Hermes Agent, operating system). If a proof of concept
 touches a real Hermes install, describe it — do not attach anything containing your own key or
 conversation contents.
 

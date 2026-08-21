@@ -5,7 +5,8 @@
  *   S0  preferência `apiUrl` preenchida → sonda e PRONTO. Sem fallback silencioso:
  *       escolha explícita do usuário manda, mesmo quando dá errado.
  *   S1  cache em LocalStorage (mesmo pid/start_time do gateway, < 12 h) → sonda rápida.
- *   S2  HERMES_HOME: env > gateway.pid.hermes_home > %LOCALAPPDATA%\hermes.
+ *   S2  HERMES_HOME: env > gateway.pid.hermes_home > pasta padrão da plataforma
+ *       (`%LOCALAPPDATA%\hermes` no Windows, `~/.hermes` no macOS).
  *   S3  portas candidatas: config.yaml > API_SERVER_PORT > .env > 8642.
  *   S4  `GET /health` em cada uma; aceita SÓ `status === "ok"` e `platform === "hermes-agent"`.
  *   S5  nada passou: sonda a 8644 para dar um diagnóstico preciso.
@@ -66,6 +67,10 @@ interface CachedEndpoint extends ResolvedEndpoint {
 /** Injeção de dependências — só para testes. Em produção fica tudo `undefined`. */
 export interface DiscoveryDeps {
   env?: NodeJS.ProcessEnv;
+  /** `process.platform`. Injetável para testar as duas plataformas em qualquer máquina. */
+  platform?: NodeJS.Platform;
+  /** `os.homedir()`. Injetável pelo mesmo motivo. */
+  homeDir?: string;
   readTextFile?: (filePath: string) => Promise<string | undefined>;
   probe?: (baseUrl: string, timeoutMs: number) => Promise<HealthResponse | undefined>;
 }
@@ -112,18 +117,49 @@ function stripBom(text: string): string {
   return text.replace(/^\uFEFF/, "");
 }
 
-export function resolveLocalAppData(env: NodeJS.ProcessEnv = process.env): string {
+/** `%LOCALAPPDATA%`, com o fallback que o próprio Windows usaria. Só faz sentido no Windows. */
+export function resolveLocalAppData(env: NodeJS.ProcessEnv = process.env, homeDir: string = homedir()): string {
   const localAppData = (env.LOCALAPPDATA ?? "").trim();
-  return localAppData !== "" ? localAppData : path.join(homedir(), "AppData", "Local");
+  return localAppData !== "" ? localAppData : path.win32.join(homeDir, "AppData", "Local");
 }
 
-/** HERMES_HOME → gateway.pid.hermes_home → %LOCALAPPDATA%\hermes */
+/** Entradas de `defaultHermesHome()`. Tudo com valor padrão; os testes injetam o que precisam. */
+export interface DefaultHermesHomeContext {
+  env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
+  homeDir?: string;
+}
+
+/**
+ * A pasta padrão do Hermes na plataforma — o ÚLTIMO degrau da §S2, nunca o primeiro.
+ *
+ *   Windows: `%LOCALAPPDATA%\hermes` (fallback `<home>\AppData\Local\hermes`);
+ *   macOS:   `~/.hermes`.
+ *
+ * Linux cai no mesmo ramo POSIX do macOS — é onde o Hermes oficial guarda os arquivos
+ * fora do Windows — ainda que o Raycast não exista lá.
+ *
+ * `path.win32` / `path.posix` explícitos, e não `path.join`: em produção cada ramo só
+ * roda no seu próprio sistema (onde os dois são idênticos), e nos testes o resultado
+ * deixa de depender da máquina que está rodando a suíte — um teste do macOS passa no
+ * Windows e vice-versa.
+ */
+export function defaultHermesHome(context: DefaultHermesHomeContext = {}): string {
+  const env = context.env ?? process.env;
+  const platform = context.platform ?? process.platform;
+  const home = context.homeDir ?? homedir();
+
+  if (platform === "win32") return path.win32.join(resolveLocalAppData(env, home), "hermes");
+  return path.posix.join(home, ".hermes");
+}
+
+/** HERMES_HOME → gateway.pid.hermes_home → pasta padrão da plataforma. */
 export async function resolveHermesHome(deps?: DiscoveryDeps): Promise<string> {
   const env = deps?.env ?? process.env;
   const fromEnv = (env.HERMES_HOME ?? "").trim();
   if (fromEnv !== "") return fromEnv;
 
-  const fallback = path.join(resolveLocalAppData(env), "hermes");
+  const fallback = defaultHermesHome({ env, platform: deps?.platform, homeDir: deps?.homeDir });
   const pidRaw = await readTextSafe(path.join(fallback, "gateway.pid"), deps);
   if (pidRaw) {
     try {
@@ -450,6 +486,13 @@ export async function invalidateBaseUrl(): Promise<void> {
  *
  * Devolve `undefined` quando o id não é linkável — a UI OMITE a ação nesse caso, em vez de
  * oferecer um link que abriria o Desktop no lugar errado.
+ *
+ * MULTIPLATAFORMA: a montagem do link não tem nada de específico de sistema, e quem abre é
+ * o `open()` do Raycast, que trata esquemas de URL nos dois sistemas. Quem REGISTRA o
+ * esquema `hermes://` é o Hermes Desktop: no Windows pelo registro, no macOS pelo
+ * `Info.plist` do app. **O caminho macOS ainda não foi exercido ao vivo** (esta base foi
+ * validada em Windows 11); por isso a UI segue defensiva — a ação `Copiar identificador da
+ * conversa` continua ao lado, e nada quebra se o esquema não estiver registrado.
  */
 export function hermesDesktopSessionUrl(sessionId: string | undefined): string | undefined {
   if (sessionId === undefined || sessionId === "" || /[\\/:]/.test(sessionId) || sessionId.includes("..")) {

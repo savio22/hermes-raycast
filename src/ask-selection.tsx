@@ -12,6 +12,7 @@ import { type ReactElement } from "react";
 
 import { TextCommand } from "./components/text-command";
 import { buildUntrustedPrompt } from "./lib/input-safety";
+import { platformCopy } from "./lib/platform";
 
 const COMMAND_TITLE = "Perguntar sobre seleção";
 const DEFAULT_QUESTION = "Explique este texto em português, de forma simples e direta.";
@@ -20,6 +21,7 @@ type Arguments = { pergunta?: string };
 
 export default function Command(props: LaunchProps<{ arguments: Arguments }>): ReactElement {
   const question = (props.arguments?.pergunta ?? "").trim();
+  const copy = platformCopy();
 
   return (
     <TextCommand
@@ -30,7 +32,7 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>): R
       emptyDescription={[
         "Selecione um trecho na janela em que você estava, ou copie o texto, e chame este comando de novo.",
         "",
-        "No Windows, muitos aplicativos não entregam a seleção ao sistema. Quando isso acontece, copiar (`Ctrl+C`) sempre funciona.",
+        `Nem todo aplicativo entrega a seleção ao sistema. Quando isso acontece, copiar (\`${copy.copyKeys}\`) sempre funciona.`,
       ].join("\n")}
     />
   );

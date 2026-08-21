@@ -7,7 +7,7 @@
 
 import { type ReactElement } from "react";
 
-import { TextCommand } from "./components/text-command";
+import { TextCommand, copyFirstHint } from "./components/text-command";
 import { buildUntrustedPrompt } from "./lib/input-safety";
 
 const COMMAND_TITLE = "Resumir clipboard";
@@ -24,7 +24,7 @@ export default function Command(): ReactElement {
       source="area-de-transferencia"
       buildMessage={(text) => buildUntrustedPrompt(INSTRUCTION, text)}
       emptyTitle="Não há nada copiado"
-      emptyDescription="Copie o texto que você quer trabalhar (`Ctrl+C`) e chame este comando de novo."
+      emptyDescription={copyFirstHint()}
     />
   );
 }

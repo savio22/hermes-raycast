@@ -29,6 +29,12 @@ a number.
 is not visible to screen automation on Windows, so no amount of test-writing removes this step.
 Anything that can be pulled out of the checklist into a contract test should be.
 
+**First macOS pass on real hardware.** The manifest now declares `"platforms": ["macOS", "Windows"]`
+and the code paths are covered by tests, but nobody has run the extension on a Mac yet. The three
+things to prove there: the `hermes://` deep link actually focuses a conversation in Hermes Desktop,
+the `Cmd`-based shortcuts do not collide with anything Raycast reserves, and auto-detection finds
+`~/.hermes` on a normal install. The macOS section of the checklist lists them.
+
 ## Later
 
 - **Attachments and images**, once the API's multimodal format is verified rather than assumed.
@@ -36,8 +42,9 @@ Anything that can be pulled out of the checklist into a contract test should be.
 - **A Raycast AI tool**, so Raycast's own AI can call controlled Hermes capabilities.
 - **Optional remote Hermes support.** Today the extension talks to `127.0.0.1` and nothing else,
   and that constraint is doing real security work. Loosening it is a design problem first.
-- **Optional macOS support**, only if it costs the Windows experience nothing. The manifest is
-  `"platforms": ["Windows"]` deliberately.
+- **A second look at macOS ergonomics**, once the first pass on real hardware happens. Support is
+  in — the manifest declares `"platforms": ["macOS", "Windows"]` — but shortcut choices there were
+  made by reading Raycast's tables, not by using them.
 
 ## Not planned
 

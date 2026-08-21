@@ -11,6 +11,7 @@
   ],
   "license": "MIT",
   "platforms": [
+    "macOS",
     "Windows"
   ],
   "commands": [
@@ -309,10 +310,10 @@
     {
       "name": "sessionKey",
       "title": "Escopo de memória",
-      "description": "Identificador estável usado pelo Hermes para separar a memória de longo prazo desta origem.",
+      "description": "Identificador estável usado pelo Hermes para separar a memória de longo prazo desta origem. Em branco, a extensão usa o padrão do seu sistema: raycast:windows:default no Windows e raycast:macos:default no macOS.",
       "type": "textfield",
       "required": false,
-      "default": "raycast:windows:default"
+      "placeholder": "Padrão do sistema"
     },
     {
       "name": "defaultProvider",

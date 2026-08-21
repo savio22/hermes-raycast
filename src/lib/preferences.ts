@@ -14,6 +14,7 @@
 
 import { getPreferenceValues } from "@raycast/api";
 import { HermesNotConfiguredError, registerSecret } from "./errors";
+import { type UiPlatform, toUiPlatform } from "./platform";
 import { readDetectedApiKey } from "./storage";
 import type { EndpointSource } from "./discovery";
 
@@ -32,7 +33,7 @@ interface RawPreferences {
 export interface HermesPreferences {
   /** `undefined` ⇒ usar a auto-descoberta. Já normalizado (sem barra final, IPv4). */
   apiUrl?: string;
-  /** Sempre preenchido; default "raycast:windows:default". Máx. 256 chars. */
+  /** Sempre preenchido; em branco cai no padrão do sistema. Máx. 256 chars. */
   sessionKey: string;
   defaultProvider?: string;
   defaultModel?: string;
@@ -41,7 +42,31 @@ export interface HermesPreferences {
   maxHistoryItems: number;
 }
 
-export const DEFAULT_SESSION_KEY = "raycast:windows:default";
+/**
+ * O escopo de memória padrão, por sistema.
+ *
+ * **`raycast:windows:default` continua sendo o valor do Windows, letra por letra.** Ele é
+ * o identificador que o Hermes usa para separar a memória de longo prazo desta origem:
+ * mudá-lo não apaga nada, mas faz a extensão passar a escrever e ler em outro escopo — a
+ * memória antiga fica órfã. Por isso não há migração aqui, e não pode haver.
+ *
+ * O manifest deliberadamente **não** declara `default` para `sessionKey`. Se declarasse,
+ * o Raycast injetaria o mesmo literal em toda instalação e não haveria como distinguir
+ * "o usuário escolheu este valor" de "veio do manifest" — trocar o padrão migraria, em
+ * silêncio, todo mundo que nunca tocou no campo. Com o campo vazio, quem resolve é esta
+ * função, e o resultado no Windows é exatamente o de antes:
+ *
+ *   - campo preenchido pelo usuário → vence sempre, nos dois sistemas;
+ *   - campo vazio no Windows        → `raycast:windows:default` (o de sempre);
+ *   - campo vazio no macOS          → `raycast:macos:default` (instalação nova, escopo novo).
+ *
+ * Quem quiser a MESMA memória nas duas máquinas escreve o mesmo valor nos dois Raycasts —
+ * é uma escolha explícita, e continua sendo do usuário.
+ */
+export function defaultSessionKey(platform: UiPlatform = toUiPlatform()): string {
+  return platform === "macos" ? "raycast:macos:default" : "raycast:windows:default";
+}
+
 const MAX_HISTORY_FALLBACK = 50;
 
 /**
@@ -74,7 +99,7 @@ export function getHermesPreferences(): HermesPreferences {
 
   return {
     apiUrl: raw.apiUrl ? normalizeBaseUrl(raw.apiUrl) : undefined,
-    sessionKey: (raw.sessionKey?.trim() || DEFAULT_SESSION_KEY).slice(0, 256),
+    sessionKey: (raw.sessionKey?.trim() || defaultSessionKey()).slice(0, 256),
     defaultProvider: raw.defaultProvider?.trim() || undefined,
     defaultModel: raw.defaultModel?.trim() || undefined,
     streamResponses: raw.streamResponses !== false,

@@ -1,4 +1,4 @@
-# Hermes para Raycast (Windows)
+# Hermes para Raycast
 
 [![CI](https://github.com/savio22/hermes-raycast/actions/workflows/ci.yml/badge.svg)](https://github.com/savio22/hermes-raycast/actions/workflows/ci.yml)
 
@@ -8,6 +8,10 @@ aparece ali mesmo.
 
 > Esta é a versão em português deste documento. O [README.md](README.md) em inglês tem o mesmo
 > conteúdo, para quem chega pelo GitHub. A interface da extensão é toda em português.
+
+- **Sistemas:** macOS e Windows (`"platforms": ["macOS", "Windows"]` no manifesto), com a mesma
+  base de código. Veja [Os dois sistemas](#os-dois-sistemas).
+- **Fala com:** só `127.0.0.1` — o Hermes API Server da sua própria máquina. Nada sai daqui.
 
 ## A ideia principal: é a MESMA conversa do Hermes Desktop
 
@@ -27,6 +31,26 @@ E a promessa que sustenta isso no dia a dia: **fechar a janela do Raycast não c
 nada**. Se você fizer uma pergunta longa e a janela sumir, a tarefa continua rodando no
 Hermes. Ela reaparece em **Execuções do Hermes**, com a resposta pronta. Só o botão
 **Parar** cancela de verdade.
+
+## Os dois sistemas
+
+A extensão roda o mesmo código no macOS e no Windows. O que muda é pouco, e mora em três lugares:
+
+| | Windows | macOS |
+| --- | --- | --- |
+| Pasta padrão do Hermes | `%LOCALAPPDATA%\hermes` | `~/.hermes` |
+| Modificador dos atalhos | `Ctrl` / `Alt` | `Cmd` / `Opt` |
+| Nomes na configuração manual | Explorador de Arquivos, Bloco de Notas | Finder, TextEdit |
+
+A ordem da descoberta é a mesma nos dois e não muda: `HERMES_HOME` do ambiente → `hermes_home`
+dentro do `gateway.pid` → a pasta padrão do sistema. Uma instalação fora do lugar continua sendo
+encontrada sozinha, sem mexer em preferência nenhuma.
+
+> **O que ainda não foi testado à mão:** os portões automatizados (309 testes, tipos, lint e build
+> de release) cobrem os dois caminhos de código, mas esta versão só foi exercitada de verdade **no
+> Windows 11**. Falta a primeira passada num Mac: o teclado, o link `hermes://` abrindo o Hermes
+> Desktop e a tela de configuração manual com Finder e TextEdit. O roteiro está em
+> [docs/CHECKLIST-MANUAL.md](docs/CHECKLIST-MANUAL.md).
 
 ## Instalação e configuração (sem terminal)
 
@@ -49,6 +73,9 @@ Se a detecção automática não achar nada, use o comando **Configurar Hermes**
 em português e passo a passo, onde fica o arquivo de configuração do Hermes, abre a pasta
 para você e permite colar a chave manualmente. O mesmo comando serve para consertar a
 configuração depois — por exemplo se a chave do Hermes for trocada.
+
+As instruções dessa tela citam os programas do sistema em que você está: Explorador de Arquivos e
+Bloco de Notas no Windows, Finder e TextEdit no macOS.
 
 Para conferir se está tudo funcionando a qualquer momento, use
 **Verificar conexão com Hermes**.
@@ -80,8 +107,8 @@ sempre censurada.
 | **Verificar conexão com Hermes** | Diagnóstico: o Hermes está ligado? A chave funciona? Qual endereço está sendo usado? |
 | **Configurar Hermes** | Conectar ou reconectar a extensão ao Hermes, com detecção automática ou configuração manual. |
 
-Tudo é acessível pelo teclado. Nenhuma ação existe apenas como atalho: `Ctrl+K` abre a
-lista completa de ações de cada tela.
+Tudo é acessível pelo teclado. Nenhuma ação existe apenas como atalho: `Ctrl+K` (`Cmd+K` no
+macOS) abre a lista completa de ações de cada tela.
 
 ### Atualização da lista de conversas
 
@@ -107,8 +134,11 @@ Vale ser honesto sobre o que está fora desta versão:
   Desktop continua com o modelo dele.
 - **Quem configura os provedores de modelo é o Hermes Desktop.** Se nenhum provedor estiver
   autenticado, a extensão explica o problema mas não resolve por você.
-- **Só Windows, só Hermes local.** A extensão fala exclusivamente com `127.0.0.1` e não tem
-  modo remoto.
+- **Só Hermes local.** A extensão fala exclusivamente com `127.0.0.1` e não tem modo remoto.
+- **O suporte a macOS está implementado, mas ainda não foi validado num Mac.** Os caminhos de
+  código estão cobertos por teste e o manifesto declara os dois sistemas, mas ninguém rodou a
+  extensão de ponta a ponta no macOS ainda. O link `hermes://` e o teclado são os dois pontos com
+  mais chance de precisar de ajuste.
 - **Ações dependentes do Hermes real ainda precisam de validação manual em cada máquina.**
   Os testes automatizados cobrem contratos, segurança, fila, persistência e parsing; o
   checklist de teclado e os cenários de streaming/aprovação continuam em
@@ -124,13 +154,13 @@ ajuda.
 
 ## Para desenvolvedores
 
-Requisitos: Node.js 24+ e o Raycast para Windows instalados. O Node 24 não é preferência: os
+Requisitos: Node.js 24+ e o Raycast instalado (macOS ou Windows). O Node 24 não é preferência: os
 testes são `.ts` rodados pelo `node --test` com remoção nativa de tipos, e versões anteriores
 falham com um erro de sintaxe que não parece erro de versão.
 
 ```bash
 npm install       # instala as dependências
-npm run dev       # desenvolve usando o alvo release do Raycast para Windows
+npm run dev       # desenvolve usando o alvo release (obrigatório no Windows, inofensivo no macOS)
 npm run build     # compila os 15 pontos de entrada
 npm run lint      # ESLint + Prettier + validação do manifesto
 ```
@@ -141,7 +171,10 @@ Testes (Node.js nativo, sem framework externo — os tipos são removidos pelo p
 node --test "tests/**/*.test.ts"
 ```
 
-O conjunto atual tem 291 testes determinísticos. A checagem de tipos é feita com
+O conjunto atual tem 309 testes determinísticos, incluindo a resolução da pasta padrão do Hermes
+no macOS e no Windows (`tests/platform.test.ts` e o bloco de descoberta em
+`tests/discovery.test.ts`). Esses testes **injetam** a plataforma em vez de ler `process.platform`,
+então os casos do macOS passam rodando no Windows e vice-versa. A checagem de tipos é feita com
 `npm run typecheck`; o build e o lint são portões separados da publicação.
 
 Verificação de tipos:
@@ -156,7 +189,7 @@ npx tsc --noEmit -p tests/tsconfig.json
 - `src/lib/` — as regras: descoberta do servidor (`discovery`), cliente HTTP e rotas
   (`hermes-api`), leitura de eventos SSE (`hermes-events`), catálogo de erros (`errors`),
   rótulos de estado (`status`), preferências (`preferences`), armazenamento local
-  (`storage`) e tipos (`types`).
+  (`storage`), os textos que mudam com o sistema (`platform`) e tipos (`types`).
 - `src/hooks/` e `src/components/` — a lógica de acompanhamento de execuções e as telas
   compartilhadas (aprovações, progresso, primeiro uso).
 - `src/<nome>.tsx` — um arquivo por comando declarado em `package.json`.
@@ -166,10 +199,12 @@ npx tsc --noEmit -p tests/tsconfig.json
   `ARCHITECTURE.md` (contratos dos módulos, catálogo de erros, armadilhas) →
   `docs/research/` (a pesquisa da API que sustenta tudo).
 
-Duas regras que não são detalhe: **nunca** use o modificador `cmd` em atalhos (no Windows
-ele é ignorado silenciosamente) e **nunca** chame o endpoint de parada de uma execução na
-limpeza de um `useEffect` — desmontar a tela cancela apenas o leitor local, e a tarefa
-continua viva no Hermes.
+Duas regras que não são detalhe. **Nunca** coloque `cmd` no bloco Windows de um atalho (lá ele é
+ignorado silenciosamente): os atalhos customizados são declarados como
+`perPlatform(Windows, macOS)` em `src/components/shortcuts.ts`, e `Keyboard.Shortcut.Common.*` tem
+preferência sempre que existe equivalente semântico, porque o Raycast já traduz esses por sistema.
+E **nunca** chame o endpoint de parada de uma execução na limpeza de um `useEffect` — desmontar a
+tela cancela apenas o leitor local, e a tarefa continua viva no Hermes.
 
 ## Contribuir
 

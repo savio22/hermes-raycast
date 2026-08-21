@@ -1,4 +1,4 @@
-# Hermes for Raycast (Windows)
+# Hermes for Raycast
 
 [![CI](https://github.com/savio22/hermes-raycast/actions/workflows/ci.yml/badge.svg)](https://github.com/savio22/hermes-raycast/actions/workflows/ci.yml)
 
@@ -11,7 +11,8 @@ without leaving what you were doing. One shortcut, one question, the answer show
 > Portuguese. [README.pt-BR.md](README.pt-BR.md) is the Portuguese version of this document, and
 > [ROADMAP.md](ROADMAP.md) says where i18n stands.
 
-- **Platform:** Windows only (`"platforms": ["Windows"]` in the manifest)
+- **Platforms:** macOS and Windows (`"platforms": ["macOS", "Windows"]` in the manifest). Same code
+  base on both; see [Platform support](#platform-support) for what that means today.
 - **Talks to:** `127.0.0.1` only — the Hermes API Server on your own machine. Nothing is sent to an
   external server.
 - **Status:** not published on the Raycast Store yet; install from source (see
@@ -39,9 +40,30 @@ back in **Execuções do Hermes** with the answer ready. Only the **Parar** butt
 
 ## Requirements
 
-- **Windows** with [Raycast for Windows](https://www.raycast.com/windows) installed
+- **macOS or Windows**, with Raycast installed ([Raycast for Windows](https://www.raycast.com/windows))
 - **Hermes Agent** running locally (the Hermes API Server must be up — default `127.0.0.1:8642`)
 - **Node.js 24+**, only to build the extension from source
+
+### Platform support
+
+The extension is declared for **macOS and Windows** and runs the same code on both. What actually
+differs is small and lives in three places:
+
+| | Windows | macOS |
+| --- | --- | --- |
+| Default Hermes folder | `%LOCALAPPDATA%\hermes` | `~/.hermes` |
+| Shortcut modifier | `Ctrl` / `Alt` | `Cmd` / `Opt` |
+| Names in the manual setup screen | Explorador de Arquivos, Bloco de Notas | Finder, TextEdit |
+
+Discovery order is the same on both and does not change: `HERMES_HOME` from the environment →
+`hermes_home` inside `gateway.pid` → the platform default above. So a non-standard install is found
+on either system without touching preferences.
+
+> **Honest status:** every automated gate (309 tests, types, lint, release build) runs on both code
+> paths, but this branch has only been exercised **by hand on Windows 11**. The macOS run — the
+> keyboard, the `hermes://` deep link into Hermes Desktop, and Finder/TextEdit in the manual setup
+> screen — still needs a first pass on real hardware. See
+> [docs/CHECKLIST-MANUAL.md](docs/CHECKLIST-MANUAL.md).
 
 ## Setup (no terminal required)
 
@@ -63,6 +85,9 @@ If auto-detection finds nothing, use the **Configurar Hermes** command. It walks
 the Hermes config file lives, opens the folder for you, and lets you paste the key manually. The
 same command fixes the configuration later — for example if the Hermes key gets rotated.
 
+The instructions on that screen name the programs of the system you are on: Explorador de Arquivos
+and Bloco de Notas on Windows, Finder and TextEdit on macOS.
+
 To check things are working at any time, run **Verificar conexão com Hermes**.
 
 ### About the key
@@ -73,8 +98,8 @@ redacted.
 
 ## Commands
 
-Fifteen commands, all keyboard-driven. No action exists as a shortcut only — `Ctrl+K` opens the
-full action list on every screen.
+Fifteen commands, all keyboard-driven. No action exists as a shortcut only — `Ctrl+K` (`Cmd+K` on
+macOS) opens the full action list on every screen.
 
 | Command | What it is for |
 | --- | --- |
@@ -118,8 +143,10 @@ Worth being honest about what is outside this version:
   keeps its own.
 - **Model providers are configured by Hermes Desktop.** If no provider is authenticated, the
   extension explains the problem but does not solve it for you.
-- **Windows only, local Hermes only.** The extension talks exclusively to `127.0.0.1` and has no
-  remote mode.
+- **Local Hermes only.** The extension talks exclusively to `127.0.0.1` and has no remote mode.
+- **macOS support is implemented but not yet validated on a Mac.** The code paths are covered by
+  the automated suite and the manifest declares both systems, but nobody has run it on macOS end to
+  end yet. Deep-link and keyboard behaviour there are the two things most likely to need a nudge.
 - **Actions that depend on a live Hermes still need manual validation per machine.** The automated
   suite covers contracts, safety, queueing, persistence and parsing; the keyboard checklist and the
   streaming/approval scenarios live in [docs/CHECKLIST-MANUAL.md](docs/CHECKLIST-MANUAL.md).
@@ -132,7 +159,7 @@ happened and what to do, with **Copiar detalhes técnicos** for when you need to
 
 ## Development
 
-Requirements: Node.js 24+ and Raycast for Windows installed.
+Requirements: Node.js 24+ and Raycast installed (macOS or Windows).
 
 ```bash
 npm install
@@ -150,9 +177,9 @@ npm run build
 npm run lint
 ```
 
-> **Windows gotcha:** the build **must** use `--target release` (every npm script here already
-> does). Without it the output lands in the old Raycast X path and Raycast reports
-> `Missing executable`.
+> **Windows gotcha:** on Windows the build **must** use `--target release` (every npm script here
+> already does). Without it the output lands in the old Raycast X path and Raycast reports
+> `Missing executable`. The flag is harmless on macOS, so the scripts are the same on both.
 
 Tests run on the Node.js test runner with no external framework — types are stripped by Node
 itself, which is why **Node 24 is a hard requirement**. Older Node fails on the type annotations
@@ -162,7 +189,10 @@ with a syntax error that does not look like a version problem.
 npm test
 ```
 
-The suite currently has 291 deterministic tests. Type checking, lint and build are separate gates:
+The suite currently has 309 deterministic tests, including the platform-default resolution for
+macOS and Windows (`tests/platform.test.ts` and the discovery block in `tests/discovery.test.ts`).
+Those tests inject the platform instead of reading `process.platform`, so the macOS cases pass
+while running on Windows and vice versa. Type checking, lint and build are separate gates:
 
 ```bash
 npx tsc --noEmit -p tsconfig.json
@@ -176,7 +206,8 @@ npx tsc --noEmit -p tests/tsconfig.json
 
 - `src/lib/` — the rules: server discovery (`discovery`), HTTP client and routes (`hermes-api`),
   SSE event reading (`hermes-events`), error catalog (`errors`), state labels (`status`),
-  preferences (`preferences`), local storage (`storage`) and types (`types`).
+  preferences (`preferences`), local storage (`storage`), the per-system wording (`platform`) and
+  types (`types`).
 - `src/hooks/` and `src/components/` — run-tracking logic and the shared screens (approvals,
   progress, first run).
 - `src/<name>.tsx` — one file per command declared in `package.json`.
@@ -187,9 +218,12 @@ npx tsc --noEmit -p tests/tsconfig.json
   `docs/research/` (the API research everything rests on). These documents are written in
   Portuguese.
 
-Two rules that are not details: **never** use the `cmd` modifier in shortcuts (Windows silently
-ignores it) and **never** call a run's stop endpoint from a `useEffect` cleanup — unmounting a
-screen cancels only the local reader, while the task stays alive inside Hermes.
+Two rules that are not details. **Never** put `cmd` in the Windows half of a shortcut (Windows
+silently ignores it): custom shortcuts are declared as `perPlatform(Windows, macOS)` in
+`src/components/shortcuts.ts`, and `Keyboard.Shortcut.Common.*` is preferred wherever a semantic
+equivalent exists, because Raycast already maps those per system. And **never** call a run's stop
+endpoint from a `useEffect` cleanup — unmounting a screen cancels only the local reader, while the
+task stays alive inside Hermes.
 
 ## Contributing
 
