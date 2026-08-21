@@ -388,3 +388,49 @@ nunca em segundo plano: nada disso muda.
   1 `Indisponível` (`!enabled × !configured`). **`Precisa configurar` não aparece nesta
   instalação** — quem for validar a tela à mão não vai conseguir vê-lo sem habilitar um
   grupo sem credencial.
+
+## D-16 — O JavaScript não é o gargalo da conversa longa: 0,02% do orçamento de render
+
+**Status: MEDIDO** em 2026-08-21 com `tests/bench-conversa.mts` (rodar com
+`node tests/bench-conversa.mts`; não é teste e não entra no `node --test`).
+
+O ponto crítico nº 1 do checklist — "fluidez com a conversa de 330 mensagens" — era
+inteiramente subjetivo: alguém precisava sentir se engasgava. A parte que é código puro
+agora tem número. Cenário: 330 mensagens → 110 trocas, uma em cada quatro ferramentas com
+saída de 60 mil caracteres, resposta do turno vivo crescendo além do corte de
+`MAX_TURN_CHARS` e etapas acumulando a cada quatro flushes.
+
+| O quê | Custo | % do intervalo de 80 ms |
+|---|---|---|
+| `pairMessagesIntoTurns(330)` | 0,037 ms | — (roda por carga de página) |
+| 1ª pintura, derivar 40 trocas | 0,050 ms | — |
+| flush do stream, janela de 40 | 0,015 ms | **0,02%** |
+| flush do stream, janela de 110 | 0,017 ms | **0,02%** |
+| o mesmo, se a identidade dos turnos se perdesse | 0,056 ms | 0,07% |
+
+**Consequência prática para o checklist manual.** Se a interface engasgar com 330 mensagens,
+NÃO é o nosso JavaScript — ele usa dois centésimos de por cento do intervalo entre renders.
+Baixar `RENDER_TURN_LIMIT` continua sendo o primeiro movimento certo, mas pelo outro motivo:
+ele reduz quantos `List.Item` o host WPF precisa medir e desenhar, não quanto a extensão
+calcula. O que não dá para medir daqui é justamente esse lado — reconciliação do React e
+travessia da ponte IPC até o host — e é por isso que o passo manual continua existindo.
+
+**O `patchTurn` é o que sustenta esse número.** Ele copia o array e troca UM elemento
+(`use-conversation.ts`), então os outros 39 turnos mantêm identidade de objeto e o
+`createTurnDerivationCache` acerta. Se alguém trocar aquilo por um `turns.map(...)`, o custo
+por flush quadruplica — a linha "se a identidade dos turnos se perdesse" é essa conta.
+
+**Degrau do cache, medido e descartado como problema.** `createTurnDerivationCache` guarda
+128 entradas e `renderCap` cresce +40 a cada `Carregar parte anterior` (40 → 80 → 120 → 160).
+Passando de 128 trocas na janela, cada render evita a entrada que acabou de usar e todas
+recalculam: 0,015 ms com 128 trocas, 0,110 ms com 130 — **14× de salto, exatamente no limite**.
+Nenhuma mudança foi feita, e o motivo é medido, não presumido:
+
+- em valor absoluto o pior caso (200 trocas) é 0,122 ms, 0,15% do intervalo;
+- a suspeita de que o recálculo faria o markdown atravessar a ponte de novo **não se
+  sustenta**: `markdown` é `string`, e o React compara props por valor (`Object.is` em duas
+  strings de mesmo conteúdo é `true`). Recalcular produz texto idêntico, e nada é reenviado.
+
+Ou seja: o degrau existe, é reproduzível e não custa nada. Mexer no 128 seria mudança sem
+evidência. Ele está anotado aqui para que, se algum dia o custo por troca subir, ninguém
+precise redescobrir o degrau.

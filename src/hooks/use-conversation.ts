@@ -82,7 +82,10 @@ const HISTORY_PAGE_SIZE = 120;
  * §4.6 do desenho: no máximo 40 trocas renderizadas.
  *
  * Se a interface engasgar com um turno escrevendo — o risco aceito da §15 —, é ESTE número
- * que baixa, antes de qualquer outra coisa ser mexida.
+ * que baixa, antes de qualquer outra coisa ser mexida. E baixa por um motivo medido: o
+ * JavaScript da extensão custa 0,02% do intervalo de 80 ms entre renders numa conversa de
+ * 330 mensagens (D-16), então o que sobra é o host WPF medindo e desenhando os `List.Item`.
+ * Cortar este número reduz quantos itens ele recebe, não quanto a extensão calcula.
  */
 export const RENDER_TURN_LIMIT = 40;
 /** §8.5: 2 s é a cadência de acompanhamento de uma execução sem stream. */
