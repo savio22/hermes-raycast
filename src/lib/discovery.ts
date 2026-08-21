@@ -153,6 +153,23 @@ export function defaultHermesHome(context: DefaultHermesHomeContext = {}): strin
   return path.posix.join(home, ".hermes");
 }
 
+/**
+ * Um arquivo dentro da pasta do Hermes, com o separador do sistema INJETADO — nunca o da
+ * máquina que está executando.
+ *
+ * Mesma razão de `path.win32`/`path.posix` em `defaultHermesHome()`, e a regra vale para o
+ * módulo inteiro: em produção cada ramo só roda no seu próprio sistema, onde os dois são
+ * idênticos a `path.join`. O ganho é o teste — e aqui ele foi pago caro. Enquanto estes
+ * caminhos usavam `path.join`, o separador errado aparecia tanto na chave do fixture quanto
+ * no que o código procurava, e os dois erros se cancelavam: o caso do macOS passava no
+ * Windows procurando por `\Users\sam\.hermes\gateway.pid`, que nenhum Mac tem. Passava por
+ * construção, não por acerto.
+ */
+function hermesFile(hermesHome: string, name: string, deps?: DiscoveryDeps): string {
+  const platform = deps?.platform ?? process.platform;
+  return platform === "win32" ? path.win32.join(hermesHome, name) : path.posix.join(hermesHome, name);
+}
+
 /** HERMES_HOME → gateway.pid.hermes_home → pasta padrão da plataforma. */
 export async function resolveHermesHome(deps?: DiscoveryDeps): Promise<string> {
   const env = deps?.env ?? process.env;
@@ -160,7 +177,7 @@ export async function resolveHermesHome(deps?: DiscoveryDeps): Promise<string> {
   if (fromEnv !== "") return fromEnv;
 
   const fallback = defaultHermesHome({ env, platform: deps?.platform, homeDir: deps?.homeDir });
-  const pidRaw = await readTextSafe(path.join(fallback, "gateway.pid"), deps);
+  const pidRaw = await readTextSafe(hermesFile(fallback, "gateway.pid", deps), deps);
   if (pidRaw) {
     try {
       const parsed = JSON.parse(pidRaw) as { hermes_home?: unknown };
@@ -177,7 +194,7 @@ export async function readGatewayIdentity(
   hermesHome: string,
   deps?: DiscoveryDeps,
 ): Promise<{ pid?: number; startTime?: number }> {
-  const raw = await readTextSafe(path.join(hermesHome, "gateway.pid"), deps);
+  const raw = await readTextSafe(hermesFile(hermesHome, "gateway.pid", deps), deps);
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw) as { pid?: unknown; start_time?: unknown };
@@ -329,7 +346,7 @@ export function extractDotenvApiKey(dotenvText: string): string | undefined {
  */
 export async function readApiKeyFromEnvFile(hermesHome?: string, deps?: DiscoveryDeps): Promise<string | undefined> {
   const home = hermesHome ?? (await resolveHermesHome(deps));
-  const text = await readTextSafe(path.join(home, ".env"), deps);
+  const text = await readTextSafe(hermesFile(home, ".env", deps), deps);
   return text ? extractDotenvApiKey(text) : undefined;
 }
 
@@ -344,7 +361,7 @@ export async function buildPortCandidates(hermesHome: string, deps?: DiscoveryDe
   const env = deps?.env ?? process.env;
   const candidates: PortCandidate[] = [];
 
-  const configText = await readTextSafe(path.join(hermesHome, "config.yaml"), deps);
+  const configText = await readTextSafe(hermesFile(hermesHome, "config.yaml", deps), deps);
   const configPort = configText ? extractConfigPort(configText) : undefined;
   if (configPort !== undefined) candidates.push({ port: configPort, source: "config" });
 
@@ -353,7 +370,7 @@ export async function buildPortCandidates(hermesHome: string, deps?: DiscoveryDe
 
   // O .env só é aberto quando as duas fontes preferenciais falharam.
   if (configPort === undefined && envPort === undefined) {
-    const dotenvText = await readTextSafe(path.join(hermesHome, ".env"), deps);
+    const dotenvText = await readTextSafe(hermesFile(hermesHome, ".env", deps), deps);
     const dotenvPort = dotenvText ? extractDotenvPort(dotenvText) : undefined;
     if (dotenvPort !== undefined) candidates.push({ port: dotenvPort, source: "dotenv" });
   }
@@ -453,7 +470,7 @@ export async function resolveBaseUrl(options?: { force?: boolean; deps?: Discove
       technical:
         `Portas testadas: ${describeCandidates(candidates)}. ` +
         `A porta ${WEBHOOK_PORT} respondeu com platform="${webhook.platform}" (adaptador de webhook, ` +
-        `não é o API Server). Verifique platforms.api_server em ${path.join(hermesHome, "config.yaml")}.`,
+        `não é o API Server). Verifique platforms.api_server em ${hermesFile(hermesHome, "config.yaml", deps)}.`,
       recovery: "open_preferences",
     });
   }

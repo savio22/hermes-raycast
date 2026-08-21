@@ -377,6 +377,24 @@ const WINDOWS_DEFAULT_HOME = path.win32.join(WINDOWS_HOME_DIR, "AppData", "Local
 const MAC_HOME_DIR = "/Users/sam";
 const MAC_DEFAULT_HOME = "/Users/sam/.hermes";
 
+/**
+ * Chaves de fixture montadas com o separador do sistema SIMULADO, nunca com o `path.join`
+ * da maquina que esta rodando a suite.
+ *
+ * A diferenca nao e cosmetica. Enquanto os dois lados usavam `path.join`, o separador
+ * errado aparecia na chave do fixture E no que o codigo sob teste procurava, e os dois
+ * erros se cancelavam: o teste do macOS passava no Windows procurando por
+ * `\Users\sam\.hermes\gateway.pid`, um caminho que nenhum Mac tem. Passava por
+ * construcao, nao por acerto - exatamente o tipo de cobertura que nao cobre nada.
+ */
+function macFile(name: string): string {
+  return `${MAC_DEFAULT_HOME}/${name}`;
+}
+
+function windowsFile(name: string): string {
+  return path.win32.join(WINDOWS_DEFAULT_HOME, name);
+}
+
 test("pasta padrão: %LOCALAPPDATA%\\hermes no Windows, ~/.hermes no macOS", () => {
   assert.equal(
     defaultHermesHome({ env: WINDOWS_ENV, platform: "win32", homeDir: WINDOWS_HOME_DIR }),
@@ -401,8 +419,8 @@ test("pasta padrão: %LOCALAPPDATA%\\hermes no Windows, ~/.hermes no macOS", () 
 test("HERMES_HOME do ambiente vence a pasta padrão e o gateway.pid, nos dois sistemas", async () => {
   for (const platform of ["win32", "darwin"] as const) {
     const fs = fakeFs({
-      [path.join(WINDOWS_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ hermes_home: "outro", pid: 42 }),
-      [path.join(MAC_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ hermes_home: "outro", pid: 42 }),
+      [windowsFile("gateway.pid")]: JSON.stringify({ hermes_home: "outro", pid: 42 }),
+      [macFile("gateway.pid")]: JSON.stringify({ hermes_home: "outro", pid: 42 }),
     });
 
     assert.equal(
@@ -419,7 +437,7 @@ test("HERMES_HOME do ambiente vence a pasta padrão e o gateway.pid, nos dois si
 
 test("sem HERMES_HOME: gateway.pid.hermes_home da pasta padrão vence, nos dois sistemas", async () => {
   const windowsFs = fakeFs({
-    [path.join(WINDOWS_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ hermes_home: HOME, pid: 42 }),
+    [windowsFile("gateway.pid")]: JSON.stringify({ hermes_home: HOME, pid: 42 }),
   });
   assert.equal(
     await resolveHermesHome({
@@ -432,7 +450,7 @@ test("sem HERMES_HOME: gateway.pid.hermes_home da pasta padrão vence, nos dois 
   );
 
   const macFs = fakeFs({
-    [path.join(MAC_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ hermes_home: "/Volumes/Trabalho/hermes", pid: 42 }),
+    [macFile("gateway.pid")]: JSON.stringify({ hermes_home: "/Volumes/Trabalho/hermes", pid: 42 }),
   });
   assert.equal(
     await resolveHermesHome({
@@ -470,7 +488,7 @@ test("sem HERMES_HOME e sem gateway.pid: sobra a pasta padrão do sistema", asyn
 });
 
 test("gateway.pid corrompido ou sem hermes_home degrada para a pasta padrão", async () => {
-  const corrompido = fakeFs({ [path.join(MAC_DEFAULT_HOME, "gateway.pid")]: "{ isto nao e json" });
+  const corrompido = fakeFs({ [macFile("gateway.pid")]: "{ isto nao e json" });
   assert.equal(
     await resolveHermesHome({
       env: {} as NodeJS.ProcessEnv,
@@ -481,7 +499,7 @@ test("gateway.pid corrompido ou sem hermes_home degrada para a pasta padrão", a
     MAC_DEFAULT_HOME,
   );
 
-  const semCampo = fakeFs({ [path.join(WINDOWS_DEFAULT_HOME, "gateway.pid")]: JSON.stringify({ pid: 42 }) });
+  const semCampo = fakeFs({ [windowsFile("gateway.pid")]: JSON.stringify({ pid: 42 }) });
   assert.equal(
     await resolveHermesHome({
       env: WINDOWS_ENV,
@@ -856,4 +874,59 @@ test("hermesDesktopSessionUrl: recusa o que o parser do Desktop não aceita", ()
 test("hermesDesktopSessionUrl: escapa o que sobra, sem quebrar o esquema", () => {
   assert.equal(discovery.hermesDesktopSessionUrl("com espaço"), "hermes://open/com%20espa%C3%A7o");
   assert.equal(discovery.hermesDesktopSessionUrl("com?query#hash"), "hermes://open/com%3Fquery%23hash");
+});
+
+test("os arquivos do Hermes são procurados com o separador do sistema simulado", async () => {
+  // Este é o teste que faltava. Os outros conferem o RESULTADO da descoberta; nenhum
+  // conferia o CAMINHO pedido, e enquanto fixture e código usavam o mesmo `path.join`
+  // errado o caso do macOS passava procurando `\Users\sam\.hermes\...` — inexistente num
+  // Mac. Aqui a expectativa é escrita à mão, então não há como os dois erros se cancelarem.
+  const mac = fakeFs({});
+  await resolveHermesHome({
+    env: WINDOWS_ENV,
+    platform: "darwin",
+    homeDir: MAC_HOME_DIR,
+    readTextFile: mac.readTextFile,
+  });
+  assert.deepEqual(mac.reads, ["/Users/sam/.hermes/gateway.pid"]);
+  for (const lido of mac.reads) {
+    assert.equal(lido.includes("\\"), false, `caminho de macOS com contrabarra: ${lido}`);
+  }
+
+  const windows = fakeFs({});
+  await resolveHermesHome({
+    env: WINDOWS_ENV,
+    platform: "win32",
+    homeDir: WINDOWS_HOME_DIR,
+    readTextFile: windows.readTextFile,
+  });
+  assert.deepEqual(windows.reads, [path.win32.join(WINDOWS_DEFAULT_HOME, "gateway.pid")]);
+  for (const lido of windows.reads) {
+    assert.equal(lido.includes("/"), false, `caminho de Windows com barra: ${lido}`);
+  }
+});
+
+test("as portas candidatas e o .env também respeitam o sistema simulado", async () => {
+  const mac = fakeFs({});
+  await discovery.buildPortCandidates(MAC_DEFAULT_HOME, {
+    env: {} as NodeJS.ProcessEnv,
+    platform: "darwin",
+    readTextFile: mac.readTextFile,
+  });
+  assert.deepEqual(mac.reads, ["/Users/sam/.hermes/config.yaml", "/Users/sam/.hermes/.env"]);
+
+  const macEnv = fakeFs({});
+  await discovery.readApiKeyFromEnvFile(MAC_DEFAULT_HOME, { platform: "darwin", readTextFile: macEnv.readTextFile });
+  assert.deepEqual(macEnv.reads, ["/Users/sam/.hermes/.env"]);
+
+  const windows = fakeFs({});
+  await discovery.buildPortCandidates(WINDOWS_DEFAULT_HOME, {
+    env: {} as NodeJS.ProcessEnv,
+    platform: "win32",
+    readTextFile: windows.readTextFile,
+  });
+  assert.deepEqual(windows.reads, [
+    path.win32.join(WINDOWS_DEFAULT_HOME, "config.yaml"),
+    path.win32.join(WINDOWS_DEFAULT_HOME, ".env"),
+  ]);
 });
