@@ -434,3 +434,85 @@ Nenhuma mudança foi feita, e o motivo é medido, não presumido:
 Ou seja: o degrau existe, é reproduzível e não custa nada. Mexer no 128 seria mudança sem
 evidência. Ele está anotado aqui para que, se algum dia o custo por troca subir, ninguém
 precise redescobrir o degrau.
+
+---
+
+## D-17 — O Raycast do Windows tem `Save for Store`: a captura 2000×1250 sai do próprio app
+
+**Status: LIDO NO BINÁRIO** do Raycast 2.0.3 em 2026-08-21
+(`C:\Program Files\WindowsApps\Raycast.Raycast_2.0.3.0_x64__qypenmj9wpt2a\Raycast`), não na
+documentação. Não foi exercitado na tela — isso é do checklist manual.
+
+O `CHECKLIST-MANUAL.md` afirmava que só restava capturar à mão e recompor. A afirmação vinha
+de uma verdade parcial: a janela é desenhada pelo `Raycast.UIAccess.exe` e **de fato** sai em
+branco no `Print Screen` e em qualquer automação de tela. Só que o app não usa o mesmo
+caminho que essas ferramentas — ele se captura pela API de captura do Windows
+(`workspace.captureWindowById`, string em `Raycast.dll`) e enxerga a própria janela.
+
+**O comando existe e é para exatamente isto.** Em
+`frontend/extension-command-ids-DSmCZEN7.js`:
+
+```
+windowCapture:_({title:`Capture Window`,
+  description:`Capture a Raycast window to share it, or add a screenshot of your extension to the Store.`,
+  keywords:[`screenshot`], ...})
+```
+
+**A opção de gravar no formato da Store existe.** Três formas do mesmo nome na tabela de
+strings UTF-16 do `Raycast.dll` — `SaveForStore`, `saveForStore` e o rótulo **`Save for Store`**
+— e o rótulo cai entre `Window capture area is outside the screen bounds` e
+`Failed to install keyboard hook for window capture overlay`, isto é, dentro do código do
+`WindowCaptureOverlayWindow`.
+
+**O tamanho é o da Store, e é constante.** O DLL tem os membros `StoreScreenshotWidth` e
+`StoreScreenshotHeight`. Varrendo o arquivo por `ldc.i4` (opcode `0x20` + int32), `2000`
+aparece 9 vezes e `1250` aparece 3 — e as três ocorrências de `1250` estão **todas** a menos
+de 30 bytes de um `2000`, num trecho único de 96 bytes (`0xdce72`–`0xdced2`). Em nenhum outro
+ponto do binário os dois números convivem.
+
+**O destino é a pasta `metadata/` da extensão.** O literal `metadata` e o carimbo de nome de
+arquivo `yyyy-MM-dd HH.mm.ss` estão coladinhos, imediatamente antes de
+`Failed to open Snipping Tool for window capture screenshot: {ScreenshotPath}`. O prefixo do
+nome é `raycast-screenshot-`.
+
+### A condição que faz isso funcionar ou não
+
+`frontend/main-window-RRN5GTqi.js`, linha 135, no handler `window-capture`:
+
+```js
+let e = Y.mainRouter.context.nodeExtensionStack.getEntries()[0]?.view.props,
+    t = Y.mainRouter.history.location.pathname.startsWith(`/extensions/`)
+        ? e?.extension?.localSources
+        : void 0;
+await L.ipc.host.raycast.showWindowCaptureOverlay({ ..., nodeExtensionLocalSources: t });
+```
+
+O overlay só recebe o caminho do projeto — e portanto só tem onde gravar — se **no momento do
+disparo** a janela estiver numa rota `/extensions/…`. Consequência prática, e é ela que torna
+o passo não-óbvio: **é preciso um atalho** gravado no comando `Capture Window`
+(`Settings › Extensions`, botão `Record Hotkey`, string em
+`frontend/extension-static-commands-CK6ncoyB.js`). Ir até a busca digitar `Capture Window`
+tira a janela da rota da extensão e o `Save for Store` some.
+
+Também é por isso que `npm run dev` precisa estar rodando e atualizado: `localSources` vem do
+registro da extensão de desenvolvimento. O registro que estava em
+`~/.config/raycast/extensions/hermes` em 2026-08-21 ainda trazia `"author": "sam"`, ou seja,
+era anterior à troca para `savio22`.
+
+### O que continua valendo do caminho manual
+
+O `ray lint` não afrouxou: `metadata/*.png` fora de 2000×1250 é `Wrong image size`. Conferido
+ao vivo, com um PNG de 1000×625 dentro de `metadata/`:
+
+```
+error  - validate extension metadata
+C:\...\metadata\hermes-1.png
+    error  Wrong image size: 1000 x 625 pixels. Required size is 2000 x 1250 pixels. Make sure to use a retina screen when taking the screenshot
+```
+
+Trocado por um arquivo de 2000×1250, o mesmo passo volta a `ready` e o `ray lint` sai com 0
+(os 14 avisos de Title Case seguem lá, e seguem sendo avisos).
+
+O `tools-capturas.mjs` existe para quando o `Save for Store` não estiver disponível: ele
+centraliza a captura em 2000×1250 sobre fundo sólido e **nunca amplia**. Ampliar resolveria o
+lint e entregaria imagem borrada à revisão humana, que é o portão que importa.

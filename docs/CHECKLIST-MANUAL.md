@@ -296,8 +296,12 @@ lista **não** cobre: as teclas que o macOS reserva para si, fora do Raycast.
 ## Publicação — o GIF e as capturas de tela
 
 Nada disto pode ser gerado por automação nesta máquina: a janela do Raycast é desenhada pelo
-`Raycast.UIAccess.exe` e sai em branco em qualquer captura feita por script. Precisa ser você, com a
-ferramenta de captura do sistema.
+`Raycast.UIAccess.exe` e sai em branco em qualquer captura feita por script ou por
+`Print Screen`. Precisa ser você, no teclado.
+
+A exceção é o **próprio Raycast**, que se captura pela API de captura do Windows e por isso
+enxerga a própria janela. É o caminho das capturas da Store, mais abaixo. Para o GIF não há
+exceção nenhuma.
 
 ### O cuidado que nenhum grep pega
 
@@ -331,15 +335,54 @@ Três bastam, em `assets/`, com nomes descritivos (`screenshot-ask.png` e afins)
 Requisitos próprios, diferentes dos do README. Formato: **PNG, 2000×1250** (proporção 16:10),
 nomeadas `hermes-1.png` … `hermes-6.png`, na pasta `metadata/` na raiz do projeto.
 
-- [ ] `hermes-1.png` — `Perguntar ao Hermes` com uma resposta pronta na tela.
+**O Raycast do Windows produz esse arquivo sozinho.** O parágrafo acima, sobre a janela não
+aparecer em captura, vale para `Print Screen` e para automação — não para o próprio app, que
+captura a si mesmo pela API de captura do Windows. Ver [D-17](DECISOES-VERIFICADAS.md) para
+onde cada afirmação abaixo foi lida no binário do Raycast 2.0.3.
+
+1. Deixe `npm run dev` rodando. A extensão registrada em
+   `~/.config/raycast/extensions/hermes` é a que o app enxerga, e ela pode estar velha.
+2. Em `Settings › Extensions`, procure o comando **`Capture Window`** e grave um atalho nele
+   (botão `Record Hotkey`). Sem atalho não dá: o comando só sabe para qual pasta `metadata/`
+   salvar se for disparado **enquanto a janela já está dentro de um comando da extensão**, e
+   ir até a busca para digitar o nome do comando já tira você de lá.
+3. Abra o comando da extensão, deixe a tela do jeito que ela deve aparecer, e aperte o atalho.
+4. No painel de captura que abre, use **`Save for Store`**. É essa opção que grava
+   2000×1250 direto em `metadata/`.
+
+Se `Save for Store` não aparecer (atalho disparado fora de um comando da extensão, ou `dev`
+não rodando), sobra o caminho manual: capture como der, e depois
+
+```bash
+node tools-capturas.mjs ajustar "C:/caminho/da/captura.png"
+```
+
+A ferramenta centraliza a imagem em 2000×1250 sobre fundo sólido — ela **nunca amplia**, para
+não entregar captura borrada à revisão. Confira o resultado com `node tools-capturas.mjs`
+(modo `conferir`), que lê o IHDR do mesmo jeito que o validador do CLI.
+
+- [ ] `hermes-1.png` — `Perguntar ao Hermes` com uma resposta pronta na tela. **É esta que
+      aparece na listagem da Store**, então é a que precisa explicar a extensão sozinha.
 - [ ] `hermes-2.png` — `Conversas do Hermes`, lista com várias conversas e o detalhe aberto.
 - [ ] `hermes-3.png` — `Executar tarefa no Hermes` mostrando as etapas em andamento.
-- [ ] `hermes-4.png` — `Execuções do Hermes` com pelo menos uma execução ativa.
-- [ ] `hermes-5.png` — a tela de boas-vindas com a linha `Achei o Hermes … aqui`.
-- [ ] `hermes-6.png` — `Modelos do Hermes` ou `Automações do Hermes`.
+- [ ] `hermes-4.png` — `Execuções do Hermes` com uma aprovação pendente.
+- [ ] `hermes-5.png` — `Ferramentas do Hermes`, com os rótulos de disponibilidade. Nesta
+      instalação a distribuição real é 14 `Disponível`, 13 `Desligado` e 1 `Indisponível`;
+      `Precisa configurar` não aparece ([D-15](DECISOES-VERIFICADAS.md)).
+- [ ] `hermes-6.png` — `Modelos do Hermes`.
+
+Cuidado que só aparece depois: **enquanto `metadata/` não existe, o `ray lint` pula a checagem
+inteira**. No instante em que a pasta nasce, todo `.png` dentro dela passa pelo teste de
+tamanho — inclusive um rascunho esquecido lá.
 
 Antes de publicar, confira também que `author` no `package.json` é o **seu nome de usuário do
-Raycast** — hoje está `sam`. Se não bater com a conta, a publicação é recusada.
+Raycast**. Ele foi trocado de `sam` para `savio22` em 2026-08-21 **sem verificação**; quem
+confirma é `npx ray profile` depois do `npx ray login`. Se não bater com a conta, a publicação
+é recusada.
+
+Uma última: o `ray publish` monta o pacote com **um** readme. Existem dois na raiz, e ele
+escolhe o `README.md` — a preferência por `readme.md` exato está em
+`node_modules/@raycast/api/dist/commands/publish/index.js`. O `README.pt-BR.md` não vai junto.
 
 E há um bloqueio conhecido da Store, que é decisão de nomenclatura e não defeito: o `ray lint` emite
 **14 avisos de Title Case**, todos porque os títulos de comando são frases em português. Precisa ser
