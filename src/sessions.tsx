@@ -1,6 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- UX-SPEC §10.1 exige título de tela e de
-   ação em frase, em pt-BR ("Abrir conversa", não "Abrir Conversa"); a regra é calibrada
-   para o Title Case do inglês. */
 /**
  * `Conversas do Hermes` (UX-SPEC §2.2) — a lista.
  *
@@ -286,7 +283,10 @@ export default function Command(): React.JSX.Element {
       try {
         const { session: updated } = await updateSession(session.id, { pinned });
         replaceSession(updated);
-        await showToast({ style: Toast.Style.Success, title: pinned ? "Conversa fixada" : "Conversa desafixada" });
+        await showToast({
+          style: Toast.Style.Success,
+          title: pinned ? "Conversation pinned" : "Conversation unpinned",
+        });
       } catch (err) {
         await showToast({ style: Toast.Style.Failure, title: toHermesError(err, "updateSession").userMessage });
       }
@@ -299,7 +299,7 @@ export default function Command(): React.JSX.Element {
       try {
         await updateSession(session.id, { archived: true });
         removeSession(session.id);
-        await showToast({ style: Toast.Style.Success, title: "Conversa arquivada" });
+        await showToast({ style: Toast.Style.Success, title: "Conversation archived" });
       } catch (err) {
         await showToast({ style: Toast.Style.Failure, title: toHermesError(err, "updateSession").userMessage });
       }
@@ -314,12 +314,12 @@ export default function Command(): React.JSX.Element {
         const { session: child } = await forkSession(session.id);
         await refresh("manual");
         toast.style = Toast.Style.Success;
-        toast.title = "Nova conversa criada a partir desta";
+        toast.title = "New conversation created from this one";
         // §8.2: o filho é carimbado `source: "api_server"` pelo servidor e `source` não é
         // patchável (armadilha 7) — dizer isso é obrigatório, senão a promessa vira mentira.
-        toast.message = "Esta nova conversa não aparece na lista principal do Hermes Desktop.";
+        toast.message = "This new conversation does not show up in the main Hermes Desktop list.";
         toast.primaryAction = {
-          title: "Abrir a nova conversa",
+          title: "Open the New Conversation",
           onAction: (shown) => {
             void shown.hide();
             void continueConversation(child);
@@ -338,10 +338,10 @@ export default function Command(): React.JSX.Element {
       const title = session.title ?? NO_TITLE;
       const confirmed = await confirmAlert({
         icon: Icon.Trash,
-        title: "Excluir esta conversa?",
-        message: `A conversa "${title}" será removida do Hermes, inclusive do Hermes Desktop. Não dá para desfazer.`,
-        primaryAction: { title: "Excluir", style: Alert.ActionStyle.Destructive },
-        dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
+        title: "Delete this conversation?",
+        message: `The conversation "${title}" will be removed from Hermes, including Hermes Desktop. This cannot be undone.`,
+        primaryAction: { title: "Delete", style: Alert.ActionStyle.Destructive },
+        dismissAction: { title: "Cancel", style: Alert.ActionStyle.Cancel },
         // Nunca lembrar a escolha: um destrutivo lembrado vira um destrutivo silencioso.
         rememberUserChoice: false,
       });
@@ -351,12 +351,12 @@ export default function Command(): React.JSX.Element {
         const result = await deleteSession(session.id);
         // O servidor pode responder `deleted: false`; não assumir sucesso pelo 200.
         if (result.deleted !== true) {
-          await showToast({ style: Toast.Style.Failure, title: "O Hermes não conseguiu excluir esta conversa." });
+          await showToast({ style: Toast.Style.Failure, title: "Hermes could not delete this conversation." });
           await refresh("manual");
           return;
         }
         removeSession(session.id);
-        await showToast({ style: Toast.Style.Success, title: "Conversa excluída" });
+        await showToast({ style: Toast.Style.Success, title: "Conversation deleted" });
       } catch (err) {
         await showToast({ style: Toast.Style.Failure, title: toHermesError(err, "deleteSession").userMessage });
       }
@@ -365,7 +365,7 @@ export default function Command(): React.JSX.Element {
   );
 
   const copyLatestAnswer = useCallback(async (session: Session) => {
-    const toast = await showToast({ style: Toast.Style.Animated, title: "Buscando a resposta…" });
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Fetching the answer…" });
     try {
       // Sob demanda: a transcrição não fica guardada em lugar nenhum (§8.7).
       const page = await getSessionMessages(session.id, { limit: 10, order: "latest" });
@@ -376,12 +376,12 @@ export default function Command(): React.JSX.Element {
 
       if (answer === undefined) {
         toast.style = Toast.Style.Failure;
-        toast.title = "Esta conversa ainda não tem resposta do Hermes.";
+        toast.title = "This conversation has no answer from Hermes yet.";
         return;
       }
       await toast.hide();
       await Clipboard.copy((answer.content ?? "").trim());
-      await showHUD("Resposta copiada");
+      await showHUD("Answer copied");
     } catch (err) {
       await toast.hide();
       await showToast({ style: Toast.Style.Failure, title: toHermesError(err, "getSessionMessages").userMessage });
@@ -418,19 +418,19 @@ export default function Command(): React.JSX.Element {
     if (typeof session.message_count === "number") {
       accessories.push({
         text: compactMessageCount(session.message_count),
-        tooltip: "Mensagens nesta conversa",
+        tooltip: "Messages in this conversation",
       });
     }
     if (typeof session.model === "string" && session.model !== "") {
       accessories.push({
         text: compactModelLabel(session.model),
         icon: Icon.ComputerChip,
-        tooltip: `Modelo usado nesta conversa: ${session.model}`,
+        tooltip: `Model used in this conversation: ${session.model}`,
       });
     }
     if (typeof lastActive === "number" && lastActive > 0) {
       // `last_active` vem em SEGUNDOS: multiplicar é obrigatório, senão a data cai em 1970.
-      accessories.push({ date: new Date(lastActive * 1000), tooltip: "Última atividade" });
+      accessories.push({ date: new Date(lastActive * 1000), tooltip: "Last activity" });
     }
 
     return (
@@ -448,13 +448,13 @@ export default function Command(): React.JSX.Element {
                   CONTINUAR a conversa. O detalhe — que é um arquivo de mensagens, não uma
                   conversa — vira ação secundária, com o nome do que ele de fato é. */}
               <Action
-                title="Continuar esta conversa"
+                title="Continue This Conversation"
                 icon={Icon.SpeechBubble}
                 shortcut={SHORTCUTS.continueConversation}
                 onAction={() => void continueConversation(session)}
               />
               <Action.Push
-                title="Ver mensagens e ferramentas"
+                title="See Messages and Tools"
                 icon={Icon.WrenchScrewdriver}
                 shortcut={SHORTCUTS.viewMessages}
                 target={<SessionDetail session={session} onSessionChanged={replaceSession} />}
@@ -465,7 +465,7 @@ export default function Command(): React.JSX.Element {
             <ActionPanel.Section>
               <OpenInHermesDesktopAction session={session} />
               <Action
-                title="Copiar resposta mais recente"
+                title="Copy the Latest Answer"
                 icon={Icon.Clipboard}
                 shortcut={SHORTCUTS.copy}
                 onAction={() => void copyLatestAnswer(session)}
@@ -475,32 +475,32 @@ export default function Command(): React.JSX.Element {
 
             <ActionPanel.Section>
               <Action.Push
-                title="Renomear conversa"
+                title="Rename the Conversation"
                 icon={Icon.Pencil}
                 shortcut={SHORTCUTS.rename}
                 target={<RenameSessionForm session={session} onRenamed={replaceSession} />}
                 {...pauseWhilePushed}
               />
               <Action
-                title={session.pinned === true ? "Desafixar conversa" : "Fixar conversa"}
+                title={session.pinned === true ? "Unpin the Conversation" : "Pin the Conversation"}
                 icon={session.pinned === true ? Icon.PinDisabled : Icon.Pin}
                 shortcut={SHORTCUTS.pin}
                 onAction={() => void togglePin(session)}
               />
               <Action
-                title="Arquivar conversa"
+                title="Archive the Conversation"
                 icon={Icon.Tray}
                 shortcut={SHORTCUTS.archive}
                 onAction={() => void archive(session)}
               />
               <Action
-                title="Ramificar conversa"
+                title="Branch the Conversation"
                 icon={Icon.Layers}
                 shortcut={SHORTCUTS.branch}
                 onAction={() => void fork(session)}
               />
               <Action
-                title="Excluir conversa"
+                title="Delete the Conversation"
                 icon={Icon.Trash}
                 style={Action.Style.Destructive}
                 shortcut={SHORTCUTS.remove}
@@ -510,13 +510,13 @@ export default function Command(): React.JSX.Element {
 
             <ActionPanel.Section>
               <Action
-                title="Nova conversa"
+                title="New Conversation"
                 icon={Icon.Plus}
                 shortcut={SHORTCUTS.newConversation}
                 onAction={() => void startNewConversation()}
               />
               <Action
-                title="Atualizar lista"
+                title="Refresh the List"
                 icon={Icon.ArrowClockwise}
                 shortcut={SHORTCUTS.refresh}
                 onAction={() => void refresh("manual")}
@@ -534,12 +534,12 @@ export default function Command(): React.JSX.Element {
   // Hermes — renderiza a tela de primeiro uso (§3.4) no lugar do conteúdo. O sinal chega
   // como `HermesNotConfiguredError` de `requireApiKey()`, antes de qualquer requisição.
   if (error instanceof HermesNotConfiguredError) {
-    return <NotConfigured commandTitle="Conversas do Hermes" onRetry={() => void refresh("manual")} />;
+    return <NotConfigured commandTitle="Hermes Conversations" onRetry={() => void refresh("manual")} />;
   }
 
   if (error !== undefined) {
     return (
-      <List navigationTitle="Conversas do Hermes" isLoading={false}>
+      <List navigationTitle="Hermes Conversations" isLoading={false}>
         <HermesErrorEmptyView error={error} onRetry={() => void refresh("manual")} />
       </List>
     );
@@ -548,8 +548,8 @@ export default function Command(): React.JSX.Element {
   return (
     <List
       isLoading={isLoading}
-      navigationTitle="Conversas do Hermes"
-      searchBarPlaceholder="Pesquisar conversas por título"
+      navigationTitle="Hermes Conversations"
+      searchBarPlaceholder="Search conversations by title"
       filtering={false}
       searchText={searchText}
       onSearchTextChange={setSearchText}
@@ -558,19 +558,15 @@ export default function Command(): React.JSX.Element {
       {query === "" ? (
         <List.EmptyView
           icon={Icon.SpeechBubble}
-          title="Nenhuma conversa por aqui"
+          title="No Conversation Around Here"
           // Primeira frase: literal da §2.2.2. Segunda: o estado vazio precisa dizer COMO
           // começar, não só que não há nada. A ação primária faz o que a frase promete.
-          description="Quando você perguntar algo ao Hermes, a conversa aparece nesta lista e também no Hermes Desktop. Para começar a primeira, pressione Enter e escreva sua pergunta."
+          description="When you ask Hermes something, the conversation shows up in this list and in Hermes Desktop too. To start the first one, press Enter and write your question."
           actions={
             <ActionPanel>
+              <Action title="Ask Hermes" icon={Icon.SpeechBubble} onAction={() => void startNewConversation()} />
               <Action
-                title="Perguntar ao Hermes"
-                icon={Icon.SpeechBubble}
-                onAction={() => void startNewConversation()}
-              />
-              <Action
-                title="Atualizar lista"
+                title="Refresh the List"
                 icon={Icon.ArrowClockwise}
                 shortcut={SHORTCUTS.refresh}
                 onAction={() => void refresh("manual")}
@@ -583,18 +579,18 @@ export default function Command(): React.JSX.Element {
       ) : (
         <List.EmptyView
           icon={Icon.MagnifyingGlass}
-          title="Nada encontrado"
-          description="Nenhuma conversa com esse texto no título."
+          title="Nothing Found"
+          description="No conversation with that text in the title."
           actions={
             <ActionPanel>
               <Action
-                title="Nova conversa"
+                title="New Conversation"
                 icon={Icon.Plus}
                 shortcut={SHORTCUTS.newConversation}
                 onAction={() => void startNewConversation()}
               />
               <Action
-                title="Atualizar lista"
+                title="Refresh the List"
                 icon={Icon.ArrowClockwise}
                 shortcut={SHORTCUTS.refresh}
                 onAction={() => void refresh("manual")}
@@ -607,13 +603,13 @@ export default function Command(): React.JSX.Element {
       )}
 
       {pinned.length > 0 ? (
-        <List.Section title="Fixadas" subtitle={compactConversationCount(pinned.length)}>
+        <List.Section title="Pinned" subtitle={compactConversationCount(pinned.length)}>
           {pinned.map(renderItem)}
         </List.Section>
       ) : null}
 
       {recent.length > 0 ? (
-        <List.Section title="Recentes" subtitle={compactConversationCount(recent.length)}>
+        <List.Section title="Recent" subtitle={compactConversationCount(recent.length)}>
           {recent.map(renderItem)}
         </List.Section>
       ) : null}

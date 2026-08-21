@@ -1339,7 +1339,7 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
     if (runIdRef.current === undefined && pending === undefined) return;
     const operationEpoch = conversationEpochRef.current;
 
-    const toast = await showToast({ style: Toast.Style.Animated, title: "Parando a tarefa…" });
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Stopping the task…" });
     // O ref só é sincronizado no render seguinte; parar logo depois de enviar cai justamente
     // nessa janela, então a lista de turnos é a segunda fonte.
     const initialLiveId = liveTurnIdRef.current ?? turnsRef.current.find(isTurnLive)?.id;
@@ -1387,13 +1387,13 @@ export function useConversation(options: UseConversationOptions = {}): Conversat
     try {
       await stopRun(runId);
       toast.style = Toast.Style.Success;
-      toast.title = "Tarefa parada";
+      toast.title = "Task stopped";
     } catch (err) {
       const hermes = toHermesError(err, `POST /v1/runs/${runId}/stop`);
       if (hermes.httpStatus === 404) {
         // A run já tinha terminado: isso não é erro (§6.6 item 4).
         toast.style = Toast.Style.Success;
-        toast.title = "Tarefa parada";
+        toast.title = "Task stopped";
         if (liveId !== undefined) {
           patchTurn(liveId, (turn) =>
             turn.state.kind === "live" && !isTerminalRunStatus(turn.state.status)

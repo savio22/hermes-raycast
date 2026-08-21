@@ -1,6 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- UX-SPEC §10.1 exige título de tela e de
-   ação em frase, em pt-BR ("Abrir conversa", não "Abrir Conversa"); a regra é calibrada
-   para o Title Case do inglês. */
 /**
  * Detalhe da conversa (UX-SPEC §2.3) — a transcrição — e as peças que ela divide com a
  * lista de conversas (§2.2).
@@ -99,8 +96,8 @@ export function describeOrigin(session: Session): SessionOrigin {
   if (session.id.startsWith(RAYCAST_ID_PREFIX)) {
     return {
       icon: Icon.RaycastLogoNeg,
-      tag: "Criada no Raycast",
-      tooltip: "Você começou esta conversa no Raycast. Ela também aparece no Hermes Desktop.",
+      tag: "Started in Raycast",
+      tooltip: "You started this conversation in Raycast. It shows up in Hermes Desktop too.",
       visibleInDesktop: true,
     };
   }
@@ -109,37 +106,37 @@ export function describeOrigin(session: Session): SessionOrigin {
   if (DESKTOP_SOURCES.has(source)) {
     return {
       icon: Icon.Desktop,
-      tag: "Do Hermes Desktop",
-      tooltip: "Esta é a mesma conversa que você vê no Hermes Desktop.",
+      tag: "From Hermes Desktop",
+      tooltip: "This is the same conversation you see in Hermes Desktop.",
       visibleInDesktop: true,
     };
   }
   if (MESSAGING_SOURCES.has(source)) {
     return {
       icon: Icon.Message,
-      tag: "De um aplicativo de mensagens",
-      tooltip: "Esta conversa começou em outro aplicativo ligado ao Hermes.",
+      tag: "From a messaging app",
+      tooltip: "This conversation started in another app connected to Hermes.",
       visibleInDesktop: false,
     };
   }
   return {
     icon: Icon.QuestionMarkCircle,
-    tag: "Criada por outro programa",
-    tooltip: "Esta conversa não aparece na lista principal do Hermes Desktop.",
+    tag: "Created by another program",
+    tooltip: "This conversation does not show up in the main Hermes Desktop list.",
     visibleInDesktop: false,
   };
 }
 
 export function syncLabel(origin: SessionOrigin): string {
-  return origin.visibleInDesktop ? "Aparece no Hermes Desktop" : "Não aparece na lista principal do Hermes Desktop";
+  return origin.visibleInDesktop ? "Shows up in Hermes Desktop" : "Does not show up in the main Hermes Desktop list";
 }
 
 /* ─────────────────────────── Formatação de data ─────────────────────────── */
 
-const dayFormatter = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" });
-const dayWithYearFormatter = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long", year: "numeric" });
-const timestampFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
-const preciseFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "medium" });
+const dayFormatter = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long" });
+const dayWithYearFormatter = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "long", year: "numeric" });
+const timestampFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "short" });
+const preciseFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "medium" });
 
 function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
@@ -148,8 +145,8 @@ function startOfDay(date: Date): number {
 /** "Hoje", "Ontem" ou "12 de agosto" (§10.1: data por extenso curto). */
 function dayLabel(date: Date, now = new Date()): string {
   const days = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000);
-  if (days === 0) return "Hoje";
-  if (days === 1) return "Ontem";
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
   return date.getFullYear() === now.getFullYear() ? dayFormatter.format(date) : dayWithYearFormatter.format(date);
 }
 
@@ -180,8 +177,8 @@ async function openAskCommand(context?: Record<string, unknown>): Promise<void> 
   } catch {
     await showToast({
       style: Toast.Style.Failure,
-      title: "Não foi possível abrir a tela de perguntas.",
-      message: 'Procure por "Perguntar ao Hermes" na busca do Raycast.',
+      title: "Could not open the question screen.",
+      message: 'Search for "Ask Hermes" in Raycast.',
     });
   }
 }
@@ -197,8 +194,8 @@ export async function continueConversation(session: Session): Promise<void> {
     // §8.6 manda avisar e NÃO bloquear. Toast sem `style` é o único aviso não-modal do
     // Raycast: `Failure` seria vermelho e leria como "deu erro", que não é o caso.
     await showToast({
-      title: "Esta conversa foi usada há pouco no Hermes Desktop",
-      message: "Se ela estiver aberta lá, espere a resposta terminar antes de continuar por aqui.",
+      title: "This conversation was used in Hermes Desktop a moment ago",
+      message: "If it is open there, wait for that answer to finish before going on here.",
     });
   }
   await openAskCommand({
@@ -225,14 +222,14 @@ export function OpenInHermesDesktopAction({ session }: { session: Session }): Re
 
   return (
     <Action.Open
-      title="Abrir no Hermes Desktop"
+      title="Open in Hermes Desktop"
       icon={Icon.Desktop}
       target={url}
       shortcut={SHORTCUTS.openInDesktop}
       onOpen={() => {
         // §8.3: a propagação leva de 1 a 3 s. Não prometemos "instantâneo" nem mostramos número.
         if (justCreated) {
-          void showHUD("Abrindo no Hermes Desktop. Pode levar alguns segundos para a conversa aparecer lá.");
+          void showHUD("Opening in Hermes Desktop. It can take a few seconds for the conversation to show up there.");
         }
       }}
     />
@@ -243,11 +240,11 @@ export function OpenInHermesDesktopAction({ session }: { session: Session }): Re
 export function CopySessionIdAction({ session }: { session: Session }): React.JSX.Element {
   return (
     <Action
-      title="Copiar identificador da conversa"
+      title="Copy the Conversation ID"
       icon={Icon.Clipboard}
       onAction={async () => {
         await Clipboard.copy(session.id);
-        await showHUD("Identificador copiado");
+        await showHUD("Identifier copied");
       }}
     />
   );
@@ -257,9 +254,9 @@ export function CopySessionIdAction({ session }: { session: Session }): React.JS
 
 function technicalBlock(error: HermesError): string {
   const lines: string[] = [];
-  if (error.httpStatus !== undefined) lines.push(`Resposta: ${error.httpStatus}`);
-  if (error.code !== null) lines.push(`Código: ${error.code}`);
-  lines.push(`Momento: ${preciseFormatter.format(new Date())}`);
+  if (error.httpStatus !== undefined) lines.push(`Answer: ${error.httpStatus}`);
+  if (error.code !== null) lines.push(`Code: ${error.code}`);
+  lines.push(`Moment: ${preciseFormatter.format(new Date())}`);
   lines.push(error.technical);
   // `technical` já sai redigido do construtor; a UX-SPEC §5.1 regra 5 exige que o filtro
   // nunca seja pulado, então o bloco montado passa de novo antes de ser exibido ou copiado.
@@ -270,17 +267,17 @@ function TechnicalDetailsView({ error }: { error: HermesError }): React.JSX.Elem
   const block = technicalBlock(error);
   return (
     <Detail
-      navigationTitle="Detalhes técnicos"
-      markdown={["### Detalhes técnicos", "", "```", block, "```"].join("\n")}
+      navigationTitle="Technical Details"
+      markdown={["### Technical details", "", "```", block, "```"].join("\n")}
       actions={
         <ActionPanel>
           <Action
-            title="Copiar detalhes técnicos"
+            title="Copy Technical Details"
             icon={Icon.Clipboard}
             shortcut={SHORTCUTS.copyTechnical}
             onAction={async () => {
               await Clipboard.copy(block);
-              await showHUD("Detalhes copiados");
+              await showHUD("Details copied");
             }}
           />
         </ActionPanel>
@@ -302,7 +299,7 @@ function splitMessage(message: string): { title: string; description?: string } 
  * "Sem chave" NÃO passa por aqui: é o primeiro uso (§3.4) e quem cuida dele é
  * `components/first-run.tsx`, chamado antes de renderizar a lista.
  *
- * Ordem das ações fixada pela §5.1 regra 3: `Tentar novamente`, `Abrir configurações`,
+ * Ordem das ações fixada pela §5.1 regra 3: `Tentar novamente`, `Open Settings`,
  * `Copiar detalhes técnicos` — com o detalhe técnico oculto atrás de
  * `Mostrar detalhes técnicos` (regra 4) e sempre redigido (regra 5).
  *
@@ -335,28 +332,23 @@ export function HermesErrorEmptyView({
           <ActionPanel.Section>
             {/* §5.2 E2: quando a chave foi recusada, detectar de novo é a ação primária. */}
             {keyWasRejected ? <AutoDetectAction onDone={onRetry} /> : null}
-            <Action
-              title="Tentar novamente"
-              icon={Icon.ArrowClockwise}
-              shortcut={SHORTCUTS.refresh}
-              onAction={onRetry}
-            />
+            <Action title="Try Again" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={onRetry} />
             <OpenPreferencesAction />
           </ActionPanel.Section>
           <ActionPanel.Section>
             <Action.Push
-              title="Mostrar detalhes técnicos"
+              title="Show Technical Details"
               icon={Icon.Code}
               shortcut={SHORTCUTS.showTechnical}
               target={<TechnicalDetailsView error={error} />}
             />
             <Action
-              title="Copiar detalhes técnicos"
+              title="Copy Technical Details"
               icon={Icon.Clipboard}
               shortcut={SHORTCUTS.copyTechnical}
               onAction={async () => {
                 await Clipboard.copy(technicalBlock(error));
-                await showHUD("Detalhes copiados");
+                await showHUD("Details copied");
               }}
             />
           </ActionPanel.Section>
@@ -371,13 +363,13 @@ export function HermesErrorEmptyView({
 function roleLabel(message: SessionMessage): string {
   switch (message.role) {
     case "user":
-      return "Você";
+      return "You";
     case "assistant":
       return "Hermes";
     case "tool":
-      return `Ferramenta: ${message.tool_name ?? "sem nome"}`;
+      return `Tool: ${message.tool_name ?? "unnamed"}`;
     case "system":
-      return "Instruções do Hermes";
+      return "Hermes instructions";
     default:
       return "Mensagem";
   }
@@ -403,7 +395,7 @@ function isConversationMessage(message: SessionMessage): boolean {
 
 function clamp(text: string): string {
   if (text.length <= MAX_MESSAGE_CHARS) return text;
-  return `${text.slice(0, MAX_MESSAGE_CHARS)}\n\n_Mensagem longa: mostrando só o começo._`;
+  return `${text.slice(0, MAX_MESSAGE_CHARS)}\n\n_Long message: showing only the beginning._`;
 }
 
 /** Cerca maior que a maior sequência de crases do conteúdo, senão o bloco vaza. */
@@ -424,7 +416,7 @@ function messageMarkdown(message: SessionMessage): string {
   const content = (message.content ?? "").trim();
 
   if (content === "") {
-    blocks.push("_Esta mensagem não tem texto._");
+    blocks.push("_This message has no text._");
   } else if (message.role === "tool" || message.role === "system") {
     // Resultado de ferramenta é dado, não prosa: em bloco, sem o markdown interpretar nada.
     blocks.push(codeFence(clamp(content)));
@@ -434,7 +426,7 @@ function messageMarkdown(message: SessionMessage): string {
 
   const calls = message.tool_calls ?? [];
   if (calls.length > 0) {
-    blocks.push("**Ferramentas usadas nesta mensagem**");
+    blocks.push("**Tools used in this message**");
     for (const call of calls) {
       blocks.push(`- ${call.function.name}`);
       const args = (call.function.arguments ?? "").trim();
@@ -447,12 +439,12 @@ function messageMarkdown(message: SessionMessage): string {
 
 function messagePlainText(message: SessionMessage): string {
   const content = (message.content ?? "").trim();
-  return content === "" ? "(sem texto)" : content;
+  return content === "" ? "(no text)" : content;
 }
 
 function transcriptText(session: Session, messages: SessionMessage[], truncated: boolean): string {
   const lines: string[] = [session.title ?? NO_TITLE, ""];
-  if (truncated) lines.push("(Parte antiga desta conversa não está disponível aqui.)", "");
+  if (truncated) lines.push("(The older part of this conversation is not available here.)", "");
   for (const message of messages) {
     lines.push(`${roleLabel(message)}:`, messagePlainText(message), "");
   }
@@ -481,7 +473,7 @@ function groupByDay(messages: SessionMessage[]): DayGroup[] {
   for (const message of messages) {
     const date = toDate(message.timestamp);
     const key = date === undefined ? "sem-data" : String(startOfDay(date));
-    const label = date === undefined ? "Sem data" : dayLabel(date, now);
+    const label = date === undefined ? "No date" : dayLabel(date, now);
     const last = groups[groups.length - 1];
     if (last !== undefined && last.key === key) last.messages.push(message);
     else groups.push({ key, label, messages: [message] });
@@ -642,33 +634,33 @@ export function SessionDetail({
       <ActionPanel>
         <ActionPanel.Section>
           <Action
-            title="Continuar esta conversa"
+            title="Continue This Conversation"
             icon={Icon.SpeechBubble}
             shortcut={SHORTCUTS.continueConversation}
             onAction={() => void continueConversation(info)}
           />
           {message !== undefined ? (
             <Action
-              title="Copiar mensagem"
+              title="Copy the Message"
               icon={Icon.Clipboard}
               shortcut={SHORTCUTS.copy}
               onAction={async () => {
                 await Clipboard.copy(messagePlainText(message));
-                await showHUD("Mensagem copiada");
+                await showHUD("Message copied");
               }}
             />
           ) : null}
-          {/* `Ctrl+Alt+C`: a §9.2 dá esse atalho a "Copiar detalhes técnicos" E a
-              "Copiar conversa inteira" — os dois nunca aparecem na mesma tela (§9.3).
-              A §8.4 pede o mesmo atalho para "Copiar identificador da conversa"; aí a
+          {/* `Ctrl+Alt+C`: a §9.2 dá esse atalho a "Copy Technical Details" E a
+              "Copy the Whole Conversation" — os dois nunca aparecem na mesma tela (§9.3).
+              A §8.4 pede o mesmo atalho para "Copy the Conversation ID"; aí a
               tabela de teclado prevalece e o identificador fica só no painel. */}
           <Action
-            title="Copiar conversa inteira"
+            title="Copy the Whole Conversation"
             icon={Icon.CopyClipboard}
             shortcut={SHORTCUTS.copyTechnical}
             onAction={async () => {
               await Clipboard.copy(transcriptText(info, messages, historyTruncated));
-              await showHUD("Conversa copiada");
+              await showHUD("Conversation copied");
             }}
           />
         </ActionPanel.Section>
@@ -681,7 +673,7 @@ export function SessionDetail({
 
         <ActionPanel.Section>
           <Action.Push
-            title="Renomear conversa"
+            title="Rename the Conversation"
             icon={Icon.Pencil}
             shortcut={SHORTCUTS.rename}
             target={
@@ -696,14 +688,14 @@ export function SessionDetail({
           />
           {hasOlder ? (
             <Action
-              title="Carregar parte anterior da conversa"
+              title="Load the Earlier Part of the Conversation"
               icon={Icon.ArrowUp}
               shortcut={SHORTCUTS.loadOlder}
               onAction={() => void loadOlder()}
             />
           ) : null}
           <Action
-            title="Atualizar"
+            title="Refresh"
             icon={Icon.ArrowClockwise}
             shortcut={SHORTCUTS.refresh}
             onAction={() => void refresh("manual")}
@@ -730,27 +722,27 @@ export function SessionDetail({
       isLoading={isLoading}
       isShowingDetail={visible.length > 0}
       navigationTitle={title}
-      searchBarPlaceholder="Pesquisar nesta conversa"
+      searchBarPlaceholder="Search in this conversation"
       searchBarAccessory={
         <List.Dropdown
-          tooltip="O que mostrar"
+          tooltip="What to Show"
           value={scope}
           onChange={(next) => setScope(next === "tudo" ? "tudo" : "conversa")}
         >
-          <List.Dropdown.Item title="Somente conversa" value="conversa" icon={Icon.SpeechBubble} />
-          <List.Dropdown.Item title="Conversa e ferramentas" value="tudo" icon={Icon.WrenchScrewdriver} />
+          <List.Dropdown.Item title="Conversation Only" value="conversa" icon={Icon.SpeechBubble} />
+          <List.Dropdown.Item title="Conversation and Tools" value="tudo" icon={Icon.WrenchScrewdriver} />
         </List.Dropdown>
       }
     >
       <List.EmptyView
         icon={Icon.SpeechBubble}
-        title={isLoading ? "Carregando a conversa" : "Nada para mostrar aqui"}
+        title={isLoading ? "Loading the Conversation" : "Nothing to Show Here"}
         description={
           isLoading
-            ? "Buscando as mensagens desta conversa no Hermes."
+            ? "Fetching the messages of this conversation from Hermes."
             : scope === "conversa" && messages.length > 0
-              ? 'Esta parte da conversa só tem passos de ferramentas. Escolha "Conversa e ferramentas" para ver.'
-              : `Continue a conversa para o Hermes responder. ${SYNC_PROMISE}`
+              ? 'This part of the conversation has only tool steps. Choose "Conversation and Tools" to see them.'
+              : `Carry on with the conversation so Hermes can answer. ${SYNC_PROMISE}`
         }
         actions={actions()}
       />
@@ -759,11 +751,11 @@ export function SessionDetail({
         <List.Section>
           <List.Item
             icon={Icon.ArrowUp}
-            title="Carregar parte anterior da conversa"
-            subtitle={`Traz as ${TRANSCRIPT_PAGE_SIZE} mensagens anteriores a estas.`}
+            title="Load the Earlier Part of the Conversation"
+            subtitle={`Brings the ${TRANSCRIPT_PAGE_SIZE} messages before these.`}
             detail={
               <List.Item.Detail
-                markdown={`Esta conversa tem mais mensagens do que as ${messages.length} já carregadas.`}
+                markdown={`This conversation has more messages than the ${messages.length} loaded here.`}
               />
             }
             actions={actions()}
@@ -790,23 +782,23 @@ export function SessionDetail({
                     metadata={
                       <List.Item.Detail.Metadata>
                         <List.Item.Detail.Metadata.Label
-                          title="Quem"
+                          title="Who"
                           text={roleLabel(message)}
                           icon={roleIcon(message)}
                         />
                         {when === undefined ? null : (
-                          <List.Item.Detail.Metadata.Label title="Quando" text={timestampFormatter.format(when)} />
+                          <List.Item.Detail.Metadata.Label title="When" text={timestampFormatter.format(when)} />
                         )}
                         <List.Item.Detail.Metadata.Separator />
-                        <List.Item.Detail.Metadata.Label title="Conversa" text={title} />
-                        <List.Item.Detail.Metadata.TagList title="Origem">
+                        <List.Item.Detail.Metadata.Label title="Conversation" text={title} />
+                        <List.Item.Detail.Metadata.TagList title="Origin">
                           <List.Item.Detail.Metadata.TagList.Item
                             text={origin.tag}
                             icon={origin.icon}
                             color={origin.visibleInDesktop ? Color.Green : Color.SecondaryText}
                           />
                         </List.Item.Detail.Metadata.TagList>
-                        <List.Item.Detail.Metadata.Label title="Sincronização" text={syncLabel(origin)} />
+                        <List.Item.Detail.Metadata.Label title="Sync" text={syncLabel(origin)} />
                       </List.Item.Detail.Metadata>
                     }
                   />
@@ -830,14 +822,14 @@ export function SessionDetail({
         <List.Section>
           <List.Item
             icon={Icon.Clock}
-            title="Parte antiga desta conversa não está disponível aqui"
-            subtitle="Abra no Hermes Desktop para ver o histórico completo."
+            title="The Older Part of This Conversation Is Not Available Here"
+            subtitle="Open it in Hermes Desktop to see the whole thing."
             detail={
               <List.Item.Detail
                 markdown={[
-                  "O Hermes compacta conversas longas para caber na memória do modelo.",
+                  "Hermes compacts long conversations so they fit the model memory.",
                   "",
-                  `Esta tela mostra ${messages.length} de ${info.message_count ?? 0} mensagens. O restante continua no Hermes Desktop.`,
+                  `This screen shows ${messages.length} of ${info.message_count ?? 0} messages. The rest is still in Hermes Desktop.`,
                 ].join("\n")}
               />
             }
@@ -850,8 +842,8 @@ export function SessionDetail({
         <List.Section title="Hermes Desktop">
           <List.Item
             icon={Icon.Desktop}
-            title="Abrir esta conversa no Hermes Desktop"
-            subtitle="Se nada abrir, verifique se o Hermes Desktop está instalado e rodando."
+            title="Open This Conversation in Hermes Desktop"
+            subtitle="If nothing opens, check that Hermes Desktop is installed and running."
             accessories={[
               { tag: { value: origin.tag, color: origin.visibleInDesktop ? Color.Green : Color.SecondaryText } },
             ]}
@@ -860,14 +852,14 @@ export function SessionDetail({
               <ActionPanel>
                 <ActionPanel.Section>
                   <Action
-                    title="Abrir no Hermes Desktop"
+                    title="Open in Hermes Desktop"
                     icon={Icon.Desktop}
                     shortcut={SHORTCUTS.openInDesktop}
                     onAction={async () => {
                       const createdAt = toDate(info.started_at);
                       if (createdAt !== undefined && Date.now() - createdAt.getTime() < JUST_CREATED_MS) {
                         await showHUD(
-                          "Abrindo no Hermes Desktop. Pode levar alguns segundos para a conversa aparecer lá.",
+                          "Opening in Hermes Desktop. It can take a few seconds for the conversation to show up there.",
                         );
                       }
                       await openHermesDesktop(desktopUrl);
@@ -877,13 +869,13 @@ export function SessionDetail({
                 </ActionPanel.Section>
                 <ActionPanel.Section>
                   <Action
-                    title="Continuar esta conversa"
+                    title="Continue This Conversation"
                     icon={Icon.SpeechBubble}
                     shortcut={SHORTCUTS.continueConversation}
                     onAction={() => void continueConversation(info)}
                   />
                   <Action
-                    title="Atualizar"
+                    title="Refresh"
                     icon={Icon.ArrowClockwise}
                     shortcut={SHORTCUTS.refresh}
                     onAction={() => void refresh("manual")}

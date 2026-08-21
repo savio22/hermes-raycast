@@ -148,7 +148,7 @@ const CHOICE_SPECS: Record<ApprovalChoice, ChoiceSpec> = {
       title: "Approve for This Whole Task?",
       message: "Hermes will be able to repeat similar commands until this task ends, without asking again.",
       primaryAction: { title: "Approve for This Task", style: Alert.ActionStyle.Default },
-      dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
+      dismissAction: { title: "Cancel", style: Alert.ActionStyle.Cancel },
     },
   },
   always: {
@@ -161,13 +161,13 @@ const CHOICE_SPECS: Record<ApprovalChoice, ChoiceSpec> = {
       message:
         "Commands similar to this one will run without asking your permission, now and in the future, in any conversation. The rule applies to the command pattern, not only to this exact text. You can undo this in Hermes Desktop.",
       primaryAction: { title: "Always Approve", style: Alert.ActionStyle.Destructive },
-      dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
+      dismissAction: { title: "Cancel", style: Alert.ActionStyle.Cancel },
       // Uma confirmação lembrada anularia a própria confirmação (§7.4).
       rememberUserChoice: false,
     },
   },
   deny: {
-    title: "Negar",
+    title: "Deny",
     icon: Icon.XMarkCircle,
     shortcut: SHORTCUTS.deny,
   },

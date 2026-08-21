@@ -1,7 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- a UX-SPEC §10.1 exige título de ação em
-   frase, em pt-BR ("Copiar resposta", nunca "Copiar Resposta"); a regra é calibrada para o
-   Title Case do inglês e `ray lint --fix` reescreve a copy do produto sem ela. */
-
 /**
  * `Executar tarefa no Hermes` (UX-SPEC §2.4).
  *
@@ -82,7 +78,7 @@ export default function Command(
 
   // Guarda de configuração da UX-SPEC §2: sem chave, nenhuma requisição sai daqui.
   if (configured === false) {
-    return <NotConfigured commandTitle="Executar tarefa no Hermes" onRetry={() => setCheck((value) => value + 1)} />;
+    return <NotConfigured commandTitle="Run a Task in Hermes" onRetry={() => setCheck((value) => value + 1)} />;
   }
 
   return (
@@ -131,7 +127,7 @@ export function TaskForm(props: TaskFormProps): ReactElement {
     },
     validation: {
       // Mensagem própria em vez de `FormValidation.Required`, que responde em inglês.
-      tarefa: (value) => (value === undefined || value.trim() === "" ? "Descreva a tarefa." : undefined),
+      tarefa: (value) => (value === undefined || value.trim() === "" ? "Describe the task." : undefined),
     },
   });
 
@@ -163,7 +159,7 @@ export function TaskForm(props: TaskFormProps): ReactElement {
     const task = formValues.tarefa.trim();
     const instructions = formValues.instrucoes.trim() === "" ? undefined : formValues.instrucoes.trim();
     const { provider, model } = splitModelValue(formValues.modelo);
-    const toast = await showToast({ style: Toast.Style.Animated, title: "Enviando ao Hermes…" });
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Sending to Hermes…" });
 
     try {
       let sessionId: string;
@@ -220,7 +216,7 @@ export function TaskForm(props: TaskFormProps): ReactElement {
       toast.title = error.userMessage;
       if (error.recovery === "open_preferences") {
         toast.primaryAction = {
-          title: "Abrir configurações",
+          title: "Open Settings",
           onAction: (current) => {
             void openExtensionPreferences();
             void current.hide();
@@ -235,24 +231,20 @@ export function TaskForm(props: TaskFormProps): ReactElement {
 
   return (
     <Form
-      navigationTitle="Executar tarefa no Hermes"
+      navigationTitle="Run a Task in Hermes"
       isLoading={props.isLoading === true || isSending}
       enableDrafts={props.enableDrafts === true}
       actions={
         <ActionPanel>
-          <Action.SubmitForm
-            title={isSending ? "Enviando…" : "Executar tarefa"}
-            icon={Icon.Play}
-            onSubmit={handleSubmit}
-          />
+          <Action.SubmitForm title={isSending ? "Sending…" : "Run the Task"} icon={Icon.Play} onSubmit={handleSubmit} />
           <Action
-            title="Ver tarefas em andamento"
+            title="See Tasks in Progress"
             icon={Icon.List}
             shortcut={SHORTCUTS.activeRuns}
             onAction={() => void launchCommand({ name: "active-runs", type: LaunchType.UserInitiated })}
           />
           <Action
-            title="Abrir configurações"
+            title="Open Settings"
             icon={Icon.Gear}
             shortcut={SHORTCUTS.preferences}
             onAction={openExtensionPreferences}
@@ -262,8 +254,8 @@ export function TaskForm(props: TaskFormProps): ReactElement {
     >
       <Form.TextArea
         {...itemProps.tarefa}
-        title="O que o Hermes deve fazer"
-        placeholder="Descreva a tarefa com o máximo de detalhe possível."
+        title="What Hermes Should Do"
+        placeholder="Describe the task in as much detail as you can."
         autoFocus
       />
 
@@ -271,23 +263,23 @@ export function TaskForm(props: TaskFormProps): ReactElement {
 
       {/*
         Os cinco componentes da UX-SPEC §2.4.1, NESTA ordem e todos visíveis. A versão
-        anterior escondia `Instruções extras`, `Modelo` e `Conversa` atrás de um checkbox
+        anterior escondia `Extra Instructions`, `Model` e `Conversation` atrás de um checkbox
         "Mostrar opções avançadas" que a spec não prevê: as instruções que alimentam
         `instructions` de `POST /v1/runs` e a opção de rodar dentro de uma conversa
         existente ficavam invisíveis para quem abre a tela pela primeira vez.
       */}
       <Form.TextArea
         {...itemProps.instrucoes}
-        title="Instruções extras"
-        info="Opcional. Regras que valem só para esta tarefa, como tom, formato ou limites."
+        title="Extra Instructions"
+        info="Optional. Rules that apply only to this task, such as tone, format or limits."
       />
 
       <Form.Dropdown
         {...itemProps.modelo}
-        title="Modelo"
-        info="Vale só para esta tarefa. O modelo padrão da extensão não muda."
+        title="Model"
+        info="Applies only to this task. The extension default model does not change."
       >
-        <Form.Dropdown.Item value={DEFAULT_MODEL_VALUE} title="Padrão do Hermes" icon={Icon.Wand} />
+        <Form.Dropdown.Item value={DEFAULT_MODEL_VALUE} title="Hermes Default" icon={Icon.Wand} />
         {models.map((option) => (
           <Form.Dropdown.Item
             key={`${option.provider}::${option.model}`}
@@ -298,21 +290,21 @@ export function TaskForm(props: TaskFormProps): ReactElement {
         ))}
       </Form.Dropdown>
 
-      <Form.Dropdown {...itemProps.conversa} title="Conversa">
-        <Form.Dropdown.Item value={NEW_CONVERSATION_VALUE} title="Nova conversa" icon={Icon.Plus} />
+      <Form.Dropdown {...itemProps.conversa} title="Conversation">
+        <Form.Dropdown.Item value={NEW_CONVERSATION_VALUE} title="New Conversation" icon={Icon.Plus} />
         {sessions.map((session) => (
           <Form.Dropdown.Item
             key={session.id}
             value={session.id}
-            title={shorten(session.title ?? "Sem título", 48)}
+            title={shorten(session.title ?? "Untitled", 48)}
             icon={Icon.SpeechBubble}
           />
         ))}
       </Form.Dropdown>
 
       <Form.Description
-        title="Sobre esta tarefa"
-        text="A tarefa continua rodando no Hermes mesmo se você fechar o Raycast. Você pode acompanhar depois em Execuções do Hermes."
+        title="About This Task"
+        text="The task keeps going inside Hermes even if you close Raycast. You can follow it later in Hermes Tasks."
       />
     </Form>
   );
@@ -329,5 +321,5 @@ function splitModelValue(raw: string): { provider?: string; model?: string } {
 }
 
 function sessionTitleOf(sessions: readonly Session[], sessionId: string): string {
-  return sessions.find((session) => session.id === sessionId)?.title ?? "Sem título";
+  return sessions.find((session) => session.id === sessionId)?.title ?? "Untitled";
 }

@@ -34,7 +34,7 @@ test("copy nova de autorização e entrada usa o vocabulário de produto", () =>
     }).userMessage,
     mapHttpError({ method: "GET", path: "/api/sessions/s1/messages", status: 400, body: "invalid_pagination" })
       .userMessage,
-    "Configurar no Hermes Desktop",
+    "Configure in Hermes Desktop",
     "The text is very long: I kept the beginning and the end and removed only the middle.",
     "The model you picked is not authenticated in Hermes. Open Hermes Desktop and set up the provider, or pick another model.",
   ];

@@ -19,5 +19,5 @@ import { FirstRunScreen } from "./components/first-run";
 export default function Command(): ReactElement {
   // Sem `onDone`: aqui a tela É o destino, não um desvio no meio de outro comando. Depois
   // de detectar, `AutoDetectScreen` mostra o resultado e `Continuar` volta para cá.
-  return <FirstRunScreen navigationTitle="Configurar Hermes" />;
+  return <FirstRunScreen navigationTitle="Configure Hermes" />;
 }

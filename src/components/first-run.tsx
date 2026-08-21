@@ -166,7 +166,7 @@ export function ForgetKeyAction({ onDone }: { onDone?: () => void }) {
           title: "Forget the detected key?",
           message: "Raycast will delete the key stored on this computer. You can detect it again whenever you want.",
           primaryAction: { title: "Forget the Key", style: Alert.ActionStyle.Destructive },
-          dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
+          dismissAction: { title: "Cancel", style: Alert.ActionStyle.Cancel },
           rememberUserChoice: false,
         });
         if (!confirmed) return;

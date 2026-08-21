@@ -1,7 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- os títulos de ação são literais em pt-BR da
-   UX-SPEC §10.1/§10.3 ("Pausar automação", "Atualizar lista"); a regra é calibrada para o
-   Title Case do inglês e reescreveria a copy do produto. */
-
 /**
  * `Automações do Hermes` (UX-SPEC §1.2, fase 2).
  *
@@ -46,8 +42,8 @@ import { isConfigured } from "./lib/preferences";
 import { NO_CONNECTION, jobStateLabel } from "./lib/status";
 import type { Job, JobState } from "./lib/types";
 
-const COMMAND_TITLE = "Automações do Hermes";
-const NO_NAME = "Sem nome";
+const COMMAND_TITLE = "Hermes Automations";
+const NO_NAME = "Unnamed";
 const PROMPT_PREVIEW = 80;
 
 /** Ícone e cor por estado. Vocabulário próprio dos jobs: nada aqui vem de `RunStatus`. */
@@ -72,23 +68,23 @@ function moment(iso: string | null | undefined): string | undefined {
   if (iso === null || iso === undefined || iso === "") return undefined;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return undefined;
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
 function detailMarkdown(job: Job): string {
   const blocks = [`# ${job.name ?? NO_NAME}`];
 
   if (job.prompt !== undefined && job.prompt.trim() !== "") {
-    blocks.push("## O que ela pede ao Hermes", job.prompt);
+    blocks.push("## What it asks Hermes", job.prompt);
   }
   if (job.script !== undefined && job.script !== null && job.script.trim() !== "") {
     blocks.push("## Script", `\`\`\`\n${job.script}\n\`\`\``);
   }
   if (job.last_error !== undefined && job.last_error !== null && job.last_error.trim() !== "") {
-    blocks.push("## Último erro", `> ${job.last_error}`);
+    blocks.push("## Last error", `> ${job.last_error}`);
   }
   if (job.paused_reason !== undefined && job.paused_reason !== null && job.paused_reason.trim() !== "") {
-    blocks.push("## Por que está pausada", `> ${job.paused_reason}`);
+    blocks.push("## Why it is paused", `> ${job.paused_reason}`);
   }
 
   return blocks.join("\n\n");
@@ -114,7 +110,7 @@ export default function Command(): ReactElement {
   );
 
   async function act(
-    verb: "pausar" | "retomar" | "rodar",
+    verb: "pausing" | "resuming" | "running",
     job: Job,
     run: (id: string) => Promise<unknown>,
     success: string,
@@ -126,7 +122,7 @@ export default function Command(): ReactElement {
     } catch (err) {
       await showToast({
         style: Toast.Style.Failure,
-        title: toHermesError(err, `${verb} automação ${job.id}`).userMessage,
+        title: toHermesError(err, `${verb} automation ${job.id}`).userMessage,
       });
     }
   }
@@ -135,14 +131,14 @@ export default function Command(): ReactElement {
     // Enfileirar uma execução gasta tempo do agente e pode mexer no computador do usuário:
     // é o tipo de coisa que não se dispara por um `Enter` distraído.
     const confirmed = await confirmAlert({
-      title: "Rodar esta automação agora?",
-      message: `"${job.name ?? NO_NAME}" entra na fila do Hermes imediatamente, além do horário normal dela.`,
-      primaryAction: { title: "Rodar agora" },
-      dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
+      title: "Run this automation now?",
+      message: `"${job.name ?? NO_NAME}" goes into the Hermes queue right away, on top of its normal schedule.`,
+      primaryAction: { title: "Run Now" },
+      dismissAction: { title: "Cancel", style: Alert.ActionStyle.Cancel },
       rememberUserChoice: false,
     });
     if (!confirmed) return;
-    await act("rodar", job, queueJobRun, "Automação enfileirada");
+    await act("running", job, queueJobRun, "Automation queued");
   }
 
   const authenticationMissing = error instanceof HermesNotConfiguredError;
@@ -166,7 +162,7 @@ export default function Command(): ReactElement {
   const paused = all.filter((job) => job.state === "paused");
 
   const refreshAction = (
-    <Action title="Atualizar lista" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
+    <Action title="Refresh the List" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
   );
 
   /** `501 Cron module not available`: o Hermes existe, as automações é que não (E19). */
@@ -177,13 +173,13 @@ export default function Command(): ReactElement {
       navigationTitle={COMMAND_TITLE}
       isLoading={busy}
       isShowingDetail={all.length > 0}
-      searchBarPlaceholder="Pesquisar automação por nome"
+      searchBarPlaceholder="Search automations by name"
     >
       {notSupported ? (
         <List.EmptyView
           icon={{ source: "cmd-jobs.png" }}
-          title="As automações não estão disponíveis neste Hermes"
-          description="Este Hermes foi iniciado sem o agendador. As automações voltam a aparecer aqui quando ele estiver ligado — nada seu foi perdido."
+          title="Automations Are Not Available in This Hermes"
+          description="This Hermes started without the scheduler. Automations come back here once it is on — nothing of yours was lost."
           actions={
             <ActionPanel>
               {refreshAction}
@@ -209,8 +205,8 @@ export default function Command(): ReactElement {
       {!busy && error === undefined && all.length === 0 ? (
         <List.EmptyView
           icon={{ source: "cmd-jobs.png" }}
-          title="Nenhuma automação por aqui"
-          description="Automações são tarefas que o Hermes executa sozinho, no horário que você marcar. Elas são criadas no Hermes Desktop."
+          title="No Automation Around Here"
+          description="Automations are tasks Hermes runs on its own, at the time you set. They are created in Hermes Desktop."
           actions={
             <ActionPanel>
               {refreshAction}
@@ -221,8 +217,8 @@ export default function Command(): ReactElement {
       ) : null}
 
       {[
-        { title: "Ativas", items: active },
-        { title: "Pausadas", items: paused },
+        { title: "Active", items: active },
+        { title: "Paused", items: paused },
       ]
         .filter((section) => section.items.length > 0)
         .map((section) => (
@@ -245,26 +241,26 @@ export default function Command(): ReactElement {
                       markdown={detailMarkdown(job)}
                       metadata={
                         <List.Item.Detail.Metadata>
-                          <List.Item.Detail.Metadata.TagList title="Estado">
+                          <List.Item.Detail.Metadata.TagList title="State">
                             <List.Item.Detail.Metadata.TagList.Item text={jobStateLabel(job.state)} {...tone(job)} />
                           </List.Item.Detail.Metadata.TagList>
                           <List.Item.Detail.Metadata.Label
-                            title="Quando roda"
+                            title="When It Runs"
                             // `schedule_display` já vem pronto do servidor; "?" quando nada
                             // resolve. Remontar a frase a partir de `schedule` daria outra.
-                            text={job.schedule_display ?? "Não definido"}
+                            text={job.schedule_display ?? "Not set"}
                           />
                           {nextRun !== undefined ? (
-                            <List.Item.Detail.Metadata.Label title="Próxima vez" text={nextRun} />
+                            <List.Item.Detail.Metadata.Label title="Next Time" text={nextRun} />
                           ) : null}
                           {lastRun !== undefined ? (
-                            <List.Item.Detail.Metadata.Label title="Última vez" text={lastRun} />
+                            <List.Item.Detail.Metadata.Label title="Last Time" text={lastRun} />
                           ) : null}
                           {job.model !== undefined && job.model !== null ? (
-                            <List.Item.Detail.Metadata.Label title="Modelo" text={job.model} />
+                            <List.Item.Detail.Metadata.Label title="Model" text={job.model} />
                           ) : null}
                           {job.failure_streak !== undefined && job.failure_streak > 0 ? (
-                            <List.Item.Detail.Metadata.Label title="Falhas seguidas" text={`${job.failure_streak}`} />
+                            <List.Item.Detail.Metadata.Label title="Failures in a Row" text={`${job.failure_streak}`} />
                           ) : null}
                         </List.Item.Detail.Metadata>
                       }
@@ -275,28 +271,28 @@ export default function Command(): ReactElement {
                       <ActionPanel.Section>
                         {isPaused ? (
                           <Action
-                            title="Retomar automação"
+                            title="Resume the Automation"
                             icon={Icon.Play}
-                            onAction={() => void act("retomar", job, resumeJob, "Automação retomada")}
+                            onAction={() => void act("resuming", job, resumeJob, "Automation resumed")}
                           />
                         ) : (
                           <Action
-                            title="Pausar automação"
+                            title="Pause the Automation"
                             icon={Icon.Pause}
-                            onAction={() => void act("pausar", job, pauseJob, "Automação pausada")}
+                            onAction={() => void act("pausing", job, pauseJob, "Automation paused")}
                           />
                         )}
-                        <Action title="Rodar agora" icon={Icon.Bolt} onAction={() => void runNow(job)} />
+                        <Action title="Run Now" icon={Icon.Bolt} onAction={() => void runNow(job)} />
                         {refreshAction}
                       </ActionPanel.Section>
                       <ActionPanel.Section>
                         <Action.CopyToClipboard
-                          title="Copiar identificador da automação"
+                          title="Copy the Automation ID"
                           content={job.id}
                           shortcut={SHORTCUTS.copyTechnical}
                         />
                         <Action
-                          title="Abrir configurações"
+                          title="Open Settings"
                           icon={Icon.Gear}
                           shortcut={SHORTCUTS.preferences}
                           onAction={openExtensionPreferences}

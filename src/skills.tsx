@@ -1,7 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- os títulos de ação são literais em pt-BR da
-   UX-SPEC §10.1/§10.3 ("Atualizar lista", "Abrir configurações"); a regra é calibrada para
-   o Title Case do inglês e reescreveria a copy do produto. */
-
 /**
  * `Skills do Hermes` (UX-SPEC §1.2, fase 2).
  *
@@ -32,9 +28,9 @@ import { NO_CONNECTION } from "./lib/status";
 import { CacheKeys, CacheTtl, cacheWrite, cachedFetch } from "./lib/storage";
 import type { Skill } from "./lib/types";
 
-const COMMAND_TITLE = "Skills do Hermes";
+const COMMAND_TITLE = "Hermes Skills";
 /** Seção de quem veio sem `category`. */
-const NO_CATEGORY = "Sem categoria";
+const NO_CATEGORY = "No category";
 
 /** Agrupa por categoria, com as categorias em ordem alfabética e a genérica por último. */
 function byCategory(skills: readonly Skill[]): [string, Skill[]][] {
@@ -50,14 +46,14 @@ function byCategory(skills: readonly Skill[]): [string, Skill[]][] {
   return [...groups.entries()].sort(([a], [b]) => {
     if (a === NO_CATEGORY) return 1;
     if (b === NO_CATEGORY) return -1;
-    return a.localeCompare(b, "pt-BR");
+    return a.localeCompare(b, "en");
   });
 }
 
 function detailMarkdown(skill: Skill): string {
   return [
     `# ${skill.name}`,
-    skill.description.trim() === "" ? "_Esta skill não tem descrição._" : skill.description,
+    skill.description.trim() === "" ? "_This skill has no description._" : skill.description,
   ].join("\n\n");
 }
 
@@ -90,7 +86,7 @@ export default function Command(): ReactElement {
       navigationTitle={COMMAND_TITLE}
       isLoading={busy}
       isShowingDetail={(skills?.length ?? 0) > 0}
-      searchBarPlaceholder="Pesquisar skill por nome ou descrição"
+      searchBarPlaceholder="Search skills by name or description"
     >
       {error !== undefined && (skills?.length ?? 0) === 0 ? (
         <List.EmptyView
@@ -99,7 +95,7 @@ export default function Command(): ReactElement {
           actions={
             <ActionPanel>
               <Action
-                title="Tentar novamente"
+                title="Try Again"
                 icon={Icon.ArrowClockwise}
                 shortcut={SHORTCUTS.refresh}
                 onAction={() => setNonce((value) => value + 1)}
@@ -113,12 +109,12 @@ export default function Command(): ReactElement {
       {!busy && error === undefined && (skills?.length ?? 0) === 0 ? (
         <List.EmptyView
           icon={{ source: "cmd-skills.png" }}
-          title="Nenhuma skill habilitada"
-          description="Este Hermes não tem nenhuma skill ligada. Elas são configuradas no Hermes Desktop."
+          title="No Skill Enabled"
+          description="This Hermes has no skill turned on. They are set up in Hermes Desktop."
           actions={
             <ActionPanel>
               <Action
-                title="Atualizar lista"
+                title="Refresh the List"
                 icon={Icon.ArrowClockwise}
                 shortcut={SHORTCUTS.refresh}
                 onAction={() => setNonce((value) => value + 1)}
@@ -142,12 +138,12 @@ export default function Command(): ReactElement {
                 <ActionPanel>
                   <ActionPanel.Section>
                     <Action.CopyToClipboard
-                      title="Copiar nome da skill"
+                      title="Copy the Skill Name"
                       content={skill.name}
                       shortcut={SHORTCUTS.copy}
                     />
                     <Action
-                      title="Atualizar lista"
+                      title="Refresh the List"
                       icon={Icon.ArrowClockwise}
                       shortcut={SHORTCUTS.refresh}
                       onAction={() => setNonce((value) => value + 1)}
@@ -155,11 +151,11 @@ export default function Command(): ReactElement {
                   </ActionPanel.Section>
                   <ActionPanel.Section>
                     <Action
-                      title="Configurar no Hermes Desktop"
+                      title="Configure in Hermes Desktop"
                       icon={Icon.Gear}
                       shortcut={SHORTCUTS.preferences}
                       onAction={() =>
-                        void showToast({ style: Toast.Style.Animated, title: "Configure skills no Hermes Desktop" })
+                        void showToast({ style: Toast.Style.Animated, title: "Set up skills in Hermes Desktop" })
                       }
                     />
                   </ActionPanel.Section>

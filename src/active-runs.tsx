@@ -1,7 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- a UX-SPEC §10.1 exige título de ação em
-   frase, em pt-BR ("Copiar resposta", nunca "Copiar Resposta"); a regra é calibrada para o
-   Title Case do inglês e `ray lint --fix` reescreve a copy do produto sem ela. */
-
 /**
  * `Execuções do Hermes` (UX-SPEC §2.5).
  *
@@ -134,10 +130,10 @@ function isRowTerminal(row: RunRow): boolean {
 type SectionId = "aprovacao" | "andamento" | "concluidas" | "encerradas";
 
 const SECTION_TITLE: Record<SectionId, string> = {
-  aprovacao: "Precisa de você",
-  andamento: "Em andamento",
-  concluidas: "Concluídas",
-  encerradas: "Encerradas",
+  aprovacao: "Needs you",
+  andamento: "In progress",
+  concluidas: "Done",
+  encerradas: "Closed",
 };
 
 function sectionOf(row: RunRow): SectionId {
@@ -360,14 +356,14 @@ export default function Command(): ReactElement {
 
           const throwIfAborted = (): void => {
             if (controller.signal.aborted) {
-              throw Object.assign(new Error("Operação cancelada"), { name: "AbortError" });
+              throw Object.assign(new Error("Operation cancelled"), { name: "AbortError" });
             }
           };
 
           const request = getSession(sessionId, controller.signal)
             .then((envelope) => {
               throwIfAborted();
-              const title = envelope.session.title ?? "Sem título";
+              const title = envelope.session.title ?? "Untitled";
               titles.current.set(sessionId, title);
               return title;
             })
@@ -375,8 +371,8 @@ export default function Command(): ReactElement {
               if (isAbort(reason)) throw reason;
               throwIfAborted();
               // Conversa apagada no Desktop ou Hermes fora: o item vive sem subtítulo.
-              titles.current.set(sessionId, "Sem título");
-              return "Sem título";
+              titles.current.set(sessionId, "Untitled");
+              return "Untitled";
             })
             .finally(() => {
               if (titleRequestsRef.current.get(sessionId) === request) {
@@ -432,7 +428,7 @@ export default function Command(): ReactElement {
       style: Toast.Style.Failure,
       title: error.userMessage,
       primaryAction: {
-        title: needsPreferences ? "Abrir configurações" : "Tentar novamente",
+        title: needsPreferences ? "Open Settings" : "Try Again",
         onAction: (toast) => {
           if (needsPreferences) void openExtensionPreferences();
           else refresh();
@@ -447,17 +443,17 @@ export default function Command(): ReactElement {
   async function handleStop(row: RunRow): Promise<void> {
     // Sem `confirmAlert` (UX-SPEC §6.6 item 6): parar não destrói nada e a confirmação
     // atrasaria a única saída de emergência do usuário.
-    const toast = await showToast({ style: Toast.Style.Animated, title: "Parando a tarefa…" });
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Stopping the task…" });
     try {
       await stopRun(row.stored.runId);
       toast.style = Toast.Style.Success;
-      toast.title = "Tarefa parada";
+      toast.title = "Task stopped";
     } catch (err) {
       const stopError = toHermesError(err, "stopRun");
       // Armadilha 21: 404 significa "já tinha terminado", nunca erro.
       if (stopError.httpStatus === 404) {
         toast.style = Toast.Style.Success;
-        toast.title = "Tarefa parada";
+        toast.title = "Task stopped";
       } else {
         toast.style = Toast.Style.Failure;
         toast.title = stopError.userMessage;
@@ -470,51 +466,51 @@ export default function Command(): ReactElement {
   async function handleForget(row: RunRow): Promise<void> {
     await forgetRun(row.stored.runId);
     setRows((current) => current.filter((item) => item.stored.runId !== row.stored.runId));
-    await showToast({ style: Toast.Style.Success, title: "Removida da lista" });
+    await showToast({ style: Toast.Style.Success, title: "Removed from the list" });
   }
 
   async function handleClearFinished(): Promise<void> {
     const finished = rows.filter((row) => isRowTerminal(row));
     if (finished.length === 0) {
-      await showToast({ style: Toast.Style.Failure, title: "Não há execuções encerradas para limpar." });
+      await showToast({ style: Toast.Style.Failure, title: "There are no closed tasks to clear." });
       return;
     }
     const confirmed = await confirmAlert({
       icon: Icon.Trash,
-      title: "Limpar as execuções encerradas?",
-      message: `${finished.length} ${finished.length === 1 ? "execução sai" : "execuções saem"} desta lista. Nada é apagado no Hermes.`,
-      primaryAction: { title: "Limpar", style: Alert.ActionStyle.Destructive },
-      dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
+      title: "Clear the closed tasks?",
+      message: `${finished.length} ${finished.length === 1 ? "task leaves" : "tasks leave"} this list. Nothing is deleted in Hermes.`,
+      primaryAction: { title: "Clear", style: Alert.ActionStyle.Destructive },
+      dismissAction: { title: "Cancel", style: Alert.ActionStyle.Cancel },
       rememberUserChoice: false,
     });
     if (!confirmed) return;
 
     for (const row of finished) await forgetRun(row.stored.runId);
     setRows((current) => current.filter((row) => !isRowTerminal(row)));
-    await showToast({ style: Toast.Style.Success, title: "Lista limpa" });
+    await showToast({ style: Toast.Style.Success, title: "List cleared" });
   }
 
   async function handleCopyResult(row: RunRow): Promise<void> {
     const output = await readRunOutput(row.stored.runId);
     if (output === undefined || output === "") {
-      await showToast({ style: Toast.Style.Failure, title: "Esta tarefa não deixou um resultado para copiar." });
+      await showToast({ style: Toast.Style.Failure, title: "This task left no result to copy." });
       return;
     }
     await Clipboard.copy(output);
-    await showHUD("Resposta copiada");
+    await showHUD("Answer copied");
   }
 
   // Guarda de configuração da UX-SPEC §2: sem chave, nenhuma requisição sai daqui.
-  if (configured === false) return <NotConfigured commandTitle="Execuções do Hermes" onRetry={refresh} />;
+  if (configured === false) return <NotConfigured commandTitle="Hermes Tasks" onRetry={refresh} />;
 
   const sections: SectionId[] = ["aprovacao", "andamento", "concluidas", "encerradas"];
   const showEmpty = !isLoading && rows.length === 0;
 
   return (
     <List
-      navigationTitle="Execuções do Hermes"
+      navigationTitle="Hermes Tasks"
       isLoading={isLoading || configured === undefined}
-      searchBarPlaceholder="Pesquisar por texto da tarefa"
+      searchBarPlaceholder="Search by the task text"
     >
       {showEmpty && error !== undefined && (
         // UX-SPEC §5.3: erro que impede a tela inteira vira `List.EmptyView` numa `List`.
@@ -526,20 +522,15 @@ export default function Command(): ReactElement {
           title={error.userMessage}
           actions={
             <ActionPanel>
+              <Action title="Try Again" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
               <Action
-                title="Tentar novamente"
-                icon={Icon.ArrowClockwise}
-                shortcut={SHORTCUTS.refresh}
-                onAction={refresh}
-              />
-              <Action
-                title="Abrir configurações"
+                title="Open Settings"
                 icon={Icon.Gear}
                 shortcut={SHORTCUTS.preferences}
                 onAction={openExtensionPreferences}
               />
               <Action.CopyToClipboard
-                title="Copiar detalhes técnicos"
+                title="Copy Technical Details"
                 content={technicalDetails({ runId: "—", error })}
                 shortcut={SHORTCUTS.copyTechnical}
               />
@@ -551,16 +542,16 @@ export default function Command(): ReactElement {
       {showEmpty && error === undefined && (
         <List.EmptyView
           icon={Icon.Hourglass}
-          title="Nenhuma execução recente"
-          description="Quando você pedir uma tarefa ao Hermes, ela aparece aqui até você limpar."
+          title="No Recent Task"
+          description="When you ask Hermes for a task, it shows up here until you clear the list."
           actions={
             <ActionPanel>
               <Action
-                title="Executar tarefa no Hermes"
+                title="Run a Task in Hermes"
                 icon={Icon.Play}
                 onAction={() => void launchCommand({ name: "run-task", type: LaunchType.UserInitiated })}
               />
-              <Action title="Atualizar" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
+              <Action title="Refresh" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
               <OpenModelsAction />
             </ActionPanel>
           }
@@ -662,7 +653,7 @@ function RunListItem(props: {
           <ActionPanel.Section>
             {waitingApproval && (
               <Action.Push
-                title="Responder pedido de aprovação"
+                title="Answer the Approval Request"
                 icon={Icon.Lock}
                 target={
                   <ApprovalView
@@ -672,20 +663,20 @@ function RunListItem(props: {
                     // §7.6: sem payload gravado, a tela oferece só `Negar`.
                     detailsLost={row.approval === undefined}
                     taskPreview={shorten(prompt, 60)}
-                    conversationTitle={row.sessionTitle ?? "Sem título"}
+                    conversationTitle={row.sessionTitle ?? "Untitled"}
                     sessionId={row.stored.sessionId}
                     onResolved={props.onRefresh}
-                    // §7.4 `Ver etapas da tarefa`: aqui a aprovação foi aberta a partir da
+                    // §7.4 `See the Task Steps`: aqui a aprovação foi aberta a partir da
                     // LISTA, então as etapas são uma tela nova, empilhada por cima.
                     onShowSteps={() => push(stepsView)}
                   />
                 }
               />
             )}
-            <Action.Push title="Ver execução" icon={Icon.Sidebar} target={progressView} />
+            <Action.Push title="See the Task" icon={Icon.Sidebar} target={progressView} />
             {status === "completed" && (
               <Action
-                title="Copiar resultado"
+                title="Copy the Result"
                 icon={Icon.Clipboard}
                 shortcut={SHORTCUTS.copy}
                 onAction={props.onCopyResult}
@@ -693,7 +684,7 @@ function RunListItem(props: {
             )}
             {desktopUrl !== undefined && (
               <Action.Open
-                title="Abrir no Hermes Desktop"
+                title="Open in Hermes Desktop"
                 icon={Icon.Desktop}
                 target={desktopUrl}
                 shortcut={SHORTCUTS.openInDesktop}
@@ -704,7 +695,7 @@ function RunListItem(props: {
           <ActionPanel.Section>
             {!terminal && (
               <Action
-                title="Parar execução"
+                title="Stop the Task"
                 icon={Icon.Stop}
                 style={Action.Style.Destructive}
                 shortcut={SHORTCUTS.stop}
@@ -714,7 +705,7 @@ function RunListItem(props: {
             {status === "running" && !expired && (
               // Armadilha 22: fora de `running` o servidor recusa a orientação com 409.
               <Action.Push
-                title="Orientar execução"
+                title="Guide the Task"
                 icon={Icon.Compass}
                 shortcut={SHORTCUTS.steer}
                 target={
@@ -728,7 +719,7 @@ function RunListItem(props: {
               />
             )}
             <Action
-              title="Executar esta tarefa novamente"
+              title="Run This Task Again"
               icon={Icon.Repeat}
               shortcut={SHORTCUTS.newConversation}
               onAction={() =>
@@ -745,26 +736,26 @@ function RunListItem(props: {
             {terminal && (
               // Sem `confirmAlert`: não é destrutivo no servidor. O título diz isso.
               <Action
-                title="Remover da lista (não apaga nada no Hermes)"
+                title="Remove from the List (Deletes Nothing in Hermes)"
                 icon={Icon.MinusCircle}
                 shortcut={SHORTCUTS.remove}
                 onAction={props.onForget}
               />
             )}
             <Action
-              title="Limpar execuções encerradas"
+              title="Clear the Closed Tasks"
               icon={Icon.Trash}
               style={Action.Style.Destructive}
               onAction={props.onClearFinished}
             />
             <Action
-              title="Atualizar"
+              title="Refresh"
               icon={Icon.ArrowClockwise}
               shortcut={SHORTCUTS.refresh}
               onAction={props.onRefresh}
             />
             <Action.CopyToClipboard
-              title="Copiar detalhes técnicos"
+              title="Copy Technical Details"
               content={technicalDetails({
                 runId: row.stored.runId,
                 sessionId: row.stored.sessionId,
@@ -774,7 +765,7 @@ function RunListItem(props: {
               shortcut={SHORTCUTS.copyTechnical}
             />
             <Action
-              title="Abrir configurações"
+              title="Open Settings"
               icon={Icon.Gear}
               shortcut={SHORTCUTS.preferences}
               onAction={openExtensionPreferences}

@@ -1,7 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- os títulos de ação são literais em pt-BR da
-   UX-SPEC §10.1/§10.3 ("Atualizar lista", "Abrir configurações"); a regra é calibrada para
-   o Title Case do inglês e reescreveria a copy do produto. */
-
 /**
  * `Ferramentas do Hermes` (UX-SPEC §1.2, fase 2).
  *
@@ -41,17 +37,17 @@ import {
 import { CacheKeys, CacheTtl, cacheWrite, cachedFetch } from "./lib/storage";
 import type { Toolset } from "./lib/types";
 
-const COMMAND_TITLE = "Ferramentas do Hermes";
+const COMMAND_TITLE = "Hermes Tools";
 
 /** Ordem das seções: primeiro o que dá para usar, por último o que nem existe aqui. */
 const SECTION_ORDER: ToolsetAvailability[] = ["disponivel", "precisa_configurar", "desligado", "indisponivel"];
 
 /** O que cada estado significa em uma frase, no subtítulo da seção. */
 const SECTION_NOTE: Record<ToolsetAvailability, string> = {
-  disponivel: "o Hermes pode usar agora",
-  precisa_configurar: "falta uma credencial ou uma conta conectada",
-  desligado: "tem credencial, mas não está ligado para o Raycast",
-  indisponivel: "não está ligado nem configurado",
+  disponivel: "Hermes can use it right now",
+  precisa_configurar: "a credential or a connected account is missing",
+  desligado: "it has a credential, but is not turned on for Raycast",
+  indisponivel: "it is neither turned on nor set up",
 };
 
 function detailMarkdown(toolset: Toolset): string {
@@ -60,13 +56,13 @@ function detailMarkdown(toolset: Toolset): string {
     // O `label` vem do servidor com emoji. Ele é CONTEÚDO — o nome pelo qual o grupo aparece
     // no Hermes Desktop —, não copy nossa, e por isso não cai na regra de §11.
     `# ${toolset.label}`,
-    toolset.description.trim() === "" ? "_Este grupo não tem descrição._" : toolset.description,
+    toolset.description.trim() === "" ? "_This group has no description._" : toolset.description,
     `**${TOOLSET_AVAILABILITY_LABEL[availability]}** — ${SECTION_NOTE[availability]}.`,
   ];
 
   if (toolset.tools.length > 0) {
     blocks.push(
-      `## Ferramentas deste grupo (${toolset.tools.length})`,
+      `## Tools in this group (${toolset.tools.length})`,
       toolset.tools.map((tool) => `- \`${tool}\``).join("\n"),
     );
   }
@@ -99,7 +95,7 @@ export default function Command(): ReactElement {
 
   const refreshAction = (
     <Action
-      title="Atualizar lista"
+      title="Refresh the List"
       icon={Icon.ArrowClockwise}
       shortcut={SHORTCUTS.refresh}
       onAction={() => setNonce((value) => value + 1)}
@@ -117,13 +113,13 @@ export default function Command(): ReactElement {
       navigationTitle={COMMAND_TITLE}
       isLoading={busy}
       isShowingDetail={all.length > 0}
-      searchBarPlaceholder="Pesquisar grupo de ferramentas"
+      searchBarPlaceholder="Search tool groups"
     >
       {error !== undefined && all.length === 0 ? (
         <List.EmptyView
           icon={statusImage(NO_CONNECTION)}
           title={toHermesError(error, "GET /v1/toolsets").userMessage}
-          description="Esta consulta é pesada para o Hermes e tem um limite de 12 segundos. Se ele estiver ocupado, tente de novo daqui a pouco."
+          description="This query is heavy for Hermes and has a 12-second limit. If it is busy, try again in a moment."
           actions={
             <ActionPanel>
               {refreshAction}
@@ -136,8 +132,8 @@ export default function Command(): ReactElement {
       {!busy && error === undefined && all.length === 0 ? (
         <List.EmptyView
           icon={{ source: "cmd-toolsets.png" }}
-          title="Nenhum grupo de ferramentas"
-          description="Este Hermes não expõe nenhum grupo de ferramentas ao Raycast."
+          title="No Tool Group"
+          description="This Hermes does not expose any tool group to Raycast."
           actions={
             <ActionPanel>
               {refreshAction}
@@ -159,13 +155,13 @@ export default function Command(): ReactElement {
               icon={statusImage(TOOLSET_AVAILABILITY_APPEARANCE[availability])}
               title={toolset.label}
               keywords={[toolset.name, toolset.description, ...toolset.tools]}
-              accessories={[{ text: `${toolset.tools.length}`, tooltip: "Quantas ferramentas este grupo traz" }]}
+              accessories={[{ text: `${toolset.tools.length}`, tooltip: "How many tools this group brings" }]}
               detail={<List.Item.Detail markdown={detailMarkdown(toolset)} />}
               actions={
                 <ActionPanel>
                   <ActionPanel.Section>
                     <Action.CopyToClipboard
-                      title="Copiar nome do grupo"
+                      title="Copy the Group Name"
                       content={toolset.name}
                       shortcut={SHORTCUTS.copy}
                     />
@@ -173,13 +169,13 @@ export default function Command(): ReactElement {
                   </ActionPanel.Section>
                   <ActionPanel.Section>
                     <Action
-                      title="Configurar no Hermes Desktop"
+                      title="Configure in Hermes Desktop"
                       icon={Icon.Gear}
                       shortcut={SHORTCUTS.preferences}
                       onAction={() =>
                         void showToast({
                           style: Toast.Style.Animated,
-                          title: "Configure ferramentas no Hermes Desktop",
+                          title: "Set up tools in Hermes Desktop",
                         })
                       }
                     />

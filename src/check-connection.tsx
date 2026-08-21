@@ -12,13 +12,6 @@
  * todo detalhe técnico exibido ou copiado passa por `sanitizeTechnical()`, sempre.
  */
 
-/*
- * `prefer-title-case` é uma regra de inglês. Todo texto visível desta extensão é
- * pt-BR literal da UX-SPEC, e §10.1 exige frase com maiúscula só na primeira palavra
- * ("Copiar detalhes técnicos", nunca "Copiar Detalhes Técnicos").
- */
-/* eslint-disable @raycast/prefer-title-case */
-
 import { useCallback, useEffect, useState } from "react";
 import { Action, ActionPanel, Color, Detail, Icon } from "@raycast/api";
 import { isHermesAgent, resolveBaseUrl } from "./lib/discovery";
@@ -49,7 +42,7 @@ import {
 import { SHORTCUTS } from "./components/shortcuts";
 import type { Capabilities, HermesFeatures } from "./lib/types";
 
-const COMMAND_TITLE = "Verificar conexão com Hermes";
+const COMMAND_TITLE = "Check Hermes Connection";
 
 /* ───────────────────────────── Passos do diagnóstico ──────────────────────── */
 
@@ -59,11 +52,11 @@ type StepState = "pendente" | "ok" | "ressalva" | "falha";
 const STEP_ORDER: readonly StepId[] = ["endereco", "ligado", "chave", "recursos", "conversas"];
 
 const STEP_LABEL: Record<StepId, string> = {
-  endereco: "Encontrando o Hermes",
-  ligado: "Verificando se o Hermes está ligado",
-  chave: "Testando sua chave de acesso",
-  recursos: "Conferindo os recursos disponíveis",
-  conversas: "Procurando suas conversas",
+  endereco: "Finding Hermes",
+  ligado: "Checking whether Hermes is on",
+  chave: "Testing your access key",
+  recursos: "Checking what is available",
+  conversas: "Looking for your conversations",
 };
 
 /** §2.7: ✅ sucesso, ⚠️ funciona com ressalva, ❌ falha, `…` ainda não executado. */
@@ -129,25 +122,25 @@ const CAPABILITY_ROWS: readonly CapabilityRow[] = [
   { feature: "run_submission", name: "Tarefas", short: "tarefas", inSummary: true, core: true },
   {
     feature: "run_approval_response",
-    name: "Pedidos de aprovação",
-    short: "aprovações",
+    name: "Approval requests",
+    short: "approvals",
     inSummary: true,
     core: true,
   },
   {
     feature: "run_events_sse",
-    name: "Resposta escrita na hora",
-    short: "resposta na hora",
+    name: "Answer written live",
+    short: "live answer",
     inSummary: true,
     core: false,
   },
-  { feature: "model_options", name: "Escolha de modelo", short: "modelos", inSummary: false, core: false },
+  { feature: "model_options", name: "Model choice", short: "models", inSummary: false, core: false },
   { feature: "skills_api", name: "Skills", short: "skills", inSummary: false, core: false },
-  { feature: "jobs_admin", name: "Automações", short: "automações", inSummary: false, core: false },
+  { feature: "jobs_admin", name: "Automations", short: "automations", inSummary: false, core: false },
   {
     feature: "memory_write_api",
-    name: "Memória de longo prazo",
-    short: "memória de longo prazo",
+    name: "Long-term memory",
+    short: "long-term memory",
     inSummary: false,
     core: false,
   },
@@ -155,7 +148,7 @@ const CAPABILITY_ROWS: readonly CapabilityRow[] = [
 
 function capabilitiesSection(capabilities: Capabilities | undefined): string {
   if (capabilities === undefined) return "";
-  const lines = ["## O que está disponível", ""];
+  const lines = ["## What is available", ""];
   const missing: string[] = [];
   for (const row of CAPABILITY_ROWS) {
     const available = hasFeature(capabilities, row.feature);
@@ -163,7 +156,7 @@ function capabilitiesSection(capabilities: Capabilities | undefined): string {
     if (!available) missing.push(row.short);
   }
   if (missing.length > 0) {
-    lines.push("", `Não disponível neste Hermes: ${missing.join(", ")}. Isso não atrapalha o resto.`);
+    lines.push("", `Not available in this Hermes: ${missing.join(", ")}. That does not get in the way of the rest.`);
   }
   return lines.join("\n");
 }
@@ -172,11 +165,11 @@ function capabilitiesSection(capabilities: Capabilities | undefined): string {
 
 function technicalText(params: { baseUrl?: string; step?: StepId; error?: HermesError }): string {
   const lines = [
-    `Endereço: ${params.baseUrl ?? "não resolvido"}`,
-    `Passo: ${params.step === undefined ? "todos concluídos" : STEP_LABEL[params.step]}`,
-    `Resposta: ${params.error?.httpStatus ?? "-"}`,
-    `Código: ${params.error?.code ?? "-"}`,
-    `Momento: ${timestamp()}`,
+    `Address: ${params.baseUrl ?? "not resolved"}`,
+    `Step: ${params.step === undefined ? "all done" : STEP_LABEL[params.step]}`,
+    `Answer: ${params.error?.httpStatus ?? "-"}`,
+    `Code: ${params.error?.code ?? "-"}`,
+    `Moment: ${timestamp()}`,
   ];
   if (params.error !== undefined) lines.push("", params.error.technical);
   return lines.join("\n");
@@ -265,13 +258,13 @@ async function runDiagnostic(signal: AbortSignal, publish: (diagnostic: Diagnost
       const endpoint = await resolveBaseUrl({ force: true });
       baseUrl = endpoint.baseUrl;
       version = endpoint.version;
-      return { text: `Hermes encontrado em ${hostOf(endpoint.baseUrl)}` };
+      return { text: `Hermes found at ${hostOf(endpoint.baseUrl)}` };
     },
     (error) =>
       error instanceof HermesWrongServerError
-        ? "Encontrei outro programa nesse endereço"
-        : "Não encontrei o Hermes neste computador",
-    "descoberta do endereço do Hermes",
+        ? "I found another program at that address"
+        : "I could not find Hermes on this computer",
+    "discovering the Hermes address",
   );
   if (!foundAddress) return;
 
@@ -285,16 +278,16 @@ async function runDiagnostic(signal: AbortSignal, publish: (diagnostic: Diagnost
         throw new HermesWrongServerError({
           userMessage: E3_TEXT,
           technical:
-            `GET ${baseUrl ?? ""}/health respondeu platform="${info.platform}", status="${info.status}". ` +
-            `Esperado platform="hermes-agent".`,
+            `GET ${baseUrl ?? ""}/health answered platform="${info.platform}", status="${info.status}". ` +
+            `Expected platform="hermes-agent".`,
           recovery: "open_preferences",
         });
       }
       version = info.version;
-      return { text: `Hermes está ligado (versão ${info.version})` };
+      return { text: `Hermes is on (version ${info.version})` };
     },
     (error) =>
-      error instanceof HermesWrongServerError ? "O programa nesse endereço não é o Hermes" : "O Hermes não respondeu",
+      error instanceof HermesWrongServerError ? "The program at that address is not Hermes" : "Hermes did not answer",
     "GET /health",
   );
   if (!isUp) return;
@@ -303,10 +296,10 @@ async function runDiagnostic(signal: AbortSignal, publish: (diagnostic: Diagnost
     "chave",
     async () => {
       await listModels(signal);
-      return { text: "Sua chave de acesso funciona" };
+      return { text: "Your access key works" };
     },
     (error) =>
-      error instanceof HermesAuthError ? "Sua chave de acesso não foi aceita" : "Não consegui testar a chave de acesso",
+      error instanceof HermesAuthError ? "Your access key was not accepted" : "I could not test the access key",
     "GET /v1/models",
   );
   if (!keyWorks) return;
@@ -319,9 +312,9 @@ async function runDiagnostic(signal: AbortSignal, publish: (diagnostic: Diagnost
       const summary = CAPABILITY_ROWS.filter((row) => row.inSummary && hasFeature(loaded, row.feature));
       const missingCore = CAPABILITY_ROWS.some((row) => row.core && !hasFeature(loaded, row.feature));
       const names = summary.length > 0 ? summary.map((row) => row.short).join(", ") : "nenhum";
-      return { state: missingCore ? "ressalva" : "ok", text: `Recursos disponíveis: ${names}` };
+      return { state: missingCore ? "ressalva" : "ok", text: `Available: ${names}` };
     },
-    () => "Não consegui conferir os recursos disponíveis",
+    () => "I could not check what is available",
     "GET /v1/capabilities",
   );
   if (!gotCapabilities) return;
@@ -333,9 +326,9 @@ async function runDiagnostic(signal: AbortSignal, publish: (diagnostic: Diagnost
       // total, então esta tela não inventa um número.
       const page = await listSessions({ limit: 1, signal });
       hasSessions = page.data.length > 0;
-      return { text: hasSessions ? "Suas conversas foram encontradas" : "Nenhuma conversa por aqui ainda" };
+      return { text: hasSessions ? "Your conversations were found" : "No conversations around here yet" };
     },
-    () => "Não consegui ver suas conversas",
+    () => "I could not see your conversations",
     "GET /api/sessions",
   );
   if (!sawSessions) return;
@@ -348,11 +341,11 @@ function diagnosticMarkdown(diagnostic: Diagnostic, showTechnical: boolean): str
   const blocks: string[] = [];
 
   if (diagnostic.running) {
-    blocks.push("# Verificando a conexão", "", "Isso leva alguns segundos.", "");
+    blocks.push("# Checking the connection", "", "This takes a few seconds.", "");
   } else if (failed) {
-    blocks.push("# Não foi possível conectar", "", diagnostic.error?.text ?? "", "");
+    blocks.push("# Could not connect", "", diagnostic.error?.text ?? "", "");
   } else {
-    blocks.push("# Tudo certo", "", "O Raycast está conectado ao Hermes deste computador.", "");
+    blocks.push("# All good", "", "Raycast is connected to the Hermes on this computer.", "");
   }
 
   for (const id of STEP_ORDER) {
@@ -379,26 +372,26 @@ function DiagnosticMetadata({ diagnostic }: { diagnostic: Diagnostic }) {
   // "Estado" aqui é o da CONEXÃO, não o de uma execução: por isso nenhum dos 7
   // rótulos de `status.ts` aparece — reusá-los seria mentir sobre o que é medido.
   const state = diagnostic.running
-    ? { text: "Verificando", color: Color.SecondaryText }
+    ? { text: "Checking", color: Color.SecondaryText }
     : diagnostic.error !== undefined
-      ? { text: "Com problema", color: Color.Red }
-      : { text: "Tudo certo", color: Color.Green };
+      ? { text: "Problem", color: Color.Red }
+      : { text: "All good", color: Color.Green };
 
-  const sessions = diagnostic.hasSessions === undefined ? "—" : diagnostic.hasSessions ? "Sim" : "Nenhuma ainda";
+  const sessions = diagnostic.hasSessions === undefined ? "—" : diagnostic.hasSessions ? "Yes" : "None yet";
 
   return (
     <Detail.Metadata>
       {/* A chave de acesso NUNCA aparece aqui, nem mascarada (§2.7). */}
       <Detail.Metadata.Label
-        title="Endereço"
+        title="Address"
         text={diagnostic.baseUrl === undefined ? "—" : hostOf(diagnostic.baseUrl)}
         icon={Icon.Plug}
       />
-      <Detail.Metadata.Label title="Versão do Hermes" text={diagnostic.version ?? "—"} />
-      <Detail.Metadata.TagList title="Estado">
+      <Detail.Metadata.Label title="Hermes Version" text={diagnostic.version ?? "—"} />
+      <Detail.Metadata.TagList title="State">
         <Detail.Metadata.TagList.Item text={state.text} color={state.color} />
       </Detail.Metadata.TagList>
-      <Detail.Metadata.Label title="Conversas encontradas" text={sessions} />
+      <Detail.Metadata.Label title="Conversations Found" text={sessions} />
     </Detail.Metadata>
   );
 }
@@ -429,7 +422,7 @@ export default function Command() {
 
     void runDiagnostic(controller.signal, publish).catch(async (err: unknown) => {
       if (!alive || isAbort(err)) return;
-      const error = toHermesError(err, "verificação de conexão");
+      const error = toHermesError(err, "connection check");
       const technical = await sanitizeWithKey(technicalText({ error }));
       publish({ steps: pendingSteps(), running: false, noKey: false, technical, error: errorCopy(error) });
     });
@@ -442,7 +435,7 @@ export default function Command() {
 
   if (diagnostic.noKey) return <FirstRunScreen navigationTitle={COMMAND_TITLE} onDone={retry} />;
 
-  const testTitle = diagnostic.error === undefined ? "Testar de novo" : "Tentar novamente";
+  const testTitle = diagnostic.error === undefined ? "Test Again" : "Try Again";
   const testAction = (
     <Action title={testTitle} icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.testConnection} onAction={retry} />
   );
@@ -464,9 +457,9 @@ export default function Command() {
             <OpenPreferencesAction />
             <ManualSetupAction />
           </ActionPanel.Section>
-          <ActionPanel.Section title="Detalhes técnicos">
+          <ActionPanel.Section title="Technical Details">
             <Action
-              title={showTechnical ? "Ocultar detalhes técnicos" : "Mostrar detalhes técnicos"}
+              title={showTechnical ? "Hide Technical Details" : "Show Technical Details"}
               icon={showTechnical ? Icon.EyeDisabled : Icon.Eye}
               shortcut={SHORTCUTS.showTechnical}
               onAction={() => setShowTechnical((value) => !value)}

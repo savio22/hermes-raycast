@@ -1,7 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- a UX-SPEC §10.1 exige título de ação em
-   frase, em pt-BR ("Copiar nome do modelo", nunca "Copiar Nome do Modelo"); a regra é
-   calibrada para o Title Case do inglês e reescreveria a copy do produto. */
-
 /**
  * `Modelos do Hermes` (UX-SPEC §2.6).
  *
@@ -29,11 +25,10 @@ import { NO_CONNECTION } from "./lib/status";
 import { CacheKeys, CacheTtl, StorageKeys, cacheWrite, cachedFetch, readJson, writeJson } from "./lib/storage";
 import type { ModelCapability, ModelOptionsResponse, ModelPricing, ProviderOption } from "./lib/types";
 
-const COMMAND_TITLE = "Modelos do Hermes";
+const COMMAND_TITLE = "Hermes Models";
 
 /** §2.6, texto obrigatório de esclarecimento — vai no título da primeira seção. */
-const SCOPE_NOTE =
-  "O padrão escolhido aqui vale só para a extensão do Raycast. O Hermes Desktop continua com o modelo dele.";
+const SCOPE_NOTE = "The default picked here applies only to the Raycast extension. Hermes Desktop keeps its own model.";
 
 /** O que `resolveModelChoice()` lê do LocalStorage (P3, degraus 2 e 3). */
 interface ModelChoice {
@@ -48,11 +43,11 @@ function sameChoice(choice: ModelChoice | undefined, provider: string, model: st
 /** §2.6: os preços vêm do servidor como STRINGS prontas ("$3.00", "free"), nunca números. */
 function priceLine(pricing: ModelPricing | undefined): string | undefined {
   if (pricing === undefined) return undefined;
-  return `entrada ${pricing.input} · saída ${pricing.output}`;
+  return `in ${pricing.input} · out ${pricing.output}`;
 }
 
 function yesNo(value: boolean): string {
-  return value ? "Sim" : "Não";
+  return value ? "Yes" : "No";
 }
 
 /* ══════════════════════════════════ Comando ══════════════════════════════════ */
@@ -96,7 +91,7 @@ export default function Command(): ReactElement {
       const toast = forceRefresh
         ? // §2.6: a chamada com `refresh=true` re-sonda todos os provedores; sem o Toast
           // animado a tela pareceria travada por dezenas de segundos.
-          await showToast({ style: Toast.Style.Animated, title: "Consultando provedores…" })
+          await showToast({ style: Toast.Style.Animated, title: "Asking the providers…" })
         : undefined;
       try {
         const fresh = forceRefresh
@@ -143,7 +138,7 @@ export default function Command(): ReactElement {
     await writeJson<ModelChoice>(StorageKeys.defaultModel, { provider, model });
     await reloadChoices();
     // Literal da §2.6.
-    await showToast({ style: Toast.Style.Success, title: "Modelo padrão da extensão atualizado." });
+    await showToast({ style: Toast.Style.Success, title: "Default model for the extension updated." });
   }
 
   async function useNextTurn(provider: string, model: string): Promise<void> {
@@ -151,8 +146,8 @@ export default function Command(): ReactElement {
     await reloadChoices();
     await showToast({
       style: Toast.Style.Success,
-      title: "Vale só para a próxima pergunta",
-      message: "Depois dela o Hermes volta ao modelo de sempre.",
+      title: "Applies only to the next question",
+      message: "After that Hermes goes back to its usual model.",
     });
   }
 
@@ -160,7 +155,7 @@ export default function Command(): ReactElement {
     await writeJson(StorageKeys.defaultModel, undefined);
     await writeJson(StorageKeys.nextTurnModel, undefined);
     await reloadChoices();
-    await showToast({ style: Toast.Style.Success, title: "Voltou ao padrão do Hermes." });
+    await showToast({ style: Toast.Style.Success, title: "Back to the Hermes default." });
   }
 
   // Guarda de configuração da UX-SPEC §2: sem chave, nenhuma requisição sai daqui.
@@ -176,7 +171,7 @@ export default function Command(): ReactElement {
       navigationTitle={COMMAND_TITLE}
       isLoading={isLoading || configured === undefined}
       isShowingDetail={hasModels}
-      searchBarPlaceholder="Pesquisar por modelo ou provedor"
+      searchBarPlaceholder="Search by model or provider"
     >
       {!isLoading && !hasModels && error !== undefined && (
         // §5.3: com a lista vazia, o erro toma a tela — numa `List` isso é a `EmptyView`.
@@ -188,14 +183,9 @@ export default function Command(): ReactElement {
           title={error.userMessage}
           actions={
             <ActionPanel>
+              <Action title="Try Again" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
               <Action
-                title="Tentar novamente"
-                icon={Icon.ArrowClockwise}
-                shortcut={SHORTCUTS.refresh}
-                onAction={refresh}
-              />
-              <Action
-                title="Abrir configurações"
+                title="Open Settings"
                 icon={Icon.Gear}
                 shortcut={SHORTCUTS.preferences}
                 onAction={openExtensionPreferences}
@@ -208,18 +198,18 @@ export default function Command(): ReactElement {
       {!isLoading && !hasModels && error === undefined && (
         <List.EmptyView
           icon={Icon.Wand}
-          title="Nenhum modelo disponível"
-          description="O Hermes está ligado, mas nenhum provedor de modelo está configurado. Abra o Hermes Desktop para configurar um."
+          title="No Model Available"
+          description="Hermes is on, but no model provider is set up. Open Hermes Desktop to set one up."
           actions={
             <ActionPanel>
               <Action
-                title="Atualizar lista"
+                title="Refresh the List"
                 icon={Icon.ArrowClockwise}
                 shortcut={SHORTCUTS.refresh}
                 onAction={refreshFromServer}
               />
               <Action
-                title="Abrir configurações"
+                title="Open Settings"
                 icon={Icon.Gear}
                 shortcut={SHORTCUTS.preferences}
                 onAction={openExtensionPreferences}
@@ -239,7 +229,7 @@ export default function Command(): ReactElement {
             // §2.6: o esclarecimento de escopo é obrigatório e vai onde o usuário lê antes
             // de escolher qualquer coisa — o título da primeira seção.
             title={index === 0 ? `${provider.name} — ${SCOPE_NOTE}` : provider.name}
-            subtitle={authenticated ? undefined : "Precisa de configuração"}
+            subtitle={authenticated ? undefined : "Needs setup"}
           >
             {models.map((model) => (
               <ModelItem
@@ -286,14 +276,14 @@ function ModelItem(props: {
   const price = priceLine(pricing);
 
   const accessories: List.Item.Accessory[] = [];
-  if (props.isServerCurrent) accessories.push({ tag: { value: "Em uso", color: Color.Green } });
-  if (fast) accessories.push({ tag: "Rápido" });
-  if (reasoning) accessories.push({ tag: "Raciocínio" });
+  if (props.isServerCurrent) accessories.push({ tag: { value: "In use", color: Color.Green } });
+  if (fast) accessories.push({ tag: "Fast" });
+  if (reasoning) accessories.push({ tag: "Reasoning" });
   if (price !== undefined) accessories.push({ text: price });
   // §2.6: provedor sem credencial continua marcado com o cadeado — agora como accessory,
   // porque o ícone da linha passou a identificar a entidade "modelo". A escolha segue
   // liberada: quem configura o provedor é o Hermes Desktop, não esta tela.
-  if (!authenticated) accessories.push({ icon: Icon.Lock, tooltip: "Provedor sem credencial no Hermes" });
+  if (!authenticated) accessories.push({ icon: Icon.Lock, tooltip: "Provider with no credential in Hermes" });
 
   return (
     <List.Item
@@ -310,20 +300,20 @@ function ModelItem(props: {
           metadata={
             <List.Item.Detail.Metadata>
               <List.Item.Detail.Metadata.Label title="Provedor" text={provider.name} />
-              <List.Item.Detail.Metadata.Label title="Modelo" text={model} />
-              <List.Item.Detail.Metadata.Label title="Rápido" text={yesNo(fast)} />
-              <List.Item.Detail.Metadata.Label title="Raciocínio" text={yesNo(reasoning)} />
-              <List.Item.Detail.Metadata.Label title="Preço de entrada" text={pricing?.input ?? "—"} />
-              <List.Item.Detail.Metadata.Label title="Preço de saída" text={pricing?.output ?? "—"} />
-              <List.Item.Detail.Metadata.Label title="Origem" text={provider.source} />
+              <List.Item.Detail.Metadata.Label title="Model" text={model} />
+              <List.Item.Detail.Metadata.Label title="Fast" text={yesNo(fast)} />
+              <List.Item.Detail.Metadata.Label title="Reasoning" text={yesNo(reasoning)} />
+              <List.Item.Detail.Metadata.Label title="Input Price" text={pricing?.input ?? "—"} />
+              <List.Item.Detail.Metadata.Label title="Output Price" text={pricing?.output ?? "—"} />
+              <List.Item.Detail.Metadata.Label title="Origin" text={provider.source} />
               <List.Item.Detail.Metadata.Separator />
               <List.Item.Detail.Metadata.Label
-                title="Padrão da extensão"
+                title="Extension Default"
                 text={yesNo(props.isExtensionDefault)}
                 icon={props.isExtensionDefault ? Icon.Check : undefined}
               />
               <List.Item.Detail.Metadata.Label
-                title="Só na próxima pergunta"
+                title="Next Question Only"
                 text={yesNo(props.isNextTurn)}
                 icon={props.isNextTurn ? Icon.Check : undefined}
               />
@@ -335,27 +325,27 @@ function ModelItem(props: {
         <ActionPanel>
           <ActionPanel.Section>
             {/* Enter. Grava no LocalStorage; NÃO muda nada no Hermes (02 §6.6). */}
-            <Action title="Usar como modelo padrão" icon={Icon.Star} onAction={props.onUseAsDefault} />
+            <Action title="Use as the Default Model" icon={Icon.Star} onAction={props.onUseAsDefault} />
             <Action
-              title="Usar só na próxima pergunta"
+              title="Use for the Next Question Only"
               icon={Icon.Clock}
               shortcut={SHORTCUTS.nextTurnModel}
               onAction={props.onUseNextTurn}
             />
             {(props.isExtensionDefault || props.isNextTurn) && (
-              <Action title="Voltar ao padrão do Hermes" icon={Icon.Undo} onAction={props.onClear} />
+              <Action title="Back to the Hermes Default" icon={Icon.Undo} onAction={props.onClear} />
             )}
           </ActionPanel.Section>
           <ActionPanel.Section>
-            <Action.CopyToClipboard title="Copiar nome do modelo" content={model} shortcut={SHORTCUTS.copy} />
+            <Action.CopyToClipboard title="Copy the Model Name" content={model} shortcut={SHORTCUTS.copy} />
             <Action
-              title="Atualizar lista"
+              title="Refresh the List"
               icon={Icon.ArrowClockwise}
               shortcut={SHORTCUTS.refresh}
               onAction={props.onRefresh}
             />
             <Action
-              title="Abrir configurações"
+              title="Open Settings"
               icon={Icon.Gear}
               shortcut={SHORTCUTS.preferences}
               onAction={openExtensionPreferences}

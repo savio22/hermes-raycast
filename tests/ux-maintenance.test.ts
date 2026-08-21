@@ -140,8 +140,8 @@ test("a lista de conversas fixa, e não tem execução para parar", () => {
 });
 
 test("a repetição de uma execução deixa claro que é uma tarefa, não uma conversa", () => {
-  assert.match(activeRunsSource, /title="Executar esta tarefa novamente"/);
-  assert.doesNotMatch(activeRunsSource, /title="Perguntar de novo"/);
+  assert.match(activeRunsSource, /title="Run This Task Again"/);
+  assert.doesNotMatch(activeRunsSource, /title="Ask Again"/);
 });
 
 test("manifesto expõe comandos úteis por nomes e palavras que o usuário procura", () => {

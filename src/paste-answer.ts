@@ -31,13 +31,13 @@ export default async function Command(): Promise<void> {
     if (answer === undefined || answer === "") continue;
 
     await Clipboard.paste(answer);
-    await showHUD("Resposta colada");
+    await showHUD("Answer pasted");
     return;
   }
 
   await showToast({
     style: Toast.Style.Failure,
-    title: "Ainda não há resposta para colar",
-    message: "Pergunte alguma coisa ao Hermes e o resultado fica disponível aqui por 24 horas.",
+    title: "No answer to paste yet",
+    message: "Ask Hermes something and the result stays available here for 24 hours.",
   });
 }

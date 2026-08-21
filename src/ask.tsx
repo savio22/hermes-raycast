@@ -1,6 +1,3 @@
-/* eslint-disable @raycast/prefer-title-case -- os títulos de ação são literais em pt-BR da
-   UX-SPEC §10.3 ("Abrir configurações"); a regra é calibrada para o Title Case do inglês. */
-
 /**
  * `Perguntar ao Hermes` — a casca do comando principal.
  *
@@ -29,7 +26,7 @@ import { NotConfigured } from "./components/first-run";
 import { SHORTCUTS } from "./components/shortcuts";
 import { isConfigured } from "./lib/preferences";
 
-const COMMAND_TITLE = "Perguntar ao Hermes";
+const COMMAND_TITLE = "Ask Hermes";
 
 type AskArguments = {
   /** `required: false` no manifest: vazio nunca é erro, abre a conversa em branco. */
@@ -65,7 +62,7 @@ export default function Command(
         actions={
           <ActionPanel>
             <Action
-              title="Abrir configurações"
+              title="Open Settings"
               icon={Icon.Gear}
               shortcut={SHORTCUTS.preferences}
               onAction={openExtensionPreferences}
