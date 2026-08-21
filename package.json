@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "hermes",
   "title": "Hermes",
-  "description": "Converse com o Hermes Agent, acompanhe tarefas e continue no Hermes Desktop — sem sair do Raycast.",
+  "description": "Talk to the Hermes Agent, follow your tasks and pick up in Hermes Desktop — without leaving Raycast.",
   "icon": "hermes.png",
   "author": "savio22",
   "categories": [
@@ -17,276 +17,274 @@
   "commands": [
     {
       "name": "ask-hermes",
-      "title": "Perguntar ao Hermes",
+      "title": "Ask Hermes",
       "subtitle": "Hermes",
-      "description": "Faça uma pergunta ao Hermes e receba a resposta na hora, com opção de continuar a conversa.",
+      "description": "Ask Hermes a question and get the answer on the spot, with the option to keep the conversation going.",
       "icon": "cmd-ask-hermes.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "ia",
         "ai",
-        "perguntar",
-        "pergunta",
+        "ask",
+        "question",
         "chat",
-        "nova mensagem",
-        "continuar conversa",
-        "agente"
+        "new message",
+        "continue conversation",
+        "agent"
       ],
       "arguments": [
         {
           "name": "pergunta",
           "type": "text",
-          "placeholder": "O que você quer perguntar?",
+          "placeholder": "What do you want to ask?",
           "required": false
         }
       ]
     },
     {
       "name": "sessions",
-      "title": "Conversas do Hermes",
+      "title": "Hermes Conversations",
       "subtitle": "Hermes",
-      "description": "Veja, pesquise, continue, renomeie e organize suas conversas do Hermes, incluindo as do Hermes Desktop.",
+      "description": "See, search, continue, rename and organize your Hermes conversations, including the ones from Hermes Desktop.",
       "icon": "cmd-sessions.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "conversas",
-        "historico",
-        "histórico",
-        "histórico de conversas",
-        "continuar conversa",
+        "conversations",
+        "history",
+        "conversation history",
+        "continue conversation",
         "chats",
-        "sessoes"
+        "sessions"
       ]
     },
     {
       "name": "run-task",
-      "title": "Executar tarefa no Hermes",
+      "title": "Run a Task in Hermes",
       "subtitle": "Hermes",
-      "description": "Peça uma tarefa mais longa ao Hermes e acompanhe cada etapa até o resultado final.",
+      "description": "Ask Hermes for a longer task and follow every step through to the final result.",
       "icon": "cmd-run-task.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "tarefa",
-        "nova tarefa",
-        "executar",
+        "task",
+        "new task",
         "run",
-        "agente"
+        "execute",
+        "agent"
       ],
       "arguments": [
         {
           "name": "tarefa",
           "type": "text",
-          "placeholder": "Descreva a tarefa",
+          "placeholder": "Describe the task",
           "required": false
         }
       ]
     },
     {
       "name": "active-runs",
-      "title": "Execuções do Hermes",
+      "title": "Hermes Tasks",
       "subtitle": "Hermes",
-      "description": "Acompanhe tarefas em andamento, responda pedidos de aprovação e reabra resultados recentes.",
+      "description": "Follow tasks in progress, answer approval requests and reopen recent results.",
       "icon": "cmd-active-runs.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "execucoes",
-        "andamento",
-        "aprovacao",
-        "pendentes",
-        "tarefas pendentes",
-        "tarefas em execução",
-        "aguardando aprovação",
-        "aprovação pendente",
-        "aprovações",
+        "tasks",
+        "in progress",
+        "approval",
+        "pending",
+        "pending tasks",
+        "running tasks",
+        "waiting for approval",
+        "pending approval",
+        "approvals",
         "status"
       ]
     },
     {
       "name": "models",
-      "title": "Modelos do Hermes",
+      "title": "Hermes Models",
       "subtitle": "Hermes",
-      "description": "Veja os modelos disponíveis no seu Hermes e escolha qual usar por padrão. Atalhos podem ser definidos nas configurações do Raycast.",
+      "description": "See the models available in your Hermes and pick which one to use by default. Shortcuts can be set in the Raycast settings.",
       "icon": "cmd-models.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "modelos",
-        "modelo",
-        "escolher modelo",
-        "trocar modelo",
+        "models",
+        "model",
+        "choose model",
+        "switch model",
         "provider",
-        "ia"
+        "ai"
       ]
     },
     {
       "name": "check-connection",
-      "title": "Verificar conexão com Hermes",
+      "title": "Check Hermes Connection",
       "subtitle": "Hermes",
-      "description": "Verifique se o Hermes está ligado e se a conexão da extensão está funcionando.",
+      "description": "Check whether Hermes is running and whether the connection from the extension works.",
       "icon": "cmd-check-connection.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "conexao",
-        "diagnostico",
-        "testar",
+        "connection",
+        "diagnostics",
+        "test",
         "status"
       ]
     },
     {
       "name": "configure-hermes",
-      "title": "Configurar Hermes",
+      "title": "Configure Hermes",
       "subtitle": "Hermes",
-      "description": "Conecte a extensão ao Hermes instalado neste computador, sem precisar de terminal.",
+      "description": "Connect the extension to the Hermes installed on this computer, with no terminal required.",
       "icon": "cmd-configure-hermes.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "configurar",
-        "conectar",
-        "chave",
-        "ajustes"
+        "configure",
+        "connect",
+        "key",
+        "settings"
       ]
     },
     {
       "name": "ask-selection",
-      "title": "Perguntar sobre seleção",
+      "title": "Ask About Selection",
       "subtitle": "Hermes",
-      "description": "Pergunte ao Hermes sobre o texto que você selecionou ou copiou, sem sair do que estava fazendo.",
+      "description": "Ask Hermes about the text you selected or copied, without leaving what you were doing.",
       "icon": "cmd-ask-selection.png",
       "mode": "view",
       "arguments": [
         {
           "name": "pergunta",
           "type": "text",
-          "placeholder": "O que você quer saber?",
+          "placeholder": "What do you want to know?",
           "required": false
         }
       ],
       "keywords": [
         "hermes",
-        "selecao",
-        "texto",
-        "perguntar",
-        "explicar"
+        "selection",
+        "text",
+        "ask",
+        "explain"
       ]
     },
     {
       "name": "summarize-clipboard",
-      "title": "Resumir clipboard",
+      "title": "Summarize Clipboard",
       "subtitle": "Hermes",
-      "description": "Resuma em tópicos o texto que você acabou de copiar.",
+      "description": "Summarize the text you just copied, as bullet points.",
       "icon": "cmd-summarize-clipboard.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "resumir",
-        "resumo",
+        "summarize",
+        "summary",
         "clipboard",
-        "texto"
+        "text"
       ]
     },
     {
       "name": "fix-clipboard",
-      "title": "Corrigir texto do clipboard",
+      "title": "Fix Clipboard Text",
       "subtitle": "Hermes",
-      "description": "Corrija ortografia, gramática e pontuação do texto copiado, sem comentários.",
+      "description": "Fix spelling, grammar and punctuation in the copied text, with no commentary.",
       "icon": "cmd-fix-clipboard.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "corrigir",
-        "revisar",
-        "ortografia",
+        "fix",
+        "proofread",
+        "spelling",
         "clipboard"
       ]
     },
     {
       "name": "translate-clipboard",
-      "title": "Traduzir clipboard",
+      "title": "Translate Clipboard",
       "subtitle": "Hermes",
-      "description": "Traduza o texto copiado entre português e inglês, ou para o idioma que você pedir.",
+      "description": "Translate the copied text between English and Portuguese, or into the language you name.",
       "icon": "cmd-translate-clipboard.png",
       "mode": "view",
       "arguments": [
         {
           "name": "idioma",
           "type": "text",
-          "placeholder": "Para qual idioma? Ex.: espanhol",
+          "placeholder": "Into which language? E.g. Spanish",
           "required": false
         }
       ],
       "keywords": [
         "hermes",
-        "traduzir",
-        "traducao",
-        "idioma",
+        "translate",
+        "translation",
+        "language",
         "clipboard"
       ]
     },
     {
       "name": "paste-answer",
-      "title": "Colar última resposta",
+      "title": "Paste Latest Answer",
       "subtitle": "Hermes",
-      "description": "Cole a resposta mais recente do Hermes no aplicativo em que você está.",
+      "description": "Paste the most recent Hermes answer into the app you are in.",
       "icon": "cmd-paste-answer.png",
       "mode": "no-view",
       "keywords": [
         "hermes",
-        "colar",
-        "resposta",
-        "reutilizar resposta",
-        "copiar última resposta",
-        "ultima",
+        "paste",
+        "answer",
+        "reuse answer",
+        "copy last answer",
+        "latest",
         "clipboard"
       ]
     },
     {
       "name": "skills",
-      "title": "Skills do Hermes",
+      "title": "Hermes Skills",
       "subtitle": "Hermes",
-      "description": "Veja quais skills estão habilitadas no seu Hermes e o que cada uma faz.",
+      "description": "See which skills are enabled in your Hermes and what each one does.",
       "icon": "cmd-skills.png",
       "mode": "view",
       "keywords": [
         "hermes",
         "skills",
         "skill",
-        "habilidades",
-        "recursos"
+        "abilities",
+        "capabilities"
       ]
     },
     {
       "name": "toolsets",
-      "title": "Ferramentas do Hermes",
+      "title": "Hermes Tools",
       "subtitle": "Hermes",
-      "description": "Veja os grupos de ferramentas do seu Hermes e quais estão prontos para usar.",
+      "description": "See the tool groups in your Hermes and which ones are ready to use.",
       "icon": "cmd-toolsets.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "ferramentas",
+        "tools",
         "toolsets",
-        "grupos",
-        "integracoes"
+        "groups",
+        "integrations"
       ]
     },
     {
       "name": "jobs",
-      "title": "Automações do Hermes",
+      "title": "Hermes Automations",
       "subtitle": "Hermes",
-      "description": "Acompanhe as automações do Hermes, pause, retome ou rode uma delas na hora.",
+      "description": "Follow your Hermes automations; pause, resume or run one right now.",
       "icon": "cmd-jobs.png",
       "mode": "view",
       "keywords": [
         "hermes",
-        "automacoes",
-        "agendamento",
-        "tarefas",
+        "automations",
+        "schedule",
+        "scheduled tasks",
         "cron"
       ]
     }
@@ -294,54 +292,54 @@
   "preferences": [
     {
       "name": "apiServerKey",
-      "title": "Chave do Hermes",
-      "description": "Chave local do Hermes API Server (API_SERVER_KEY). Ela fica no arquivo .env da sua instalação do Hermes. Nunca é enviada para fora do seu computador.",
+      "title": "Hermes Key",
+      "description": "Local key of the Hermes API Server (API_SERVER_KEY). It lives in the .env file of your Hermes installation. It is never sent outside your computer.",
       "type": "password",
       "required": false
     },
     {
       "name": "apiUrl",
-      "title": "Endereço do Hermes",
-      "description": "Deixe em branco para detectar automaticamente. Preencha apenas se o seu Hermes usa outra porta.",
+      "title": "Hermes Address",
+      "description": "Leave this blank to detect it automatically. Fill it in only if your Hermes uses another port.",
       "type": "textfield",
       "required": false,
-      "placeholder": "Detectar automaticamente"
+      "placeholder": "Detect automatically"
     },
     {
       "name": "sessionKey",
-      "title": "Escopo de memória",
-      "description": "Identificador estável usado pelo Hermes para separar a memória de longo prazo desta origem. Em branco, a extensão usa o padrão do seu sistema: raycast:windows:default no Windows e raycast:macos:default no macOS.",
+      "title": "Memory Scope",
+      "description": "Stable identifier Hermes uses to keep the long-term memory of this origin separate. Left blank, the extension uses the default for your system: raycast:windows:default on Windows and raycast:macos:default on macOS.",
       "type": "textfield",
       "required": false,
-      "placeholder": "Padrão do sistema"
+      "placeholder": "System default"
     },
     {
       "name": "defaultProvider",
-      "title": "Provedor padrão",
-      "description": "Opcional. Provedor usado quando você não escolhe outro na hora.",
+      "title": "Default Provider",
+      "description": "Optional. Provider used when you do not pick another one at the time.",
       "type": "textfield",
       "required": false
     },
     {
       "name": "defaultModel",
-      "title": "Modelo padrão",
-      "description": "Opcional. Modelo usado quando você não escolhe outro na hora.",
+      "title": "Default Model",
+      "description": "Optional. Model used when you do not pick another one at the time.",
       "type": "textfield",
       "required": false
     },
     {
       "name": "streamResponses",
-      "title": "Respostas",
-      "label": "Mostrar a resposta enquanto o Hermes escreve",
-      "description": "Desligue se preferir receber a resposta apenas quando estiver completa.",
+      "title": "Answers",
+      "label": "Show the answer while Hermes writes",
+      "description": "Turn this off if you prefer to get the answer only once it is complete.",
       "type": "checkbox",
       "required": false,
       "default": true
     },
     {
       "name": "maxHistoryItems",
-      "title": "Itens por página",
-      "description": "Quantas conversas carregar de uma vez nas listas.",
+      "title": "Items per Page",
+      "description": "How many conversations to load at once in the lists.",
       "type": "dropdown",
       "required": false,
       "default": "50",

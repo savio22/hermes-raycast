@@ -145,30 +145,25 @@ test("a repetição de uma execução deixa claro que é uma tarefa, não uma co
 });
 
 test("manifesto expõe comandos úteis por nomes e palavras que o usuário procura", () => {
-  assert.equal(command("models").title, "Modelos do Hermes");
-  assert.match(command("models").description ?? "", /atalhos.*configurações do Raycast/i);
+  assert.equal(command("models").title, "Hermes Models");
+  assert.match(command("models").description ?? "", /shortcuts.*Raycast settings/i);
   assert.deepEqual(
-    ["escolher modelo", "trocar modelo"].every((word) => command("models").keywords?.includes(word)),
+    ["choose model", "switch model"].every((word) => command("models").keywords?.includes(word)),
     true,
   );
   assert.deepEqual(
-    [
-      "pendentes",
-      "tarefas pendentes",
-      "tarefas em execução",
-      "aguardando aprovação",
-      "aprovação pendente",
-      "aprovações",
-    ].every((word) => command("active-runs").keywords?.includes(word)),
+    ["pending", "pending tasks", "running tasks", "waiting for approval", "pending approval", "approvals"].every(
+      (word) => command("active-runs").keywords?.includes(word),
+    ),
     true,
   );
-  assert.deepEqual(command("ask-hermes").keywords?.includes("nova mensagem"), true);
-  assert.deepEqual(command("ask-hermes").keywords?.includes("continuar conversa"), true);
-  assert.deepEqual(command("run-task").keywords?.includes("nova tarefa"), true);
-  assert.deepEqual(command("sessions").keywords?.includes("histórico"), true);
-  assert.deepEqual(command("sessions").keywords?.includes("histórico de conversas"), true);
-  assert.deepEqual(command("paste-answer").keywords?.includes("reutilizar resposta"), true);
-  assert.deepEqual(command("paste-answer").keywords?.includes("copiar última resposta"), true);
+  assert.deepEqual(command("ask-hermes").keywords?.includes("new message"), true);
+  assert.deepEqual(command("ask-hermes").keywords?.includes("continue conversation"), true);
+  assert.deepEqual(command("run-task").keywords?.includes("new task"), true);
+  assert.deepEqual(command("sessions").keywords?.includes("history"), true);
+  assert.deepEqual(command("sessions").keywords?.includes("conversation history"), true);
+  assert.deepEqual(command("paste-answer").keywords?.includes("reuse answer"), true);
+  assert.deepEqual(command("paste-answer").keywords?.includes("copy last answer"), true);
 });
 
 test("Actions oferece um caminho explícito para o comando real de modelos", () => {
