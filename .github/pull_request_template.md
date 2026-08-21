@@ -19,8 +19,8 @@
 
 <!--
 Anything touching a live Hermes, streaming, approvals or the keyboard is not covered by the
-automated suite. Say which items of docs/CHECKLIST-MANUAL.md you actually walked, on what
-Windows machine, or say "none" — an honest none is fine, a silent none is not.
+automated suite. Say which of these you actually walked, on what machine, or say "none" — an
+honest none is fine, a silent none is not.
 -->
 
 ## Checklist
