@@ -314,6 +314,19 @@ test("501 do módulo de cron (envelope legado) desliga as automações", () => {
   assert.equal(e.uxId, "E19");
 });
 
+test("401 de Automações vai para primeiro uso, não para erro genérico", () => {
+  const error = mapHttpError(
+    ctx({
+      method: "GET",
+      path: "/api/jobs?include_disabled=true",
+      status: 401,
+      body: '{"error":{"code":"gateway_auth_failed"}}',
+    }),
+  );
+  assert.equal(error.constructor.name, "HermesNotConfiguredError");
+  assert.equal(error.recovery, "open_preferences");
+});
+
 test("503 gateway_draining e session_db_unavailable têm recuperações diferentes", () => {
   const draining =
     '{"error": {"message": "Gateway is draining existing work; retry shortly.", "type": "invalid_request_error", "param": null, "code": "gateway_draining"}}';
@@ -544,6 +557,16 @@ test("toHermesError aceita qualquer coisa lançada, inclusive não-erros", () =>
     assert.ok(e.userMessage.length > 0);
   }
   assert.ok(toHermesError("boom") instanceof HermesProtocolError);
+});
+
+test("falha de persistência local vira erro acionável de retentativa", () => {
+  const error = toHermesError({
+    name: "StoragePersistenceError",
+    message: "falha local",
+    userMessage: "Não consegui salvar o estado local desta execução. Tente novamente.",
+  });
+  assert.equal(error.userMessage, "Não consegui salvar o estado local desta execução. Tente novamente.");
+  assert.equal(error.retryable, true);
 });
 
 /* ─────────────────────────── Contrato da UI ─────────────────────────── */

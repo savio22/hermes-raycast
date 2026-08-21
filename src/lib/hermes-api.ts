@@ -32,6 +32,7 @@ import {
   toHermesError,
 } from "./errors";
 import { getHermesPreferences, requireApiKey, resolveApiKey } from "./preferences";
+import type { ToolsetAvailability } from "./status";
 import { forgetDetectedApiKey } from "./storage";
 import type * as T from "./types";
 
@@ -40,8 +41,15 @@ import type * as T from "./types";
 const DEFAULT_TIMEOUT_MS = 15_000;
 /** Turno síncrono de conversa: o agente pode levar minutos. */
 const CHAT_TIMEOUT_MS = 300_000;
-/** `/v1/toolsets` e `/api/model/options` resolvem tudo no event loop do servidor. */
+/** `/api/model/options` resolve tudo no event loop do servidor. */
 const SLOW_TIMEOUT_MS = 30_000;
+/**
+ * `/v1/toolsets` é pior que lento: o handler roda no event loop do servidor e pode disparar
+ * uma leitura síncrona de ~8 s ao portal da Nous (`hermes_cli/nous_account.py:595`), travando
+ * o Hermes INTEIRO enquanto isso. Um corte curto é proteção do usuário, não impaciência:
+ * passou disso, o servidor está preso e insistir só prolonga a trava.
+ */
+const TOOLSETS_TIMEOUT_MS = 12_000;
 /** Streams: vale só até os headers chegarem; depois o corpo flui sem limite. */
 const STREAM_HEADERS_TIMEOUT_MS = 20_000;
 /** Teto do `Retry-After` honrado automaticamente. */
@@ -127,8 +135,27 @@ function retryDelayMs(err: unknown): number {
   return Math.min(value * 1000, MAX_RETRY_DELAY_MS);
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) {
+    return Promise.reject(Object.assign(new Error("Operação cancelada"), { name: "AbortError" }));
+  }
+  return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      cleanup();
+      reject(Object.assign(new Error("Operação cancelada"), { name: "AbortError" }));
+    };
+    const cleanup = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+      signal?.removeEventListener("abort", onAbort);
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+  });
 }
 
 /**
@@ -246,7 +273,7 @@ export async function requestJson<TResult>(options: RequestOptions): Promise<TRe
       const status = statusOf(err);
       const canRetry = attempt === 0 && method === "GET" && (status === 429 || status === 503);
       if (!canRetry) throw err;
-      await delay(retryDelayMs(err));
+      await delay(retryDelayMs(err), options.signal);
     }
   }
 }
@@ -875,9 +902,24 @@ export function listSkills(signal?: AbortSignal): Promise<T.SkillListResponse> {
   return requestJson<T.SkillListResponse>({ path: "/v1/skills", signal });
 }
 
-/** LENTO: resolve 27+ toolsets no event loop do servidor. Sirva do Cache primeiro. */
+/**
+ * LENTO e perigoso: resolve 27+ grupos no event loop do servidor e pode travar o Hermes
+ * inteiro por ~8 s numa leitura síncrona ao portal da Nous. Regras, todas obrigatórias:
+ * sirva do Cache primeiro, corte em 12 s, e **nunca** chame em segundo plano.
+ */
 export function listToolsets(signal?: AbortSignal): Promise<T.ToolsetListResponse> {
-  return requestJson<T.ToolsetListResponse>({ path: "/v1/toolsets", timeoutMs: SLOW_TIMEOUT_MS, signal });
+  return requestJson<T.ToolsetListResponse>({ path: "/v1/toolsets", timeoutMs: TOOLSETS_TIMEOUT_MS, signal });
+}
+
+/**
+ * Não existe campo "disponível" no `/v1/toolsets`: derive de `enabled` × `configured`.
+ * `configured: true` significa "tem credencial", e não "não precisa de configuração".
+ */
+export function toolsetAvailability(toolset: T.Toolset): ToolsetAvailability {
+  if (toolset.enabled && toolset.configured) return "disponivel";
+  if (toolset.enabled && !toolset.configured) return "precisa_configurar";
+  if (!toolset.enabled && toolset.configured) return "desligado";
+  return "indisponivel";
 }
 
 /* ─────────────────────────  Jobs (automações)  ────────────────────────── */

@@ -169,6 +169,9 @@ export function TaskForm(props: TaskFormProps): ReactElement {
       let sessionId: string;
       let sessionTitle: string | undefined;
       let runId: string;
+      // O destino já precisa estar resolvido antes do POST; depois do 202 o próximo await
+      // obrigatório é o registro mínimo do run.
+      const { baseUrl } = await resolveBaseUrl();
 
       if (formValues.conversa === NEW_CONVERSATION_VALUE) {
         // D-01: sessão `source:"desktop"` primeiro, depois a run amarrada a ela. É o que
@@ -186,7 +189,6 @@ export function TaskForm(props: TaskFormProps): ReactElement {
 
       // Gravar ANTES de renderizar: não existe `GET /v1/runs`, então um run_id perdido
       // aqui é uma tarefa que o usuário nunca mais reencontra (armadilha 42).
-      const { baseUrl } = await resolveBaseUrl();
       await rememberRun({
         runId,
         sessionId,

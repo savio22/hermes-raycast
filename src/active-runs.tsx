@@ -51,9 +51,11 @@ import {
 } from "./components/run-progress";
 import { SteerForm, steerAndReport } from "./components/steer-form";
 import { SHORTCUTS } from "./components/shortcuts";
+import { OpenModelsAction } from "./components/common";
 import { hermesDesktopSessionUrl } from "./lib/discovery";
 import { HermesError, isAbort, toHermesError } from "./lib/errors";
 import { getSession, reconcileRun, stopRun } from "./lib/hermes-api";
+import { mapWithConcurrency } from "./lib/limited-concurrency";
 import { isConfigured } from "./lib/preferences";
 import {
   NO_CONNECTION,
@@ -159,6 +161,10 @@ export default function Command(): ReactElement {
 
   /** Títulos já resolvidos, para não repetir `GET /api/sessions/{id}` a cada ciclo. */
   const titles = useRef(new Map<string, string>());
+  /** Requisições de título ainda em voo, compartilhadas entre reexecuções do efeito. */
+  const titleRequestsRef = useRef(new Map<string, Promise<string>>());
+  /** Sinal associado a cada requisição em voo, para não reutilizar uma já abortada. */
+  const titleRequestSignalsRef = useRef(new Map<string, AbortSignal>());
   /**
    * Espelho de `rows` para o ciclo de polling. Sem ele o `cycle()` leria o array capturado
    * quando o efeito montou e continuaria consultando execuções que JÁ viraram terminais —
@@ -309,41 +315,106 @@ export default function Command(): ReactElement {
   /* ── Complementos por linha: título da conversa e aprovação pendente gravada ── */
   useEffect(() => {
     if (configured !== true) return;
+    const controller = new AbortController();
     let cancelled = false;
 
     void (async () => {
-      for (const row of rowsRef.current) {
-        if (cancelled) return;
-
-        if (effectiveStatus(row) === "waiting_for_approval" && row.approval === undefined) {
-          const approval = await loadApprovalRequest(row.stored.runId);
+      try {
+        for (const row of rowsRef.current) {
           if (cancelled) return;
-          if (approval !== undefined) {
-            setRows((current) =>
-              current.map((item) => (item.stored.runId === row.stored.runId ? { ...item, approval } : item)),
-            );
+
+          if (effectiveStatus(row) === "waiting_for_approval" && row.approval === undefined) {
+            const approval = await loadApprovalRequest(row.stored.runId);
+            if (cancelled) return;
+            if (approval !== undefined) {
+              setRows((current) =>
+                current.map((item) => (item.stored.runId === row.stored.runId ? { ...item, approval } : item)),
+              );
+            }
           }
         }
 
-        const sessionId = row.stored.sessionId;
-        if (sessionId === undefined || row.sessionTitle !== undefined || titles.current.has(sessionId)) continue;
-        try {
-          const envelope = await getSession(sessionId);
-          const title = envelope.session.title ?? "Sem título";
-          titles.current.set(sessionId, title);
-          if (cancelled) return;
-          setRows((current) =>
-            current.map((item) => (item.stored.sessionId === sessionId ? { ...item, sessionTitle: title } : item)),
-          );
-        } catch {
-          // Conversa apagada no Desktop ou Hermes fora: o item vive sem subtítulo.
-          titles.current.set(sessionId, "Sem título");
-        }
+        if (cancelled) return;
+
+        const sessionIds = [
+          ...new Set(
+            rowsRef.current
+              .filter((row) => row.sessionTitle === undefined && row.stored.sessionId !== undefined)
+              .map((row) => row.stored.sessionId as string),
+          ),
+        ];
+
+        const requestTitle = (sessionId: string): Promise<string> => {
+          const cached = titles.current.get(sessionId);
+          if (cached !== undefined) return Promise.resolve(cached);
+
+          const inFlight = titleRequestsRef.current.get(sessionId);
+          const inFlightSignal = titleRequestSignalsRef.current.get(sessionId);
+          if (inFlight !== undefined && inFlightSignal?.aborted !== true) return inFlight;
+          if (inFlight !== undefined && titleRequestsRef.current.get(sessionId) === inFlight) {
+            titleRequestsRef.current.delete(sessionId);
+          }
+          if (inFlightSignal !== undefined && titleRequestSignalsRef.current.get(sessionId) === inFlightSignal) {
+            titleRequestSignalsRef.current.delete(sessionId);
+          }
+
+          const throwIfAborted = (): void => {
+            if (controller.signal.aborted) {
+              throw Object.assign(new Error("Operação cancelada"), { name: "AbortError" });
+            }
+          };
+
+          const request = getSession(sessionId, controller.signal)
+            .then((envelope) => {
+              throwIfAborted();
+              const title = envelope.session.title ?? "Sem título";
+              titles.current.set(sessionId, title);
+              return title;
+            })
+            .catch((reason: unknown) => {
+              if (isAbort(reason)) throw reason;
+              throwIfAborted();
+              // Conversa apagada no Desktop ou Hermes fora: o item vive sem subtítulo.
+              titles.current.set(sessionId, "Sem título");
+              return "Sem título";
+            })
+            .finally(() => {
+              if (titleRequestsRef.current.get(sessionId) === request) {
+                titleRequestsRef.current.delete(sessionId);
+              }
+              if (titleRequestSignalsRef.current.get(sessionId) === controller.signal) {
+                titleRequestSignalsRef.current.delete(sessionId);
+              }
+            });
+
+          titleRequestsRef.current.set(sessionId, request);
+          titleRequestSignalsRef.current.set(sessionId, controller.signal);
+          return request;
+        };
+
+        const resolvedTitles = await mapWithConcurrency(sessionIds, 3, async (sessionId) => ({
+          sessionId,
+          title: await requestTitle(sessionId),
+        }));
+        if (cancelled) return;
+
+        const titleBySessionId = new Map(resolvedTitles.map((entry) => [entry.sessionId, entry.title]));
+        setRows((current) =>
+          current.map((item) => {
+            const sessionId = item.stored.sessionId;
+            const title = sessionId === undefined ? undefined : titleBySessionId.get(sessionId);
+            return title === undefined ? item : { ...item, sessionTitle: title };
+          }),
+        );
+      } catch {
+        // Desmontagem/reexecução aborta os GETs, e nem cancelamento nem falha real podem tomar a
+        // tela: a lista já está pintada e o subtítulo é enfeite. Nos dois casos, seguir sem título.
       }
     })();
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [configured, rowsSignature]);
 
@@ -490,6 +561,7 @@ export default function Command(): ReactElement {
                 onAction={() => void launchCommand({ name: "run-task", type: LaunchType.UserInitiated })}
               />
               <Action title="Atualizar" icon={Icon.ArrowClockwise} shortcut={SHORTCUTS.refresh} onAction={refresh} />
+              <OpenModelsAction />
             </ActionPanel>
           }
         />
@@ -656,7 +728,7 @@ function RunListItem(props: {
               />
             )}
             <Action
-              title="Perguntar de novo"
+              title="Executar esta tarefa novamente"
               icon={Icon.Repeat}
               shortcut={SHORTCUTS.newConversation}
               onAction={() =>
@@ -707,6 +779,7 @@ function RunListItem(props: {
               shortcut={SHORTCUTS.preferences}
               onAction={openExtensionPreferences}
             />
+            <OpenModelsAction />
           </ActionPanel.Section>
         </ActionPanel>
       }

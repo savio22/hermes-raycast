@@ -11,7 +11,7 @@
  */
 
 import type { Color, Icon } from "@raycast/api";
-import type { JobState, RunStatus } from "./types";
+import type { ApprovalChoice, JobState, RunStatus } from "./types";
 
 /* ───────────── Ícones e cores do Raycast, sem import de runtime ───────────── */
 
@@ -221,6 +221,22 @@ export const STREAM_PHASE_LABEL = {
   failed: "Falhou",
 } as const satisfies Record<StreamPhase, StatusLabel>;
 
+/* ─────────────────── Resposta a um pedido de aprovação ─────────────────── */
+
+/**
+ * UX-SPEC §6.3 — como cada resposta de aprovação aparece na linha de etapas.
+ *
+ * Mora aqui, e não na tela que a escreve, porque duas superfícies montam essa linha
+ * (`use-conversation.ts` e `run-progress.tsx`) e um sinônimo entre elas seria invisível
+ * até alguém comparar as duas telas lado a lado.
+ */
+export const APPROVAL_CHOICE_LABEL = {
+  once: "Aprovado uma vez",
+  session: "Aprovado nesta execução",
+  always: "Aprovado sempre",
+  deny: "Negado",
+} as const satisfies Record<ApprovalChoice, string>;
+
 /* ─────────────────────────── Estado de automação ─────────────────────────── */
 
 /** Vocabulário próprio dos jobs (UX-SPEC §1.2); não se mistura com os 7 de run. */
@@ -237,3 +253,34 @@ export function jobStateLabel(state: string | undefined): string {
   }
   return UNKNOWN_STATUS_LABEL;
 }
+
+/* ───────────────── Disponibilidade de um grupo de ferramentas ───────────────── */
+
+/**
+ * O `/v1/toolsets` não tem campo "disponível": ele tem `enabled` (ligado para a plataforma)
+ * e `configured` (tem credencial). Quem responde "dá para usar?" é a combinação das duas, e
+ * ela mora aqui pelo mesmo motivo que os 7 rótulos de execução: nenhuma tela monta rótulo
+ * de estado por conta própria (UX-SPEC §4.2).
+ */
+export type ToolsetAvailability = "disponivel" | "precisa_configurar" | "desligado" | "indisponivel";
+
+export const TOOLSET_AVAILABILITY_LABEL = {
+  disponivel: "Disponível",
+  precisa_configurar: "Precisa configurar",
+  desligado: "Desligado",
+  indisponivel: "Indisponível",
+} as const satisfies Record<ToolsetAvailability, string>;
+
+/**
+ * Só ícone e cor: `LabeledAppearance` fecha o `label` na união dos 7 estados de execução e das
+ * duas condições, e é exatamente essa trava que impede alguém de inventar um oitavo estado.
+ * Disponibilidade de ferramenta é outro vocabulário; o rótulo vem do mapa acima.
+ */
+export const TOOLSET_AVAILABILITY_APPEARANCE = {
+  disponivel: { icon: ICON.CheckCircle, color: HERMES.green },
+  // Amarelo, não âmbar: o âmbar é a cor "aja agora" e está reservada a `Aguardando aprovação`,
+  // o único estado que obriga o usuário a fazer algo. Aqui é só um aviso.
+  precisa_configurar: { icon: ICON.Warning, color: HERMES.yellow },
+  desligado: { icon: ICON.MinusCircle, color: COLOR.SecondaryText },
+  indisponivel: { icon: ICON.Circle, color: COLOR.SecondaryText },
+} as const satisfies Record<ToolsetAvailability, StatusAppearance>;

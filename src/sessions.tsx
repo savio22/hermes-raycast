@@ -12,8 +12,8 @@
  * Decisões de mecânica que sustentam isso:
  * - **paginação com `nextSessionOffset()`** (armadilha 8): linhas fixadas entram ALÉM do
  *   `limit` e `has_more` conta só as não fixadas, então `offset + limit` erraria a página;
- * - **polling de 4 s** (§8.5) que revalida exatamente as páginas já carregadas, morre na
- *   desmontagem e pausa enquanto outra tela está empilhada;
+ * - **polling de 4 s** (§8.5) que revalida a primeira página; páginas antigas ficam para
+ *   Atualizar/manual, morre na desmontagem e pausa enquanto outra tela está empilhada;
  * - **busca client-side**, porque a API não tem parâmetro de busca (armadilha 42);
  * - **nada de transcrição em disco** (§8.7): o `Cache` de 30 s guarda só metadado da
  *   primeira página, e com o `preview` removido — ele é conteúdo da primeira mensagem.
@@ -46,9 +46,11 @@ import {
   updateSession,
 } from "./lib/hermes-api";
 import { getHermesPreferences } from "./lib/preferences";
+import { mergePolledFirstPage, type FeedSnapshot } from "./lib/session-feed";
 import { CacheKeys, CacheTtl, cacheRead, cacheWrite } from "./lib/storage";
 import type { Session } from "./lib/types";
-import { NO_TITLE, OpenPreferencesAction, SYNC_PROMISE } from "./components/common";
+import { compactConversationCount, compactMessageCount, compactModelLabel, truncateOneLine } from "./lib/ui-text";
+import { NO_TITLE, OpenModelsAction, OpenPreferencesAction } from "./components/common";
 import { RenameSessionForm } from "./components/rename-session-form";
 import {
   CopySessionIdAction,
@@ -75,16 +77,7 @@ function foldForSearch(text: string): string {
 
 /* ───────────────────────────── Feed paginado ───────────────────────────── */
 
-interface Feed {
-  items: Session[];
-  hasMore: boolean;
-  /** Offset da PRÓXIMA página, calculado com `nextSessionOffset()`. */
-  nextOffset: number;
-  /** Quantas páginas o usuário já pediu; o polling revalida exatamente essas. */
-  pages: number;
-}
-
-const EMPTY_FEED: Feed = { items: [], hasMore: false, nextOffset: 0, pages: 1 };
+const EMPTY_FEED: FeedSnapshot = { items: [], hasMore: false, nextOffset: 0, pages: 1 };
 
 function dedupe(sessions: Session[]): Session[] {
   const seen = new Set<string>();
@@ -98,10 +91,10 @@ function dedupe(sessions: Session[]): Session[] {
 }
 
 /**
- * Revalida a janela inteira que o usuário está vendo. Uma requisição por página carregada
- * — quase sempre uma só, porque a preferência `maxHistoryItems` já traz 50 de uma vez.
+ * Revalida a janela inteira em cargas inicial/manual. O polling periódico busca apenas a
+ * primeira página; páginas antigas voltam a ser consultadas por Atualizar/manual.
  */
-async function fetchWindow(pages: number, limit: number, signal: AbortSignal): Promise<Feed> {
+async function fetchWindow(pages: number, limit: number, signal: AbortSignal): Promise<FeedSnapshot> {
   const collected: Session[] = [];
   let offset = 0;
   let hasMore = false;
@@ -133,7 +126,7 @@ function withoutPreviews(sessions: Session[]): Session[] {
   });
 }
 
-function readCachedFirstPage(): Feed {
+function readCachedFirstPage(): FeedSnapshot {
   const cached = cacheRead<Session[]>(CacheKeys.sessionsFirstPage, CacheTtl.sessionsFirstPage);
   if (cached === undefined || cached.length === 0) return EMPTY_FEED;
   return { items: cached, hasMore: false, nextOffset: 0, pages: 1 };
@@ -144,7 +137,7 @@ function readCachedFirstPage(): Feed {
 export default function Command(): React.JSX.Element {
   const pageSize = useMemo(() => getHermesPreferences().maxHistoryItems, []);
 
-  const [feed, setFeed] = useState<Feed>(readCachedFirstPage);
+  const [feed, setFeed] = useState<FeedSnapshot>(readCachedFirstPage);
   const [error, setError] = useState<HermesError | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
@@ -171,7 +164,15 @@ export default function Command(): React.JSX.Element {
       if (mode !== "poll") setIsLoading(true);
 
       try {
-        const next = await fetchWindow(Math.max(1, feedRef.current.pages), pageSize, controller.signal);
+        let next: FeedSnapshot;
+        if (mode === "poll") {
+          const response = await listSessions({ limit: pageSize, offset: 0, signal: controller.signal });
+          // Leia o snapshot depois do await: ações otimistas podem ter alterado o feed
+          // enquanto a requisição estava em voo.
+          next = mergePolledFirstPage(feedRef.current, response);
+        } else {
+          next = await fetchWindow(Math.max(1, feedRef.current.pages), pageSize, controller.signal);
+        }
         if (!alive()) return;
         setFeed(next);
         setError(undefined);
@@ -416,12 +417,16 @@ export default function Command(): React.JSX.Element {
     ];
     if (typeof session.message_count === "number") {
       accessories.push({
-        text: session.message_count === 1 ? "1 mensagem" : `${session.message_count} mensagens`,
+        text: compactMessageCount(session.message_count),
         tooltip: "Mensagens nesta conversa",
       });
     }
     if (typeof session.model === "string" && session.model !== "") {
-      accessories.push({ text: session.model, icon: Icon.ComputerChip, tooltip: "Modelo usado nesta conversa" });
+      accessories.push({
+        text: compactModelLabel(session.model),
+        icon: Icon.ComputerChip,
+        tooltip: `Modelo usado nesta conversa: ${session.model}`,
+      });
     }
     if (typeof lastActive === "number" && lastActive > 0) {
       // `last_active` vem em SEGUNDOS: multiplicar é obrigatório, senão a data cai em 1970.
@@ -433,23 +438,27 @@ export default function Command(): React.JSX.Element {
         key={session.id}
         id={session.id}
         icon={{ value: origin.icon, tooltip: origin.tooltip }}
-        title={session.title ?? NO_TITLE}
-        subtitle={session.preview ?? undefined}
+        title={truncateOneLine(session.title?.trim() ? session.title : NO_TITLE, 60)}
+        subtitle={session.preview ? truncateOneLine(session.preview, 96) : undefined}
         accessories={accessories}
         actions={
           <ActionPanel>
             <ActionPanel.Section>
-              <Action.Push
-                title="Abrir conversa"
-                icon={Icon.SpeechBubble}
-                target={<SessionDetail session={session} onSessionChanged={replaceSession} />}
-                {...pauseWhilePushed}
-              />
+              {/* §12 do desenho da conversa contínua: abrir uma conversa passou a ser
+                  CONTINUAR a conversa. O detalhe — que é um arquivo de mensagens, não uma
+                  conversa — vira ação secundária, com o nome do que ele de fato é. */}
               <Action
                 title="Continuar esta conversa"
-                icon={Icon.Reply}
+                icon={Icon.SpeechBubble}
                 shortcut={SHORTCUTS.continueConversation}
                 onAction={() => void continueConversation(session)}
+              />
+              <Action.Push
+                title="Ver mensagens e ferramentas"
+                icon={Icon.WrenchScrewdriver}
+                shortcut={SHORTCUTS.viewMessages}
+                target={<SessionDetail session={session} onSessionChanged={replaceSession} />}
+                {...pauseWhilePushed}
               />
             </ActionPanel.Section>
 
@@ -512,6 +521,7 @@ export default function Command(): React.JSX.Element {
                 shortcut={SHORTCUTS.refresh}
                 onAction={() => void refresh("manual")}
               />
+              <OpenModelsAction />
               <OpenPreferencesAction />
             </ActionPanel.Section>
           </ActionPanel>
@@ -565,6 +575,7 @@ export default function Command(): React.JSX.Element {
                 shortcut={SHORTCUTS.refresh}
                 onAction={() => void refresh("manual")}
               />
+              <OpenModelsAction />
               <OpenPreferencesAction />
             </ActionPanel>
           }
@@ -588,6 +599,7 @@ export default function Command(): React.JSX.Element {
                 shortcut={SHORTCUTS.refresh}
                 onAction={() => void refresh("manual")}
               />
+              <OpenModelsAction />
               <OpenPreferencesAction />
             </ActionPanel>
           }
@@ -595,13 +607,13 @@ export default function Command(): React.JSX.Element {
       )}
 
       {pinned.length > 0 ? (
-        <List.Section title="Fixadas" subtitle={`${pinned.length}`}>
+        <List.Section title="Fixadas" subtitle={compactConversationCount(pinned.length)}>
           {pinned.map(renderItem)}
         </List.Section>
       ) : null}
 
       {recent.length > 0 ? (
-        <List.Section title="Recentes" subtitle={SYNC_PROMISE}>
+        <List.Section title="Recentes" subtitle={compactConversationCount(recent.length)}>
           {recent.map(renderItem)}
         </List.Section>
       ) : null}

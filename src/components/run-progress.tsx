@@ -39,13 +39,14 @@ import {
 } from "@raycast/api";
 import { useEffect, useReducer, useRef, useState, type ReactElement } from "react";
 
-import { APPROVAL_CHOICE_LABEL } from "../hooks/use-run-stream";
 import { hermesDesktopSessionUrl } from "../lib/discovery";
+import { canContinueConversation } from "../lib/conversation-lifecycle";
 import { HermesError, isAbort, sanitizeTechnical, toHermesError } from "../lib/errors";
 import { forkSession, getRun, openRunEventStream, reconcileRun, stopRun } from "../lib/hermes-api";
 import { consumeRunEventStream, createTextBuffer, type RunStreamResult } from "../lib/hermes-events";
 import { getHermesPreferences } from "../lib/preferences";
 import {
+  APPROVAL_CHOICE_LABEL,
   NO_CONNECTION,
   RUN_EXPIRED,
   RUN_EXPIRED_DETAIL,
@@ -70,6 +71,7 @@ import { ApprovalView } from "./approval-view";
 import { RenameSessionForm } from "./rename-session-form";
 import { SteerForm, steerAndReport } from "./steer-form";
 import { SHORTCUTS } from "./shortcuts";
+import { OpenModelsAction } from "./common";
 
 /** UX-SPEC §8.5: 2 s para a execução aberta, enquanto o estado não for terminal. */
 export const RUN_POLL_MS = 2_000;
@@ -513,6 +515,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
 
   const terminal = state.expired || isTerminalRunStatus(state.status);
   const sessionId = state.sessionId ?? props.sessionId;
+  const canContinue = canContinueConversation(sessionId, terminal);
   const desktopUrl = hermesDesktopSessionUrl(sessionId);
   /** §6.2, último item: desligado, nada é pintado até o desfecho. */
   const { streamResponses } = getHermesPreferences();
@@ -729,7 +732,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
    * histórico que o Hermes Desktop mostra, em vez de abrir uma conversa nova.
    */
   async function continueConversation(): Promise<void> {
-    if (sessionId === undefined) return;
+    if (!canContinue) return;
     try {
       await launchCommand({
         name: "ask-hermes",
@@ -933,7 +936,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
           <ActionPanel.Section>
             {/* §6.4 "Depois": itens 3, 7 e 8 da tabela — esta tela é a mesma `Detail` de
                 §2.1.3 por força da §2.4.2, então as ações pós-conclusão valem aqui igual. */}
-            {sessionId !== undefined && (
+            {canContinue && (
               <Action
                 title="Continuar esta conversa"
                 icon={Icon.SpeechBubble}
@@ -1018,6 +1021,7 @@ export function RunProgressView(props: RunProgressViewProps): ReactElement {
               shortcut={SHORTCUTS.preferences}
               onAction={openExtensionPreferences}
             />
+            <OpenModelsAction />
           </ActionPanel.Section>
         </ActionPanel>
       }

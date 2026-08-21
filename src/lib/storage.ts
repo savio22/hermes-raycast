@@ -33,29 +33,59 @@ export const StorageKeys = {
   /** {provider?, model?} — ação "Usar só na próxima pergunta". Apagar após consumir. */
   nextTurnModel: "hermes.nextTurnModel.v1",
   runIndex: "hermes.runs.v1",
+  queuedTurns: "hermes.queuedTurns.v1",
+  pendingRunWrites: "hermes.pendingRunWrites.v1",
   approvalPrefix: "hermes.approval.v1.",
   runResultPrefix: "hermes.runResult.v1.",
 } as const;
 
 /* ───────────────── LocalStorage (durável, assíncrono) ───────────────── */
 
+const STORAGE_RETRY_DELAYS_MS = [0, 10, 50] as const;
+
+async function retryStorage<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+  for (const delay of STORAGE_RETRY_DELAYS_MS) {
+    if (delay > 0) await new Promise<void>((resolve) => setTimeout(resolve, delay));
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Falha ao acessar o armazenamento local.");
+}
+
+export class StoragePersistenceError extends Error {
+  readonly userMessage =
+    "Não consegui salvar o estado local desta execução. Tente novamente e mantenha o Raycast aberto até confirmar.";
+  constructor(cause: unknown) {
+    super("O armazenamento local do Raycast recusou uma gravação após as tentativas permitidas.", { cause });
+    this.name = "StoragePersistenceError";
+  }
+}
+
 export async function readJson<TValue>(key: string): Promise<TValue | undefined> {
-  const raw = await LocalStorage.getItem<string>(key);
+  const raw = await retryStorage(() => LocalStorage.getItem<string>(key));
   if (typeof raw !== "string") return undefined;
   try {
     return JSON.parse(raw) as TValue;
   } catch {
-    await LocalStorage.removeItem(key);
+    await retryStorage(() => LocalStorage.removeItem(key));
     return undefined;
   }
 }
 
 export async function writeJson<TValue>(key: string, value: TValue | undefined): Promise<void> {
-  if (value === undefined) {
-    await LocalStorage.removeItem(key);
-    return;
+  try {
+    if (value === undefined) {
+      await retryStorage(() => LocalStorage.removeItem(key));
+      return;
+    }
+    await retryStorage(() => LocalStorage.setItem(key, JSON.stringify(value)));
+  } catch (error) {
+    throw new StoragePersistenceError(error);
   }
-  await LocalStorage.setItem(key, JSON.stringify(value));
 }
 
 /* ───────────────────────── Chave detectada ─────────────────────────── */
@@ -86,6 +116,7 @@ export function forgetDetectedApiKey(): Promise<void> {
 /* ───────────────────── Cache (síncrono, LRU 10 MB) ──────────────────── */
 
 const cache = new Cache({ namespace: "hermes" });
+const inFlightCacheFetches = new Map<string, Promise<unknown>>();
 
 interface CacheEnvelope<TValue> {
   v: 1;
@@ -98,7 +129,9 @@ export function cacheRead<TValue>(key: string, maxAgeMs: number): TValue | undef
   if (!raw) return undefined;
   try {
     const envelope = JSON.parse(raw) as CacheEnvelope<TValue>;
-    if (envelope.v !== 1 || Date.now() - envelope.at > maxAgeMs) return undefined;
+    // `Math.abs`: um relógio que anda para trás deixa `at` no futuro, e a subtração crua ficaria
+    // negativa para sempre — a entrada nunca venceria até o tempo real alcançá-la.
+    if (envelope.v !== 1 || Math.abs(Date.now() - envelope.at) > maxAgeMs) return undefined;
     return envelope.data;
   } catch {
     cache.remove(key);
@@ -122,8 +155,12 @@ export const CacheTtl = {
   capabilities: 5 * 60_000,
   modelOptions: 10 * 60_000,
   skills: 5 * 60_000,
-  /** Endpoint lento (27+ toolsets resolvidos no event loop do servidor). */
-  toolsets: 15 * 60_000,
+  /**
+   * Endpoint lento E perigoso: o handler pode travar o Hermes inteiro por ~8 s. Dez minutos
+   * é o meio-termo medido: raro o bastante para não punir o servidor, curto o bastante para
+   * a lista não mentir depois de o usuário configurar um provedor no Hermes Desktop.
+   */
+  toolsets: 10 * 60_000,
   /** Só para pintura instantânea da lista; sempre revalidar depois. */
   sessionsFirstPage: 30_000,
 } as const;
@@ -132,9 +169,23 @@ export const CacheTtl = {
 export async function cachedFetch<TValue>(key: string, ttlMs: number, loader: () => Promise<TValue>): Promise<TValue> {
   const hit = cacheRead<TValue>(key, ttlMs);
   if (hit !== undefined) return hit;
-  const fresh = await loader();
-  cacheWrite(key, fresh);
-  return fresh;
+
+  const inFlight = inFlightCacheFetches.get(key);
+  if (inFlight !== undefined) return inFlight as Promise<TValue>;
+
+  const request = Promise.resolve()
+    .then(() => loader())
+    .then((fresh) => {
+      cacheWrite(key, fresh);
+      return fresh;
+    });
+  inFlightCacheFetches.set(key, request);
+  void request
+    .finally(() => {
+      if (inFlightCacheFetches.get(key) === request) inFlightCacheFetches.delete(key);
+    })
+    .catch(() => undefined);
+  return request;
 }
 
 /* ─────────────────────── Índice de execuções ────────────────────────── */
@@ -144,12 +195,17 @@ export async function cachedFetch<TValue>(key: string, ttlMs: number, loader: ()
  * Por isso este índice é gravado ANTES de renderizar qualquer coisa após o 202.
  */
 export interface StoredRun {
+  schemaVersion?: 2;
   runId: string;
+  turnId?: string;
   sessionId?: string;
   /** Prompt truncado em 200 chars, só para identificar o item na lista. */
   promptPreview: string;
   createdAt: number;
   lastKnownStatus: string;
+  status?: string;
+  transportPhase?: import("./conversation-lifecycle").TransportPhase;
+  updatedAt?: number;
   lastKnownEvent?: string;
   baseUrl: string;
   /**
@@ -162,19 +218,102 @@ export interface StoredRun {
   expired?: boolean;
 }
 
-const MAX_STORED_RUNS = 20;
+const MAX_STORED_TERMINAL_RUNS = 20;
 const RUN_INDEX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const TERMINAL_STATUSES = new Set(["completed", "cancelled", "failed"]);
+const storageLocks = new Map<string, Promise<void>>();
+
+async function withStorageLock<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const previous = storageLocks.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const queued = previous.then(() => current);
+  storageLocks.set(key, queued);
+  await previous;
+  try {
+    return await task();
+  } finally {
+    release();
+    if (storageLocks.get(key) === queued) storageLocks.delete(key);
+  }
+}
+
+function transportPhaseFor(status: string): import("./conversation-lifecycle").TransportPhase {
+  if (status === "queued") return "accepted";
+  return "reconciling";
+}
+
+function normalizeStoredRun(raw: StoredRun): StoredRun {
+  const status = raw.status ?? raw.lastKnownStatus;
+  return {
+    ...raw,
+    schemaVersion: 2,
+    status,
+    lastKnownStatus: raw.lastKnownStatus ?? status,
+    transportPhase: raw.transportPhase ?? transportPhaseFor(status),
+    updatedAt: raw.updatedAt ?? raw.createdAt,
+  };
+}
+
+function retainRuns(runs: StoredRun[]): StoredRun[] {
+  const cutoff = Date.now() - RUN_INDEX_MAX_AGE_MS;
+  const active = runs.filter((run) => !TERMINAL_STATUSES.has(run.status ?? run.lastKnownStatus));
+  const terminal = runs
+    .filter((run) => run.createdAt >= cutoff)
+    .filter((run) => TERMINAL_STATUSES.has(run.status ?? run.lastKnownStatus))
+    .slice(0, MAX_STORED_TERMINAL_RUNS);
+  return [...active, ...terminal];
+}
+
+async function readRunIndex(): Promise<StoredRun[]> {
+  const raw = (await readJson<unknown>(StorageKeys.runIndex)) ?? [];
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((entry): entry is StoredRun => typeof entry === "object" && entry !== null).map(normalizeStoredRun);
+}
 
 export async function listStoredRuns(): Promise<StoredRun[]> {
-  const runs = (await readJson<StoredRun[]>(StorageKeys.runIndex)) ?? [];
-  const cutoff = Date.now() - RUN_INDEX_MAX_AGE_MS;
-  return runs.filter((run) => run.createdAt >= cutoff);
+  return withStorageLock(StorageKeys.runIndex, async () => {
+    const raw = (await readJson<unknown>(StorageKeys.runIndex)) ?? [];
+    const needsMigration =
+      !Array.isArray(raw) ||
+      raw.some(
+        (entry) =>
+          typeof entry !== "object" ||
+          entry === null ||
+          (entry as { schemaVersion?: unknown }).schemaVersion !== 2 ||
+          (entry as { transportPhase?: unknown }).transportPhase === undefined,
+      );
+    const runs = await readRunIndex();
+    const retained = retainRuns(runs);
+    if (needsMigration || JSON.stringify(runs) !== JSON.stringify(retained))
+      await writeJson(StorageKeys.runIndex, retained);
+    return retained;
+  });
 }
 
 export async function rememberRun(run: StoredRun): Promise<void> {
-  const runs = await listStoredRuns();
-  const next = [run, ...runs.filter((r) => r.runId !== run.runId)].slice(0, MAX_STORED_RUNS);
-  await writeJson(StorageKeys.runIndex, next);
+  await withStorageLock(StorageKeys.runIndex, async () => {
+    const normalized = normalizeStoredRun(run);
+    const runs = await readRunIndex();
+    const next = retainRuns([normalized, ...runs.filter((r) => r.runId !== normalized.runId)]);
+    try {
+      await writeJson(StorageKeys.runIndex, next);
+      const pending = (await readJson<Record<string, number>>(StorageKeys.pendingRunWrites)) ?? {};
+      delete pending[normalized.runId];
+      await writeJson(StorageKeys.pendingRunWrites, Object.keys(pending).length > 0 ? pending : undefined);
+    } catch (error) {
+      try {
+        const pending = (await readJson<Record<string, number>>(StorageKeys.pendingRunWrites)) ?? {};
+        pending[normalized.runId] = Date.now();
+        await writeJson(StorageKeys.pendingRunWrites, pending);
+      } catch {
+        // A second failure is deliberately swallowed; the original error remains actionable.
+      }
+      throw error;
+    }
+  });
 }
 
 /**
@@ -188,14 +327,17 @@ export async function rememberRun(run: StoredRun): Promise<void> {
  */
 export async function updateStoredRuns(patches: ReadonlyMap<string, Partial<StoredRun>>): Promise<void> {
   if (patches.size === 0) return;
-  const runs = await listStoredRuns();
-  await writeJson(
-    StorageKeys.runIndex,
-    runs.map((run) => {
+  await withStorageLock(StorageKeys.runIndex, async () => {
+    const runs = await readRunIndex();
+    const updated = runs.map((run) => {
       const patch = patches.get(run.runId);
-      return patch === undefined ? run : { ...run, ...patch };
-    }),
-  );
+      if (patch === undefined) return run;
+      const next = { ...run, ...patch };
+      if (patch.status === undefined && patch.lastKnownStatus !== undefined) next.status = patch.lastKnownStatus;
+      return { ...normalizeStoredRun(next), updatedAt: Date.now() };
+    });
+    await writeJson(StorageKeys.runIndex, retainRuns(updated));
+  });
 }
 
 export function updateStoredRun(runId: string, patch: Partial<StoredRun>): Promise<void> {
@@ -203,13 +345,47 @@ export function updateStoredRun(runId: string, patch: Partial<StoredRun>): Promi
 }
 
 export async function forgetRun(runId: string): Promise<void> {
-  const runs = await listStoredRuns();
-  await writeJson(
-    StorageKeys.runIndex,
-    runs.filter((run) => run.runId !== runId),
-  );
-  await LocalStorage.removeItem(StorageKeys.approvalPrefix + runId);
-  await LocalStorage.removeItem(StorageKeys.runResultPrefix + runId);
+  await withStorageLock(StorageKeys.runIndex, async () => {
+    const runs = await readRunIndex();
+    await writeJson(
+      StorageKeys.runIndex,
+      runs.filter((run) => run.runId !== runId),
+    );
+  });
+  await clearApprovalRequest(runId);
+  await retryStorage(() => LocalStorage.removeItem(StorageKeys.runResultPrefix + runId));
+}
+
+/* ───────────────────────────── Fila local ───────────────────────────── */
+
+export interface StoredQueuedTurnV1 {
+  schemaVersion: 1;
+  id: string;
+  sessionId?: string;
+  message: string;
+  createdAt: number;
+}
+
+export async function listQueuedTurns(sessionId?: string): Promise<StoredQueuedTurnV1[]> {
+  const all = (await readJson<StoredQueuedTurnV1[]>(StorageKeys.queuedTurns)) ?? [];
+  return all.filter((item) => item.sessionId === sessionId);
+}
+
+export async function rememberQueuedTurn(turn: StoredQueuedTurnV1): Promise<void> {
+  await withStorageLock(StorageKeys.queuedTurns, async () => {
+    const all = (await readJson<StoredQueuedTurnV1[]>(StorageKeys.queuedTurns)) ?? [];
+    await writeJson(StorageKeys.queuedTurns, [turn, ...all.filter((item) => item.id !== turn.id)]);
+  });
+}
+
+export async function removeQueuedTurn(turnId: string): Promise<void> {
+  await withStorageLock(StorageKeys.queuedTurns, async () => {
+    const all = (await readJson<StoredQueuedTurnV1[]>(StorageKeys.queuedTurns)) ?? [];
+    await writeJson(
+      StorageKeys.queuedTurns,
+      all.filter((item) => item.id !== turnId),
+    );
+  });
 }
 
 /* ──────────────────── Aprovações e resultados de run ────────────────── */
@@ -238,15 +414,18 @@ export interface StoredApproval {
 }
 
 export function saveApprovalRequest(approval: StoredApproval): Promise<void> {
-  return writeJson(StorageKeys.approvalPrefix + approval.runId, approval);
+  const key = StorageKeys.approvalPrefix + approval.runId;
+  return withStorageLock(key, () => writeJson(key, approval));
 }
 
 export function loadApprovalRequest(runId: string): Promise<StoredApproval | undefined> {
-  return readJson<StoredApproval>(StorageKeys.approvalPrefix + runId);
+  const key = StorageKeys.approvalPrefix + runId;
+  return withStorageLock(key, () => readJson<StoredApproval>(key));
 }
 
 export function clearApprovalRequest(runId: string): Promise<void> {
-  return LocalStorage.removeItem(StorageKeys.approvalPrefix + runId);
+  const key = StorageKeys.approvalPrefix + runId;
+  return withStorageLock(key, () => retryStorage(() => LocalStorage.removeItem(key)));
 }
 
 export interface StoredRunResult {

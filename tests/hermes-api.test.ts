@@ -26,6 +26,7 @@ const { conversationTitle, conversationTitleAttempt, requestJson, startConversat
   "../src/lib/hermes-api.ts"
 );
 const { invalidateBaseUrl } = await import("../src/lib/discovery.ts");
+const { isAbort } = await import("../src/lib/errors.ts");
 
 const BASE_URL = "http://127.0.0.1:8642";
 /** Valor sentinela: não é uma chave real. */
@@ -328,6 +329,39 @@ test("o título é a pergunta cortada em 60 caracteres, SEM sufixo aleatório", 
   // Recentes do Hermes Desktop: "Resuma este relatório · a3f9c1".
   assert.doesNotMatch(curto, /·/);
   assert.doesNotMatch(longo, /·/);
+});
+
+test("GET em 503 abortado durante Retry-After não faz a segunda chamada", async () => {
+  await setup();
+  const controller = new AbortController();
+  let calls = 0;
+  let firstAttemptResolve!: () => void;
+  const firstAttempt = new Promise<void>((resolve) => {
+    firstAttemptResolve = resolve;
+  });
+  installScriptedFetch({
+    "/v1/capabilities": [
+      () => {
+        calls += 1;
+        firstAttemptResolve();
+        return json(503, { error: { code: "gateway_draining" } }, { "Retry-After": "1" });
+      },
+      () => {
+        calls += 1;
+        return json(200, { ok: true });
+      },
+    ],
+  });
+
+  const pending = requestJson({ path: "/v1/capabilities", signal: controller.signal });
+  await firstAttempt;
+  // Deixe a resposta 503 ser mapeada e o atraso Retry-After instalar o listener.
+  await new Promise<void>((resolve) => setTimeout(resolve, 25));
+  assert.equal(calls, 1, "o retry ainda deve estar aguardando Retry-After");
+  controller.abort();
+
+  await assert.rejects(pending, (error: unknown) => isAbort(error));
+  assert.equal(calls, 1, "o abort durante Retry-After não pode chamar fetch novamente");
 });
 
 test("o título nunca é vazio e normaliza controles e espaços", () => {

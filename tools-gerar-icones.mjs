@@ -32,6 +32,10 @@ const ICONES = [
   ["summarize-clipboard", "clipboard-text"],
   ["skills", "brain"],
   ["toolsets", "tool"],
+  ["fix-clipboard", "text-spellcheck"],
+  ["translate-clipboard", "language"],
+  ["paste-answer", "clipboard-check"],
+  ["jobs", "clock-play"],
 ];
 
 /** Extrai só os `d=` do tabler, descartando o path de moldura `M0 0h24v24H0z`. */

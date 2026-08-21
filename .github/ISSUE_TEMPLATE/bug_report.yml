@@ -1,0 +1,52 @@
+name: Bug report
+description: Something in the extension behaves wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems do not go here — use the Security tab → **Report a vulnerability**.
+        Português é bem-vindo neste formulário.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Raycast and run "..."
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Which command
+      placeholder: e.g. Perguntar ao Hermes
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Windows, Raycast, Hermes Agent, and the extension commit. "Verificar conexão com Hermes" shows the Hermes version.
+      placeholder: Windows 11 26200 · Raycast 2.0.3 · Hermes 0.20.4 · commit abc1234
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical-details
+    attributes:
+      label: Technical details
+      description: >
+        If a screen offered "Copiar detalhes técnicos", paste it here. The key is redacted in that
+        payload — read it once before pasting anyway.
+      render: text

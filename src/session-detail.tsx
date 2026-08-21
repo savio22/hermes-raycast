@@ -40,11 +40,12 @@ import {
 } from "@raycast/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { NO_TITLE, OpenPreferencesAction, SYNC_PROMISE } from "./components/common";
+import { NO_TITLE, OpenModelsAction, OpenPreferencesAction, SYNC_PROMISE } from "./components/common";
+import { AutoDetectAction } from "./components/first-run";
 import { RenameSessionForm } from "./components/rename-session-form";
 import { SHORTCUTS } from "./components/shortcuts";
 import { hermesDesktopSessionUrl } from "./lib/discovery";
-import { HermesError, isAbort, sanitizeTechnical, toHermesError } from "./lib/errors";
+import { HermesAuthError, HermesError, isAbort, sanitizeTechnical, toHermesError } from "./lib/errors";
 import { getSession, getSessionMessages } from "./lib/hermes-api";
 import type { Session, SessionMessage } from "./lib/types";
 
@@ -158,7 +159,7 @@ function toDate(epochSeconds: number | null | undefined): Date | undefined {
 /** "exibir uma vez" da §8.6: um aviso por conversa por execução do comando. */
 const warnedAboutRecentUse = new Set<string>();
 
-function shouldWarnAboutRecentDesktopUse(session: Session): boolean {
+export function shouldWarnAboutRecentDesktopUse(session: Session): boolean {
   if (session.id.startsWith(RAYCAST_ID_PREFIX)) return false;
   const lastActive = toDate(session.last_active);
   if (lastActive === undefined) return false;
@@ -299,6 +300,15 @@ function splitMessage(message: string): { title: string; description?: string } 
  * Ordem das ações fixada pela §5.1 regra 3: `Tentar novamente`, `Abrir configurações`,
  * `Copiar detalhes técnicos` — com o detalhe técnico oculto atrás de
  * `Mostrar detalhes técnicos` (regra 4) e sempre redigido (regra 5).
+ *
+ * E2 ganha `Detectar configuração automaticamente` como PRIMEIRA ação — é o que a §5.2 já
+ * mandava e o código não fazia. Sem ela, uma chave trocada pelo Hermes exigia um
+ * `Tentar novamente` só para o 401 apagar a chave detectada e a tela virar `NotConfigured`:
+ * o caminho existia, mas custava um passo que não explicava nada.
+ *
+ * Nos outros erros a ação fica FORA, de propósito. Em E1 o Hermes está desligado e detectar
+ * falharia igual; num 500 detectar não conserta nada. Oferecer o remédio errado é pior do
+ * que não oferecer remédio.
  */
 export function HermesErrorEmptyView({
   error,
@@ -308,6 +318,7 @@ export function HermesErrorEmptyView({
   onRetry: () => void;
 }): React.JSX.Element {
   const copy = splitMessage(error.userMessage);
+  const keyWasRejected = error instanceof HermesAuthError || error.uxId === "E2";
 
   return (
     <List.EmptyView
@@ -317,6 +328,8 @@ export function HermesErrorEmptyView({
       actions={
         <ActionPanel>
           <ActionPanel.Section>
+            {/* §5.2 E2: quando a chave foi recusada, detectar de novo é a ação primária. */}
+            {keyWasRejected ? <AutoDetectAction onDone={onRetry} /> : null}
             <Action
               title="Tentar novamente"
               icon={Icon.ArrowClockwise}
@@ -473,14 +486,23 @@ function groupByDay(messages: SessionMessage[]): DayGroup[] {
 
 /* ──────────────────────────── A tela (§2.3) ──────────────────────────── */
 
+/**
+ * O que basta para abrir esta tela: o `id`. Quem vem da lista de conversas já tem a linha
+ * inteira e a entrega; quem vem da conversa (`Ver mensagens e ferramentas`) tem só o id e o
+ * título, e os dois campos derivados (`has_system_prompt`, `has_model_config`) chegam no
+ * primeiro `getSession`, que acontece na montagem — antes de qualquer coisa ser exibida a
+ * partir deles.
+ */
+export type SessionSeed = Pick<Session, "id"> & Partial<Session>;
+
 export function SessionDetail({
   session,
   onSessionChanged,
 }: {
-  session: Session;
+  session: SessionSeed;
   onSessionChanged?: (session: Session) => void;
 }): React.JSX.Element {
-  const [info, setInfo] = useState<Session>(session);
+  const [info, setInfo] = useState<Session>({ has_system_prompt: false, has_model_config: false, ...session });
   const [messages, setMessages] = useState<SessionMessage[]>([]);
   const [hasOlder, setHasOlder] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -649,6 +671,7 @@ export function SessionDetail({
         <ActionPanel.Section>
           <OpenInHermesDesktopAction session={info} />
           <CopySessionIdAction session={info} />
+          <OpenModelsAction />
         </ActionPanel.Section>
 
         <ActionPanel.Section>

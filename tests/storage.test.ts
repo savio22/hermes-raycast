@@ -18,11 +18,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import "./helpers/module-hooks.mjs";
-import { Cache, __localStorageSnapshot, __resetRaycastState } from "./helpers/raycast-api-stub.mjs";
+import {
+  Cache,
+  LocalStorage,
+  __localStorageSnapshot,
+  __resetRaycastState,
+  __setLocalStorageHooks,
+} from "./helpers/raycast-api-stub.mjs";
 
 const {
   CacheKeys,
   StorageKeys,
+  cachedFetch,
   cacheRead,
   cacheWrite,
   forgetRun,
@@ -32,6 +39,13 @@ const {
   saveRunResult,
   updateStoredRun,
   updateStoredRuns,
+  listQueuedTurns,
+  rememberQueuedTurn,
+  removeQueuedTurn,
+  StoragePersistenceError,
+  saveApprovalRequest,
+  loadApprovalRequest,
+  clearApprovalRequest,
 } = await import("../src/lib/storage.ts");
 
 type StoredRun = Awaited<ReturnType<typeof listStoredRuns>>[number];
@@ -53,7 +67,7 @@ function run(runId: string, overrides: Partial<StoredRun> = {}): StoredRun {
 
 test("o índice guarda no máximo 20 execuções, descartando as mais antigas", async () => {
   __resetRaycastState();
-  for (let i = 0; i < 25; i++) await rememberRun(run(`run_${i}`));
+  for (let i = 0; i < 25; i++) await rememberRun(run(`run_${i}`, { lastKnownStatus: "completed" }));
 
   const runs = await listStoredRuns();
   assert.equal(runs.length, 20);
@@ -76,7 +90,7 @@ test("regravar o mesmo run_id atualiza a entrada em vez de duplicar", async () =
 test("execuções com mais de 7 dias somem da leitura", async () => {
   __resetRaycastState();
   await rememberRun(run("recente", { createdAt: Date.now() - 6 * DAY_MS }));
-  await rememberRun(run("vencida", { createdAt: Date.now() - 8 * DAY_MS }));
+  await rememberRun(run("vencida", { createdAt: Date.now() - 8 * DAY_MS, lastKnownStatus: "completed" }));
 
   const ids = (await listStoredRuns()).map((r) => r.runId);
   assert.deepEqual(ids.sort(), ["recente"]);
@@ -84,7 +98,7 @@ test("execuções com mais de 7 dias somem da leitura", async () => {
 
 test("a poda de 7 dias não deixa o registro vencido ressuscitar numa gravação seguinte", async () => {
   __resetRaycastState();
-  await rememberRun(run("vencida", { createdAt: Date.now() - 8 * DAY_MS }));
+  await rememberRun(run("vencida", { createdAt: Date.now() - 8 * DAY_MS, lastKnownStatus: "completed" }));
   await rememberRun(run("nova"));
 
   const bruto = __localStorageSnapshot()[StorageKeys.runIndex] ?? "[]";
@@ -215,4 +229,200 @@ test("um envelope corrompido no Cache não derruba a leitura", () => {
   new Cache({ namespace: "hermes" }).set(CacheKeys.capabilities, "{ isto não é json");
 
   assert.equal(cacheRead(CacheKeys.capabilities, 60_000), undefined);
+});
+
+test("cachedFetch compartilha loader em voo por chave e permite nova tentativa após falha", async () => {
+  __resetRaycastState();
+  let calls = 0;
+  let release!: () => void;
+  const suspended = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const loader = async (): Promise<{ ok: boolean }> => {
+    calls += 1;
+    await suspended;
+    return { ok: true };
+  };
+
+  const first = cachedFetch("dedupe", 60_000, loader);
+  const second = cachedFetch("dedupe", 60_000, loader);
+  await Promise.resolve();
+  assert.equal(calls, 1, "duas telas concorrentes iniciaram loaders duplicados");
+  release();
+  assert.deepEqual(await Promise.all([first, second]), [{ ok: true }, { ok: true }]);
+
+  let failedCalls = 0;
+  await assert.rejects(
+    () =>
+      cachedFetch("retry-after-failure", 60_000, async () => {
+        failedCalls += 1;
+        throw new Error("falha transitória");
+      }),
+    /falha transitória/,
+  );
+  assert.deepEqual(
+    await cachedFetch("retry-after-failure", 60_000, async () => {
+      failedCalls += 1;
+      return { ok: true };
+    }),
+    { ok: true },
+  );
+  assert.equal(failedCalls, 2, "a falha ficou presa no cache de voo");
+});
+
+test("cachedFetch registra o voo antes de um loader reentrante", async () => {
+  __resetRaycastState();
+  let calls = 0;
+  let reentrant: Promise<{ ok: boolean }> | undefined;
+  const loader = async (): Promise<{ ok: boolean }> => {
+    calls += 1;
+    if (reentrant === undefined) reentrant = cachedFetch("reentrant", 60_000, loader);
+    return { ok: true };
+  };
+
+  const result = await cachedFetch("reentrant", 60_000, loader);
+  assert.equal(calls, 1, "a reentrada síncrona iniciou um segundo loader");
+  assert.deepEqual(await reentrant, result, "a reentrada não compartilhou a Promise em voo");
+});
+
+test("fixture antiga migra para schema V2 sem perder a run", async () => {
+  __resetRaycastState();
+  await LocalStorage.setItem(
+    StorageKeys.runIndex,
+    JSON.stringify([
+      {
+        runId: "old",
+        sessionId: "s1",
+        promptPreview: "pergunta antiga",
+        createdAt: Date.now(),
+        lastKnownStatus: "running",
+        baseUrl: "http://127.0.0.1:8642",
+      },
+    ]),
+  );
+
+  const [stored] = await listStoredRuns();
+  assert.equal(stored?.schemaVersion, 2);
+  assert.equal(stored?.status, "running");
+  assert.equal(stored?.transportPhase, "reconciling");
+  assert.equal(
+    (JSON.parse(__localStorageSnapshot()[StorageKeys.runIndex] ?? "[]")[0] as { schemaVersion?: number }).schemaVersion,
+    2,
+  );
+});
+
+test("retenção preserva todas as runs não terminais mesmo além do limite antigo", async () => {
+  __resetRaycastState();
+  for (let i = 0; i < 30; i++) {
+    await rememberRun(run(`active_${i}`, { lastKnownStatus: "running" }));
+  }
+  assert.equal((await listStoredRuns()).length, 30);
+});
+
+test("mutex por chave não perde patches concorrentes", async () => {
+  __resetRaycastState();
+  await rememberRun(run("r1"));
+  await rememberRun(run("r2"));
+  let writes = 0;
+  __setLocalStorageHooks({
+    setItem: async () => {
+      writes += 1;
+      await Promise.resolve();
+    },
+  });
+  await Promise.all([
+    updateStoredRun("r1", { lastKnownStatus: "completed" }),
+    updateStoredRun("r2", { lastKnownStatus: "failed" }),
+  ]);
+  __setLocalStorageHooks({});
+  const byId = new Map((await listStoredRuns()).map((stored) => [stored.runId, stored]));
+  assert.equal(byId.get("r1")?.status, "completed");
+  assert.equal(byId.get("r2")?.status, "failed");
+  assert.ok(writes >= 2);
+});
+
+test("fila local é idempotente e restaura por conversa", async () => {
+  __resetRaycastState();
+  await rememberQueuedTurn({ schemaVersion: 1, id: "t1", sessionId: "s1", message: "uma", createdAt: 1 });
+  await rememberQueuedTurn({ schemaVersion: 1, id: "t1", sessionId: "s1", message: "uma corrigida", createdAt: 2 });
+  await rememberQueuedTurn({ schemaVersion: 1, id: "t2", sessionId: "s2", message: "outra", createdAt: 3 });
+  assert.deepEqual(
+    (await listQueuedTurns("s1")).map((item) => item.message),
+    ["uma corrigida"],
+  );
+  await removeQueuedTurn("t1");
+  assert.deepEqual(await listQueuedTurns("s1"), []);
+});
+
+test("gravação aceita falha transitória e tenta novamente sem duplicar", async () => {
+  __resetRaycastState();
+  let failures = 0;
+  __setLocalStorageHooks({
+    setItem: async () => {
+      if (failures < 2) {
+        failures += 1;
+        throw new Error("disco ocupado");
+      }
+    },
+  });
+  await rememberRun(run("retry"));
+  __setLocalStorageHooks({});
+  assert.equal(failures, 2);
+  assert.equal((await listStoredRuns()).filter((stored) => stored.runId === "retry").length, 1);
+});
+
+test("falha persistente de LocalStorage é visível e não finge que a run não existe", async () => {
+  __resetRaycastState();
+  __setLocalStorageHooks({
+    setItem: async () => {
+      throw new Error("sem espaço");
+    },
+  });
+  await assert.rejects(() => rememberRun(run("lost")), StoragePersistenceError);
+  __setLocalStorageHooks({});
+});
+
+test("marcas de persistência pendente não se sobrescrevem entre runs", async () => {
+  __resetRaycastState();
+  __setLocalStorageHooks({
+    setItem: async (key: string) => {
+      if (key === StorageKeys.runIndex) throw new Error("índice indisponível");
+    },
+  });
+  await assert.rejects(() => rememberRun(run("lost_1")), StoragePersistenceError);
+  await assert.rejects(() => rememberRun(run("lost_2")), StoragePersistenceError);
+  __setLocalStorageHooks({});
+
+  await rememberRun(run("saved"));
+  const pending = JSON.parse(__localStorageSnapshot()[StorageKeys.pendingRunWrites] ?? "{}") as Record<string, number>;
+  assert.deepEqual(Object.keys(pending).sort(), ["lost_1", "lost_2"]);
+});
+
+test("aprovação: gravar e limpar no mesmo tique não deixa registro órfão", async () => {
+  __resetRaycastState();
+  // Aprovação automática: `approval.request` e `approval.responded` chegam no mesmo burst
+  // do stream. O `setItem` é lento (retryStorage + IPC) e o `removeItem` é rápido — sem
+  // serialização por chave, a gravação pousa DEPOIS do apagamento e sobrevive órfã.
+  __setLocalStorageHooks({
+    setItem: () => new Promise((resolve) => setTimeout(resolve, 20)),
+  });
+
+  const save = saveApprovalRequest({ runId: "run-1", choices: ["once", "deny"], receivedAt: Date.now() });
+  const clear = clearApprovalRequest("run-1");
+  await Promise.all([save, clear]);
+
+  __setLocalStorageHooks({});
+  assert.equal(await loadApprovalRequest("run-1"), undefined);
+  assert.equal(Object.keys(__localStorageSnapshot()).length, 0);
+});
+
+test("aprovação: limpar a chave de uma run não apaga a de outra", async () => {
+  __resetRaycastState();
+  await saveApprovalRequest({ runId: "run-a", choices: ["deny"], receivedAt: 1 });
+  await saveApprovalRequest({ runId: "run-b", choices: ["deny"], receivedAt: 2 });
+
+  await clearApprovalRequest("run-a");
+
+  assert.equal(await loadApprovalRequest("run-a"), undefined);
+  assert.equal((await loadApprovalRequest("run-b"))?.receivedAt, 2);
 });

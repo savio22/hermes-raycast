@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest a command, an action or a change in behavior
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [ROADMAP.md](../blob/HEAD/ROADMAP.md) first — some things are deliberately out of
+        scope, and some are already queued. Português é bem-vindo neste formulário.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The situation, not the solution. What breaks or slows you down today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+      description: If you already pictured a screen or an action, describe it.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Does this need Hermes to change?
+      options:
+        - No, it is all on the extension side
+        - Yes, Hermes would need to expose or change something
+        - Not sure
+    validations:
+      required: true

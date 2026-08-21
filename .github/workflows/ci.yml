@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Tests, types, lint and build
+    # Windows-first extension: the manifest declares "platforms": ["Windows"] and the
+    # release build path is Windows-specific, so CI runs where the product runs.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned on purpose. The test files are TypeScript run directly by
+          # `node --test` using native type stripping. On older Node the run fails
+          # with a syntax error that does not look like a version problem.
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Typecheck (src)
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Typecheck (tests)
+        run: npx tsc --noEmit -p tests/tsconfig.json
+
+      - name: ESLint
+        run: npx eslint src tests
+
+      - name: Raycast lint
+        run: npm run lint
+
+      - name: Raycast build
+        run: npm run build:dist

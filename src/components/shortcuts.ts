@@ -25,7 +25,7 @@ export const SHORTCUTS = {
   paste: { modifiers: ["ctrl", "shift"], key: "v" },
   /** `Continuar esta conversa`. */
   continueConversation: { modifiers: ["ctrl", "shift"], key: "return" },
-  /** `Nova conversa` / `Perguntar de novo`. */
+  /** `Nova conversa` / `Executar esta tarefa novamente`. */
   newConversation: Keyboard.Shortcut.Common.New,
   /** `Abrir no Hermes Desktop`. */
   openInDesktop: Keyboard.Shortcut.Common.Open,
@@ -76,4 +76,18 @@ export const SHORTCUTS = {
    * Não colide com nada da tabela §9.2 nem com o que o Raycast reserva.
    */
   loadOlder: { modifiers: ["ctrl", "shift"], key: "h" },
+  /**
+   * `Ver mensagens e ferramentas` — o detalhe da conversa, que virou ação secundária
+   * (desenho da conversa contínua §12).
+   *
+   * **Divide a tecla com `autoDetect`, e isso é deliberado.** O desenho fixou
+   * `Ctrl+Shift+D` para esta ação afirmando que ele estava livre; não estava. Mantivemos a
+   * decisão porque a §9.3 já admite o mesmo atalho com dois significados quando eles nunca
+   * aparecem na mesma tela — é assim que `Ctrl+Alt+C` serve a "Copiar detalhes técnicos" e
+   * a "Copiar conversa inteira". A separação aqui é real e precisa continuar sendo:
+   * `Detectar configuração automaticamente` só existe na tela de primeiro uso, na tela de
+   * conexão e no erro E2 em tela cheia — três telas que não têm conversa, e portanto não
+   * têm mensagens para ver. **Nunca coloque as duas ações no mesmo `ActionPanel`.**
+   */
+  viewMessages: { modifiers: ["ctrl", "shift"], key: "d" },
 } satisfies Record<string, Keyboard.Shortcut>;

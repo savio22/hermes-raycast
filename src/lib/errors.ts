@@ -355,6 +355,14 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
 
   switch (ctx.status) {
     case 401:
+      if (ctx.path.startsWith("/api/jobs")) {
+        return new HermesNotConfiguredError({
+          ...base,
+          userMessage: "As automações precisam de uma configuração válida do Hermes.",
+          recovery: "open_preferences",
+          uxId: "E2",
+        });
+      }
       // Único code observado: gateway_auth_failed / gateway_auth_error.
       return new HermesAuthError({
         ...base,
@@ -468,7 +476,7 @@ export function mapHttpError(ctx: HttpErrorContext): HermesError {
       if (code === "invalid_pagination") {
         return new HermesValidationError({
           ...base,
-          userMessage: "Não foi possível carregar esta parte do histórico.",
+          userMessage: "Não foi possível carregar esta parte da conversa.",
           recovery: "retry",
           retryable: true,
         });
@@ -720,6 +728,18 @@ export function toHermesError(err: unknown, context = ""): HermesError {
   const message = readString(record, "message") ?? String(err);
   const nodeCode = extractNodeCode(err);
   const technical = `${context}\n${name}: ${message}${nodeCode !== undefined ? `\ncode=${nodeCode}` : ""}`.trim();
+
+  if (name === "StoragePersistenceError") {
+    const userMessage =
+      readString(record, "userMessage") ?? "Não consegui salvar o estado local desta execução. Tente novamente.";
+    return new HermesServerError({
+      userMessage,
+      technical,
+      recovery: "retry",
+      retryable: true,
+      cause: err,
+    });
+  }
 
   if (name === "TimeoutError" || (nodeCode !== undefined && TIMEOUT_CODES.has(nodeCode))) {
     return new HermesTimeoutError({

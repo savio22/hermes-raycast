@@ -14,6 +14,7 @@
 let preferences = {};
 const localStorageStore = new Map();
 const cacheStore = new Map();
+let storageHooks = {};
 
 /* ─────────────────────── Controles usados pelos testes ─────────────────────── */
 
@@ -25,6 +26,11 @@ export function __resetRaycastState() {
   preferences = {};
   localStorageStore.clear();
   cacheStore.clear();
+  storageHooks = {};
+}
+
+export function __setLocalStorageHooks(next) {
+  storageHooks = { ...next };
 }
 
 export function __localStorageSnapshot() {
@@ -39,12 +45,15 @@ export function getPreferenceValues() {
 
 export const LocalStorage = {
   async getItem(key) {
+    if (storageHooks.getItem) await storageHooks.getItem(key);
     return localStorageStore.has(key) ? localStorageStore.get(key) : undefined;
   },
   async setItem(key, value) {
+    if (storageHooks.setItem) await storageHooks.setItem(key, value);
     localStorageStore.set(key, String(value));
   },
   async removeItem(key) {
+    if (storageHooks.removeItem) await storageHooks.removeItem(key);
     localStorageStore.delete(key);
   },
   async allItems() {

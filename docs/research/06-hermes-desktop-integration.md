@@ -1,11 +1,15 @@
 # 06 — Hermes Desktop ↔ Raycast integration: how Desktop talks to the backend, and what "syncing correctly" requires
 
 **Research date:** 2026-08-19
-**Method:** static read of the local source tree at `C:\Users\SAM\AppData\Local\hermes\hermes-agent` + live read-only probes of the running processes/ports on this machine.
+**Method:** static read of the local source tree at `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent` + live read-only probes of the running processes/ports on this machine.
 **Rule applied:** every non-obvious claim carries a `file:line` citation or is labelled from a live observation. Anything I could not verify is marked **UNVERIFIED**.
 **Adversarial fact-check pass (2026-08-19):** ~45 cited claims were re-read against the source at the exact line numbers, and the server-B live probes were re-run. Corrections applied in §2.3, §3.1, §4.3, §5.1, §6.2, §8.2, §10.4, §10.8, §10.9, §10.10, §12.6 and the §0 summary; the remaining citations resolved as written.
 
 > **Secrets policy note.** This document names *paths* and *config-key names* only. No token, key, or nonce value appears anywhere below.
+>
+> **Paths anonymized.** Before this repository was made public, the Windows account name in home
+> paths was replaced by `<usuario>` — so `C:\Users\<usuario>\AppData\Local\hermes`. That is the
+> only edit applied to the literal transcripts below; everything else is verbatim.
 
 ---
 
@@ -90,7 +94,7 @@ $ curl http://127.0.0.1:50596/health           -> 404 (server A uses /api/health
       "pid": 29256,
       "profile": "default",
       "startMarker": "win:639227626285258518",
-      "command": "C:\\Users\\SAM\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe -m hermes_cli.main serve --host 127.0.0.1 --port 0",
+      "command": "C:\\Users\\<usuario>\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe -m hermes_cli.main serve --host 127.0.0.1 --port 0",
       "parentPid": 32196,
       "parentStartMarker": "winms:1787165827570"
     }
@@ -260,9 +264,9 @@ if auth_header.startswith("Bearer "):
         return None  # Auth OK
 ```
 
-- Key source: `platforms.api_server.extra.key` in `config.yaml` if set, else the secret scope under key name `API_SERVER_KEY` — `self._api_key = extra.get("key", _get_scoped_secret("API_SERVER_KEY", ""))` (`api_server.py:1383`); named-profile requests re-resolve it through `get_secret("API_SERVER_KEY", "")` (`:1768`). On this machine `extra` holds only `host`/`port` (`config.yaml:555-560`) and the key name is present in `C:\Users\SAM\AppData\Local\hermes\.env` (confirmed the *key name* exists; value never read).
+- Key source: `platforms.api_server.extra.key` in `config.yaml` if set, else the secret scope under key name `API_SERVER_KEY` — `self._api_key = extra.get("key", _get_scoped_secret("API_SERVER_KEY", ""))` (`api_server.py:1383`); named-profile requests re-resolve it through `get_secret("API_SERVER_KEY", "")` (`:1768`). On this machine `extra` holds only `host`/`port` (`config.yaml:555-560`) and the key name is present in `C:\Users\<usuario>\AppData\Local\hermes\.env` (confirmed the *key name* exists; value never read).
 - The server **refuses to start** without a strong key: missing/placeholder/<16 chars → non-retryable fatal `api_server_key_invalid` (`api_server.py:7389-7426`, `:7437-7458`).
-- Port/host come from `config.yaml` → `platforms.api_server.extra.{host,port}`; on this machine `host: 127.0.0.1`, `port: 8642`, `enabled: true` (`C:\Users\SAM\AppData\Local\hermes\config.yaml:555-560`).
+- Port/host come from `config.yaml` → `platforms.api_server.extra.{host,port}`; on this machine `host: 127.0.0.1`, `port: 8642`, `enabled: true` (`C:\Users\<usuario>\AppData\Local\hermes\config.yaml:555-560`).
 
 ---
 
@@ -319,7 +323,7 @@ Desktop-created sessions therefore have **8-hex-char ids** and `source: 'desktop
 ### 6.1 Storage
 
 - **SQLite**, one DB per profile home: `DEFAULT_DB_PATH = get_hermes_home() / "state.db"` (`hermes_state.py:349`; runtime re-resolution `hermes_state.py:379-396`).
-- On this machine: `C:\Users\SAM\AppData\Local\hermes\state.db` (632 MB + `-wal` + `-shm`). Confirmed by the live `/api/status` field `"hermes_home": "C:\\Users\\SAM\\AppData\\Local\\hermes"`.
+- On this machine: `C:\Users\<usuario>\AppData\Local\hermes\state.db` (632 MB + `-wal` + `-shm`). Confirmed by the live `/api/status` field `"hermes_home": "C:\\Users\\<usuario>\\AppData\\Local\\hermes"`.
 - Server B opens **exactly that file**: `db = SessionDB(db_path=home / "state.db")` where `home = get_hermes_home()` (`gateway/platforms/api_server.py:2176-2195`, `:2212-2234`, `:2236-2266`). The docstring at `:2213-2216` says: *"Sessions are persisted to `state.db` so that `hermes sessions list` shows API-server conversations alongside CLI and gateway ones."*
 - Schema: `hermes_state_common.py:259-318` (`sessions`) and `:320-344` (`messages`). Notable columns: `id`, `source`, `session_key`, `model`, `model_config`, `system_prompt`, `parent_session_id`, `started_at`, `ended_at`, `message_count`, token/cost counters, `cwd`, `git_branch`, `title`, `last_activity_at`, `profile_name`, `archived`, `pinned`, `hidden`, `last_read_at`.
 
@@ -348,7 +352,7 @@ Desktop-created sessions therefore have **8-hex-char ids** and `source: 'desktop
 A profile **is a Hermes home directory**. Resolution (`hermes_cli/profiles.py:2472-2492`):
 
 ```
-profile "default"      -> HERMES_HOME root            e.g. C:\Users\SAM\AppData\Local\hermes
+profile "default"      -> HERMES_HOME root            e.g. C:\Users\<usuario>\AppData\Local\hermes
 profile "<name>"       -> <root>\profiles\<name>      e.g. …\hermes\profiles\coder   (must already exist, else FileNotFoundError)
 ```
 
@@ -400,7 +404,7 @@ Both require (a) the ephemeral port and (b) the ephemeral token — the same two
 
 ### 8.2 Plugins are JS bundles loaded inside the app
 
-`apps/desktop/src/plugins/README.md:1-16`: bundled plugins are `<name>/plugin.{ts,tsx}` (default-exporting a `HermesPlugin`, registered by a vite glob in `../contrib/plugins.ts` — README `:3-5`) compiled into the app; user/agent plugins load at runtime from `$HERMES_HOME/desktop-plugins/<name>/plugin.js`. Install tooling clones them from git (`apps/desktop/electron/desktop-plugin-install.ts:1-5`). On this machine `C:\Users\SAM\AppData\Local\hermes\desktop-plugins\` and `…\plugins\` are both empty.
+`apps/desktop/src/plugins/README.md:1-16`: bundled plugins are `<name>/plugin.{ts,tsx}` (default-exporting a `HermesPlugin`, registered by a vite glob in `../contrib/plugins.ts` — README `:3-5`) compiled into the app; user/agent plugins load at runtime from `$HERMES_HOME/desktop-plugins/<name>/plugin.js`. Install tooling clones them from git (`apps/desktop/electron/desktop-plugin-install.ts:1-5`). On this machine `C:\Users\<usuario>\AppData\Local\hermes\desktop-plugins\` and `…\plugins\` are both empty.
 
 > A **Hermes desktop plugin** is a legitimate alternative integration story — it would run *inside* Desktop with full access to `hermesApi`/`pluginSocket`. But that is a Hermes plugin, not a Raycast extension, and it cannot be driven from Raycast. Out of scope for this project unless the plan changes.
 
@@ -508,7 +512,7 @@ The `hermes gateway run` process (and therefore port 8642) is **detached** — i
 ### 10.1 `GET /api/status` — Desktop backend, unauthenticated (live capture, port 50596, 2026-08-19)
 
 ```json
-{"version":"0.20.4","release_date":"2026.8.18","config_version":37,"latest_config_version":37,"can_update_hermes":true,"gateway_running":true,"gateway_state":"running","gateway_platforms":{"api_server":{"state":"connected","error_code":null,"error_message":null,"updated_at":"2026-08-19T11:54:38.458449+00:00"},"webhook":{"state":"connected","error_code":null,"error_message":null,"updated_at":"2026-08-19T11:54:38.468761+00:00"}},"gateway_exit_reason":null,"gateway_updated_at":"2026-08-19T11:54:38.480444+00:00","active_agents":0,"gateway_busy":false,"gateway_drainable":true,"restart_drain_timeout":180.0,"active_sessions":0,"auth_required":false,"auth_providers":[],"auth_flows":[],"nous_session_valid":"unknown","install_id":"0bd29ccb96f747fca93e017bcf4140a2","components":{"gateway":{"status":"ok","state":"running"},"dashboard":{"status":"ok","recent_unhandled_errors":0,"last_error_at":null,"selftest":"ok"},"storage":{"status":"ok"},"platforms":{"status":"ok","configured":2,"connected":2}},"overall":"ok","memory":{"pressure":"unknown","gateway_rss_mb":null,"system_total_mb":null,"system_available_mb":null,"swap_used_mb":null,"sampled_at":null,"last_boot_unclean":true,"last_boot_suspected_oom":false,"boot_id":"2026-08-19T11:54:33.644874+00:00"},"disk":{"pressure":"ok","total_mb":487306,"free_mb":91356,"used_percent":81.3},"profiles":["default"],"gateway_mode":"single","hermes_home":"C:\\Users\\SAM\\AppData\\Local\\hermes","config_path":"C:\\Users\\SAM\\AppData\\Local\\hermes\\config.yaml","env_path":"C:\\Users\\SAM\\AppData\\Local\\hermes\\.env","gateway_pid":25936,"gateway_health_url":null,"gateways":[{"profile":"default","ports":{"api_server":8642,"webhook":8644}}]}
+{"version":"0.20.4","release_date":"2026.8.18","config_version":37,"latest_config_version":37,"can_update_hermes":true,"gateway_running":true,"gateway_state":"running","gateway_platforms":{"api_server":{"state":"connected","error_code":null,"error_message":null,"updated_at":"2026-08-19T11:54:38.458449+00:00"},"webhook":{"state":"connected","error_code":null,"error_message":null,"updated_at":"2026-08-19T11:54:38.468761+00:00"}},"gateway_exit_reason":null,"gateway_updated_at":"2026-08-19T11:54:38.480444+00:00","active_agents":0,"gateway_busy":false,"gateway_drainable":true,"restart_drain_timeout":180.0,"active_sessions":0,"auth_required":false,"auth_providers":[],"auth_flows":[],"nous_session_valid":"unknown","install_id":"0bd29ccb96f747fca93e017bcf4140a2","components":{"gateway":{"status":"ok","state":"running"},"dashboard":{"status":"ok","recent_unhandled_errors":0,"last_error_at":null,"selftest":"ok"},"storage":{"status":"ok"},"platforms":{"status":"ok","configured":2,"connected":2}},"overall":"ok","memory":{"pressure":"unknown","gateway_rss_mb":null,"system_total_mb":null,"system_available_mb":null,"swap_used_mb":null,"sampled_at":null,"last_boot_unclean":true,"last_boot_suspected_oom":false,"boot_id":"2026-08-19T11:54:33.644874+00:00"},"disk":{"pressure":"ok","total_mb":487306,"free_mb":91356,"used_percent":81.3},"profiles":["default"],"gateway_mode":"single","hermes_home":"C:\\Users\\<usuario>\\AppData\\Local\\hermes","config_path":"C:\\Users\\<usuario>\\AppData\\Local\\hermes\\config.yaml","env_path":"C:\\Users\\<usuario>\\AppData\\Local\\hermes\\.env","gateway_pid":25936,"gateway_health_url":null,"gateways":[{"profile":"default","ports":{"api_server":8642,"webhook":8644}}]}
 ```
 
 Useful fields: `hermes_home`, `profiles`, `gateways[].ports.api_server` (= where Raycast should talk), `gateway_running`.

@@ -28,6 +28,8 @@
         "perguntar",
         "pergunta",
         "chat",
+        "nova mensagem",
+        "continuar conversa",
         "agente"
       ],
       "arguments": [
@@ -50,6 +52,9 @@
         "hermes",
         "conversas",
         "historico",
+        "histórico",
+        "histórico de conversas",
+        "continuar conversa",
         "chats",
         "sessoes"
       ]
@@ -64,6 +69,7 @@
       "keywords": [
         "hermes",
         "tarefa",
+        "nova tarefa",
         "executar",
         "run",
         "agente"
@@ -81,7 +87,7 @@
       "name": "active-runs",
       "title": "Execuções do Hermes",
       "subtitle": "Hermes",
-      "description": "Acompanhe as tarefas em andamento, responda pedidos de aprovação e reabra resultados recentes.",
+      "description": "Acompanhe tarefas em andamento, responda pedidos de aprovação e reabra resultados recentes.",
       "icon": "cmd-active-runs.png",
       "mode": "view",
       "keywords": [
@@ -89,6 +95,12 @@
         "execucoes",
         "andamento",
         "aprovacao",
+        "pendentes",
+        "tarefas pendentes",
+        "tarefas em execução",
+        "aguardando aprovação",
+        "aprovação pendente",
+        "aprovações",
         "status"
       ]
     },
@@ -96,13 +108,15 @@
       "name": "models",
       "title": "Modelos do Hermes",
       "subtitle": "Hermes",
-      "description": "Veja os modelos disponíveis no seu Hermes e escolha qual usar por padrão.",
+      "description": "Veja os modelos disponíveis no seu Hermes e escolha qual usar por padrão. Atalhos podem ser definidos nas configurações do Raycast.",
       "icon": "cmd-models.png",
       "mode": "view",
       "keywords": [
         "hermes",
         "modelos",
         "modelo",
+        "escolher modelo",
+        "trocar modelo",
         "provider",
         "ia"
       ]
@@ -135,6 +149,144 @@
         "conectar",
         "chave",
         "ajustes"
+      ]
+    },
+    {
+      "name": "ask-selection",
+      "title": "Perguntar sobre seleção",
+      "subtitle": "Hermes",
+      "description": "Pergunte ao Hermes sobre o texto que você selecionou ou copiou, sem sair do que estava fazendo.",
+      "icon": "cmd-ask-selection.png",
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "pergunta",
+          "type": "text",
+          "placeholder": "O que você quer saber?",
+          "required": false
+        }
+      ],
+      "keywords": [
+        "hermes",
+        "selecao",
+        "texto",
+        "perguntar",
+        "explicar"
+      ]
+    },
+    {
+      "name": "summarize-clipboard",
+      "title": "Resumir clipboard",
+      "subtitle": "Hermes",
+      "description": "Resuma em tópicos o texto que você acabou de copiar.",
+      "icon": "cmd-summarize-clipboard.png",
+      "mode": "view",
+      "keywords": [
+        "hermes",
+        "resumir",
+        "resumo",
+        "clipboard",
+        "texto"
+      ]
+    },
+    {
+      "name": "fix-clipboard",
+      "title": "Corrigir texto do clipboard",
+      "subtitle": "Hermes",
+      "description": "Corrija ortografia, gramática e pontuação do texto copiado, sem comentários.",
+      "icon": "cmd-fix-clipboard.png",
+      "mode": "view",
+      "keywords": [
+        "hermes",
+        "corrigir",
+        "revisar",
+        "ortografia",
+        "clipboard"
+      ]
+    },
+    {
+      "name": "translate-clipboard",
+      "title": "Traduzir clipboard",
+      "subtitle": "Hermes",
+      "description": "Traduza o texto copiado entre português e inglês, ou para o idioma que você pedir.",
+      "icon": "cmd-translate-clipboard.png",
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "idioma",
+          "type": "text",
+          "placeholder": "Para qual idioma? Ex.: espanhol",
+          "required": false
+        }
+      ],
+      "keywords": [
+        "hermes",
+        "traduzir",
+        "traducao",
+        "idioma",
+        "clipboard"
+      ]
+    },
+    {
+      "name": "paste-answer",
+      "title": "Colar última resposta",
+      "subtitle": "Hermes",
+      "description": "Cole a resposta mais recente do Hermes no aplicativo em que você está.",
+      "icon": "cmd-paste-answer.png",
+      "mode": "no-view",
+      "keywords": [
+        "hermes",
+        "colar",
+        "resposta",
+        "reutilizar resposta",
+        "copiar última resposta",
+        "ultima",
+        "clipboard"
+      ]
+    },
+    {
+      "name": "skills",
+      "title": "Skills do Hermes",
+      "subtitle": "Hermes",
+      "description": "Veja quais skills estão habilitadas no seu Hermes e o que cada uma faz.",
+      "icon": "cmd-skills.png",
+      "mode": "view",
+      "keywords": [
+        "hermes",
+        "skills",
+        "skill",
+        "habilidades",
+        "recursos"
+      ]
+    },
+    {
+      "name": "toolsets",
+      "title": "Ferramentas do Hermes",
+      "subtitle": "Hermes",
+      "description": "Veja os grupos de ferramentas do seu Hermes e quais estão prontos para usar.",
+      "icon": "cmd-toolsets.png",
+      "mode": "view",
+      "keywords": [
+        "hermes",
+        "ferramentas",
+        "toolsets",
+        "grupos",
+        "integracoes"
+      ]
+    },
+    {
+      "name": "jobs",
+      "title": "Automações do Hermes",
+      "subtitle": "Hermes",
+      "description": "Acompanhe as automações do Hermes, pause, retome ou rode uma delas na hora.",
+      "icon": "cmd-jobs.png",
+      "mode": "view",
+      "keywords": [
+        "hermes",
+        "automacoes",
+        "agendamento",
+        "tarefas",
+        "cron"
       ]
     }
   ],

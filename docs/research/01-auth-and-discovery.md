@@ -2,7 +2,7 @@
 
 **Research date:** 2026-08-19
 **Hermes Agent version (live):** `0.20.4` (observed in `GET /health`)
-**Source root (read-only reference):** `C:\Users\SAM\AppData\Local\hermes\hermes-agent`
+**Source root (read-only reference):** `C:\Users\<usuario>\AppData\Local\hermes\hermes-agent`
 **Primary file:** `gateway\platforms\api_server.py` (7638 lines)
 **Live server probed:** `http://127.0.0.1:8642` (api_server) and `http://127.0.0.1:8644` (webhook)
 
@@ -10,6 +10,10 @@
 > Hermes source, or (b) a literal transcript of an HTTP response or file read observed on this
 > machine on 2026-08-19. Anything not verifiable is explicitly marked **UNVERIFIED**.
 > No secret value is reproduced anywhere in this document — only paths and key *names*.
+>
+> **Paths anonymized.** Before this repository was made public, the Windows account name in home
+> paths was replaced by `<usuario>` — so `C:\Users\<usuario>\AppData\Local\hermes`. That is the
+> only edit applied to the literal transcripts below; everything else is verbatim.
 >
 > **Adversarial fact-check pass, 2026-08-19.** Every `file:line` citation below was re-opened
 > against the on-disk source and the live server was re-probed. Corrected in this pass: the
@@ -29,8 +33,8 @@
 | Question | Answer |
 |---|---|
 | Auth scheme | `Authorization: Bearer <API_SERVER_KEY>` — **the only accepted form** |
-| Where the key lives on this machine | `C:\Users\SAM\AppData\Local\hermes\.env`, line 478, key name `API_SERVER_KEY` |
-| Config file | `C:\Users\SAM\AppData\Local\hermes\config.yaml` (verified to exist) |
+| Where the key lives on this machine | `C:\Users\<usuario>\AppData\Local\hermes\.env`, line 478, key name `API_SERVER_KEY` |
+| Config file | `C:\Users\<usuario>\AppData\Local\hermes\config.yaml` (verified to exist) |
 | Config key path for port/host | `platforms.api_server.extra.port` / `platforms.api_server.extra.host` |
 | Config key path for the key | `platforms.api_server.extra.key` (**absent** in this install — key comes from `.env`) |
 | Default bind | `127.0.0.1:8642` (`DEFAULT_HOST`/`DEFAULT_PORT`, `api_server.py:151-152`) |
@@ -399,23 +403,23 @@ def _get_platform_default_hermes_home() -> Path:
 **Resolved for THIS user/machine (verified on disk):**
 
 ```
-HERMES_HOME  = C:\Users\SAM\AppData\Local\hermes          (env var IS set; also equals the platform default)
-config.yaml  = C:\Users\SAM\AppData\Local\hermes\config.yaml     ← EXISTS (15575 bytes, mtime 2026-08-19 16:07)
-.env         = C:\Users\SAM\AppData\Local\hermes\.env            ← EXISTS (23370 bytes, mtime 2026-08-10 21:27)
+HERMES_HOME  = C:\Users\<usuario>\AppData\Local\hermes          (env var IS set; also equals the platform default)
+config.yaml  = C:\Users\<usuario>\AppData\Local\hermes\config.yaml     ← EXISTS (15575 bytes, mtime 2026-08-19 16:07)
+.env         = C:\Users\<usuario>\AppData\Local\hermes\.env            ← EXISTS (23370 bytes, mtime 2026-08-10 21:27)
 ```
 
 The `HERMES_HOME` env var is also hard-coded into the gateway service launcher
-`C:\Users\SAM\AppData\Local\hermes\gateway-service\Hermes_Gateway.cmd`:
+`C:\Users\<usuario>\AppData\Local\hermes\gateway-service\Hermes_Gateway.cmd`:
 
 ```bat
-set "HERMES_HOME=C:\Users\SAM\AppData\Local\hermes"
+set "HERMES_HOME=C:\Users\<usuario>\AppData\Local\hermes"
 ```
 
 and recorded inside `gateway.pid` / `gateway.lock` as `"hermes_home"` (see §4.3).
 
 ### 2.7 Where the key actually is on THIS machine
 
-- **File:** `C:\Users\SAM\AppData\Local\hermes\.env`
+- **File:** `C:\Users\<usuario>\AppData\Local\hermes\.env`
 - **Line:** 478
 - **Key name:** `API_SERVER_KEY`
 - **Value:** *not reproduced.* (Observed length: 36 characters — comfortably above the
@@ -423,7 +427,7 @@ and recorded inside `gateway.pid` / `gateway.lock` as `"hermes_home"` (see §4.3
 - **Not** present in `config.yaml`: the `platforms.api_server` block there contains only
   `enabled`, `extra.host`, `extra.port` (see §3.4).
 - **Not** present in `auth.json`: a key-name walk of
-  `C:\Users\SAM\AppData\Local\hermes\auth.json` produced **no** `api_server`-related entries.
+  `C:\Users\<usuario>\AppData\Local\hermes\auth.json` produced **no** `api_server`-related entries.
 
 **Recommended read strategy for the Raycast extension** (in order):
 
@@ -515,7 +519,7 @@ precedence is `hermes_cli/web_server.py:13001-13007`; the implementation is `:13
 
 ### 3.4 Live values on this machine (verified)
 
-`C:\Users\SAM\AppData\Local\hermes\config.yaml`, lines 556-562:
+`C:\Users\<usuario>\AppData\Local\hermes\config.yaml`, lines 556-562:
 
 ```yaml
   api_server:
@@ -562,7 +566,7 @@ On success (`api_server.py:7576-7579`):
 ```
 
 This line goes to the gateway logger, **not** to any file the extension can rely on being
-present or parseable. (Hermes log dir: `C:\Users\SAM\AppData\Local\hermes\logs\` — **UNVERIFIED**
+present or parseable. (Hermes log dir: `C:\Users\<usuario>\AppData\Local\hermes\logs\` — **UNVERIFIED**
 whether this exact line lands there in a stable, greppable format; do not build discovery on it.)
 
 ---
@@ -577,7 +581,7 @@ runtime state files record PID and platform *states* but not ports.
 
 ### 4.2 `%APPDATA%\Hermes\backend-ownership.json` — **does NOT contain the api_server port**
 
-- **Path:** `C:\Users\SAM\AppData\Roaming\Hermes\backend-ownership.json`
+- **Path:** `C:\Users\<usuario>\AppData\Roaming\Hermes\backend-ownership.json`
 - **Writer:** the Electron desktop app —
   `apps/desktop/electron/main.ts:768` defines
   `const DESKTOP_BACKEND_OWNERSHIP_PATH = path.join(app.getPath('userData'), 'backend-ownership.json')`,
@@ -593,7 +597,7 @@ runtime state files record PID and platform *states* but not ports.
       "pid": 29256,
       "profile": "default",
       "startMarker": "win:639227626285258518",
-      "command": "C:\\Users\\SAM\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe -m hermes_cli.main serve --host 127.0.0.1 --port 0",
+      "command": "C:\\Users\\<usuario>\\AppData\\Local\\hermes\\hermes-agent\\venv\\Scripts\\python.exe -m hermes_cli.main serve --host 127.0.0.1 --port 0",
       "parentPid": 32196,
       "parentStartMarker": "winms:1787165827570"
     }
@@ -655,7 +659,7 @@ function makeDashboardReadyFile() {
 }
 ```
 
-- **Would-be path:** `C:\Users\SAM\AppData\Roaming\Hermes\backend-ready\dashboard-<pid>-<epochms>-<12hex>.json`
+- **Would-be path:** `C:\Users\<usuario>\AppData\Roaming\Hermes\backend-ready\dashboard-<pid>-<epochms>-<12hex>.json`
 - **Content shape:** `{"port":54321}`
 - **Only written when `HERMES_DESKTOP_READY_FILE` is set** (`main.ts:10124`, `10488`:
   `...(readyFile ? { HERMES_DESKTOP_READY_FILE: readyFile } : {})`), which itself is gated on
@@ -674,41 +678,41 @@ Path helpers: `gateway/status.py:217-220` (`_get_pid_path` → `<HERMES_HOME>/ga
 `_get_process_hermes_home` (`gateway/status.py:132-145`) deliberately reads only the process
 `HERMES_HOME` env var / platform default (never the contextvar override).
 
-**`C:\Users\SAM\AppData\Local\hermes\gateway_state.json` (verbatim, 2026-08-19):**
+**`C:\Users\<usuario>\AppData\Local\hermes\gateway_state.json` (verbatim, 2026-08-19):**
 
 ```json
-{"pid":25936,"kind":"hermes-gateway","argv":["C:\\Users\\SAM\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\main.py","gateway","run"],"start_time":178714045295,"gateway_state":"running","exit_reason":null,"restart_requested":false,"active_agents":0,"platforms":{"api_server":{"state":"connected","error_code":null,"error_message":null,"updated_at":"2026-08-19T11:54:38.458449+00:00","writer_pid":25936,"writer_start_time":178714045295},"webhook":{"state":"connected","error_code":null,"error_message":null,"updated_at":"2026-08-19T11:54:38.468761+00:00","writer_pid":25936,"writer_start_time":178714045295}},"updated_at":"2026-08-19T11:54:38.480444+00:00"}
+{"pid":25936,"kind":"hermes-gateway","argv":["C:\\Users\\<usuario>\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\main.py","gateway","run"],"start_time":178714045295,"gateway_state":"running","exit_reason":null,"restart_requested":false,"active_agents":0,"platforms":{"api_server":{"state":"connected","error_code":null,"error_message":null,"updated_at":"2026-08-19T11:54:38.458449+00:00","writer_pid":25936,"writer_start_time":178714045295},"webhook":{"state":"connected","error_code":null,"error_message":null,"updated_at":"2026-08-19T11:54:38.468761+00:00","writer_pid":25936,"writer_start_time":178714045295}},"updated_at":"2026-08-19T11:54:38.480444+00:00"}
 ```
 
 → **`platforms.api_server.state === "connected"` is a first-class "the API server is up" signal.
 It contains NO port.** Dead states are `_PLATFORM_DEAD_STATES = frozenset({"fatal",
 "disconnected", "stopped"})` (`hermes_cli/web_server.py:3093`).
 
-**`C:\Users\SAM\AppData\Local\hermes\gateway.pid` (verbatim):**
+**`C:\Users\<usuario>\AppData\Local\hermes\gateway.pid` (verbatim):**
 
 ```json
-{"pid": 25936, "kind": "hermes-gateway", "argv": ["C:\\Users\\SAM\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\main.py", "gateway", "run"], "start_time": 178714045295, "hermes_home": "C:\\Users\\SAM\\AppData\\Local\\hermes"}
+{"pid": 25936, "kind": "hermes-gateway", "argv": ["C:\\Users\\<usuario>\\AppData\\Local\\hermes\\hermes-agent\\hermes_cli\\main.py", "gateway", "run"], "start_time": 178714045295, "hermes_home": "C:\\Users\\<usuario>\\AppData\\Local\\hermes"}
 ```
 
-**`C:\Users\SAM\AppData\Local\hermes\gateway.lock`** — byte-identical content to `gateway.pid`
+**`C:\Users\<usuario>\AppData\Local\hermes\gateway.lock`** — byte-identical content to `gateway.pid`
 in this observation.
 
 > `gateway.pid` is the single best source of **which `HERMES_HOME` the running gateway is using**
 > (`"hermes_home"` field). Use it to pick the right `config.yaml` / `.env` when profiles are in play.
 
-**`C:\Users\SAM\AppData\Local\hermes\state\gateway.heartbeat`:**
+**`C:\Users\<usuario>\AppData\Local\hermes\state\gateway.heartbeat`:**
 
 ```json
 {"pid": 25936, "updated_at": "2026-08-19T19:31:02.880730+00:00", "monotonic": 27663.5, "start_time": 1787140473.6171312}
 ```
 
-**`C:\Users\SAM\AppData\Local\hermes\state\gateway.lifecycle.json`:**
+**`C:\Users\<usuario>\AppData\Local\hermes\state\gateway.lifecycle.json`:**
 
 ```json
 {"phase": "running", "pid": 25936, "start_time": 1787140473.644875, "started_at": "2026-08-19T11:54:33.644874+00:00", "prior_unclean_exit": true}
 ```
 
-**`C:\Users\SAM\AppData\Local\hermes\processes.json`:** `[]` (empty).
+**`C:\Users\<usuario>\AppData\Local\hermes\processes.json`:** `[]` (empty).
 
 Caveat: `HERMES_GATEWAY_LOCK_DIR` (`gateway/status.py:236-242`) relocates only the *token-scoped
 lock* directory (default `$XDG_STATE_HOME/hermes/<locks dir>`), **not** `gateway.pid` /
@@ -716,7 +720,7 @@ lock* directory (default `$XDG_STATE_HOME/hermes/<locks dir>`), **not** `gateway
 
 ### 4.4 `%APPDATA%\Hermes\connections.json` — no port for the local case
 
-- **Path:** `C:\Users\SAM\AppData\Roaming\Hermes\connections.json`
+- **Path:** `C:\Users\<usuario>\AppData\Roaming\Hermes\connections.json`
 - **Declared at:** `apps/desktop/electron/main.ts:764`
 - **Observed contents (verbatim):**
 
@@ -742,7 +746,7 @@ shapes like `{ id: 'spark', kind: 'remote', label: 'Spark', url: 'http://spark:8
 there is no URL at all. **Not usable for local port discovery**, but it IS the right place to
 detect that the user has configured a remote Hermes and to reuse that URL.
 
-Related, `C:\Users\SAM\AppData\Local\hermes\desktop.json` (verbatim):
+Related, `C:\Users\<usuario>\AppData\Local\hermes\desktop.json` (verbatim):
 
 ```json
 {
@@ -1309,7 +1313,7 @@ Accept: application/json
 ```
 GET /v1/models HTTP/1.1
 Host: 127.0.0.1:8642
-Authorization: Bearer <API_SERVER_KEY from C:\Users\SAM\AppData\Local\hermes\.env line 478>
+Authorization: Bearer <API_SERVER_KEY from C:\Users\<usuario>\AppData\Local\hermes\.env line 478>
 Accept: application/json
 ```
 → `200` (body in §6.4)
@@ -1354,14 +1358,14 @@ const res = await fetch(`http://127.0.0.1:${port}/v1/models`, {   // 1. literal 
 
 - **UNVERIFIED:** whether the `"[api_server] API server listening on http://…"` log line
   (`api_server.py:7576-7579`) is persisted to a stable, parseable file under
-  `C:\Users\SAM\AppData\Local\hermes\logs\`. I did not read the log directory contents.
+  `C:\Users\<usuario>\AppData\Local\hermes\logs\`. I did not read the log directory contents.
   Do not build discovery on log scraping regardless.
 - **UNVERIFIED:** exact behavior of `hermes_cli/env_loader.py::load_hermes_dotenv` regarding
   override-vs-setdefault semantics for an already-present `os.environ` value. The call site
   comment at `gateway/run.py:1968-1969` says *"User-managed env files should override stale shell
   exports on restart"*, implying override, but I did not read `env_loader.py`.
 - **UNVERIFIED:** whether any Hermes-managed Windows service/scheduled task launches the gateway
-  with a different `HERMES_HOME` than `C:\Users\SAM\AppData\Local\hermes`. The observed
+  with a different `HERMES_HOME` than `C:\Users\<usuario>\AppData\Local\hermes`. The observed
   `gateway.pid` says it does not, and `gateway-service\Hermes_Gateway.cmd` hardcodes the same
   path.
 - **Not applicable here but possible elsewhere:** an install where the desktop app spawns the

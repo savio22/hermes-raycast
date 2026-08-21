@@ -10,7 +10,7 @@
  * é um literal que vai divergir na primeira revisão de texto: aqui ele tem um dono só.
  */
 
-import { Action, Icon, openExtensionPreferences } from "@raycast/api";
+import { Action, Icon, LaunchType, Toast, launchCommand, openExtensionPreferences, showToast } from "@raycast/api";
 import type { ReactElement } from "react";
 import { SHORTCUTS } from "./shortcuts";
 
@@ -30,6 +30,23 @@ export function OpenPreferencesAction(): ReactElement {
       onAction={openExtensionPreferences}
     />
   );
+}
+
+/** Abre o comando manifestado de modelos, mantendo a ação disponível em todas as telas. */
+export function OpenModelsAction(): ReactElement {
+  async function openModels(): Promise<void> {
+    try {
+      await launchCommand({ name: "models", type: LaunchType.UserInitiated });
+    } catch {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Não foi possível abrir os modelos",
+        message: 'Procure por "Modelos do Hermes" na busca do Raycast.',
+      });
+    }
+  }
+
+  return <Action title="Escolher modelo" icon={Icon.ComputerChip} onAction={() => void openModels()} />;
 }
 
 /*

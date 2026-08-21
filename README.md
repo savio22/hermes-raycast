@@ -1,139 +1,202 @@
-# Hermes para Raycast (Windows)
+# Hermes for Raycast (Windows)
 
-Converse com o **Hermes Agent** que já roda no seu computador — sem abrir outro
-aplicativo, sem sair do que você estava fazendo. Um atalho, uma pergunta, a resposta
-aparece ali mesmo.
+Talk to the **Hermes Agent already running on your machine** — without opening another app,
+without leaving what you were doing. One shortcut, one question, the answer shows up right there.
 
-## A ideia principal: é a MESMA conversa do Hermes Desktop
+> **Heads up on language.** The extension's entire interface — commands, screens, error messages —
+> is in **Brazilian Portuguese**. This README is in English so the code is browsable by anyone, but
+> the product itself is not localized yet. If you want to use it day to day, you'll want to read
+> Portuguese. [README.pt-BR.md](README.pt-BR.md) is the Portuguese version of this document, and
+> [ROADMAP.md](ROADMAP.md) says where i18n stands.
 
-Esta não é uma segunda caixa de chat que vive à parte. Tudo que você pergunta aqui é
-gravado no mesmo lugar onde o Hermes Desktop guarda as conversas dele.
+- **Platform:** Windows only (`"platforms": ["Windows"]` in the manifest)
+- **Talks to:** `127.0.0.1` only — the Hermes API Server on your own machine. Nothing is sent to an
+  external server.
+- **Status:** not published on the Raycast Store yet; install from source (see
+  [Development](#development)).
 
-Na prática:
+<!-- Demo GIF goes here once recorded: ![Demo](assets/demo.gif) -->
 
-- Você pergunta algo pelo Raycast enquanto trabalha. Depois abre o Hermes Desktop e a
-  conversa está lá, em **Recentes**, com a pergunta e a resposta completas.
-- O contrário também vale: as conversas que você começou no Hermes Desktop aparecem em
-  **Conversas do Hermes** e podem ser continuadas daqui.
-- Qualquer conversa tem a ação **Abrir no Hermes Desktop**, que foca exatamente aquela
-  conversa no aplicativo.
+## The core idea: it is the *same* conversation as Hermes Desktop
 
-E a promessa que sustenta isso no dia a dia: **fechar a janela do Raycast não cancela
-nada**. Se você fizer uma pergunta longa e a janela sumir, a tarefa continua rodando no
-Hermes. Ela reaparece em **Execuções do Hermes**, com a resposta pronta. Só o botão
-**Parar** cancela de verdade.
+This is not a second chat box living off to the side. Everything you ask here is stored in the same
+place Hermes Desktop keeps its conversations.
 
-## Instalação e configuração (sem terminal)
+In practice:
 
-1. Instale a extensão no Raycast.
-2. Deixe o **Hermes** ligado neste computador (o Hermes API Server precisa estar no ar).
-3. Abra o Raycast e execute qualquer comando do Hermes — por exemplo
-   **Perguntar ao Hermes**.
+- You ask something from Raycast while working. Later you open Hermes Desktop and the conversation
+  is there, under **Recentes**, question and answer complete.
+- The reverse holds too: conversations started in Hermes Desktop show up under **Conversas do
+  Hermes** and can be continued from Raycast.
+- Every conversation has an **Abrir no Hermes Desktop** action that focuses that exact conversation
+  in the app.
 
-Na primeira vez a extensão mostra a tela de boas-vindas com a ação
-**Detectar configuração automaticamente**. Ela procura sozinha a instalação do Hermes no
-seu computador, descobre a porta certa e lê a chave de acesso local. Se der certo, acabou:
-você já pode perguntar.
+And the promise that makes this usable day to day: **closing the Raycast window cancels nothing.**
+If you ask something long and the window disappears, the task keeps running inside Hermes. It comes
+back in **Execuções do Hermes** with the answer ready. Only the **Parar** button actually cancels.
 
-Se a detecção automática não achar nada, use o comando **Configurar Hermes**. Ele explica,
-em português e passo a passo, onde fica o arquivo de configuração do Hermes, abre a pasta
-para você e permite colar a chave manualmente. O mesmo comando serve para consertar a
-configuração depois — por exemplo se a chave do Hermes for trocada.
+## Requirements
 
-Para conferir se está tudo funcionando a qualquer momento, use
-**Verificar conexão com Hermes**.
+- **Windows** with [Raycast for Windows](https://www.raycast.com/windows) installed
+- **Hermes Agent** running locally (the Hermes API Server must be up — default `127.0.0.1:8642`)
+- **Node.js 24+**, only to build the extension from source
 
-### Sobre a chave
+## Setup (no terminal required)
 
-A chave do Hermes é local: ela nunca sai do seu computador e nunca é enviada para nenhum
-servidor externo. A extensão fala apenas com `127.0.0.1`, ou seja, com o Hermes que roda
-na sua própria máquina. Nos detalhes técnicos e nas mensagens de erro a chave aparece
-sempre censurada.
+1. Install the extension in Raycast (from source for now — see [Development](#development)).
+2. Keep **Hermes** running on this machine.
+3. Open Raycast and run any Hermes command — for example **Perguntar ao Hermes**.
 
-## Os comandos
+On first run the extension shows a welcome screen that already knows what it found: it looks for
+the Hermes on this machine, discovers the right port, and states it on the first line ("Achei o
+Hermes 0.20.4 aqui, em 127.0.0.1:8642") or tells you it is off. Then it is one Enter on **Detectar
+configuração automaticamente**: the extension reads the local access key, tests the connection and
+stores the key securely.
 
-| Comando | Para quê |
+That Enter is deliberate. The Hermes key is a secret sitting in a file of yours, and the extension
+does not go reading your files looking for secrets unless you tell it to. Discovering the **port**
+is a different matter and always happens on its own.
+
+If auto-detection finds nothing, use the **Configurar Hermes** command. It walks you through where
+the Hermes config file lives, opens the folder for you, and lets you paste the key manually. The
+same command fixes the configuration later — for example if the Hermes key gets rotated.
+
+To check things are working at any time, run **Verificar conexão com Hermes**.
+
+### About the key
+
+The Hermes key is local: it never leaves your computer and is never sent to any external server.
+The extension talks only to `127.0.0.1`. In technical details and error messages the key is always
+redacted.
+
+## Commands
+
+Fifteen commands, all keyboard-driven. No action exists as a shortcut only — `Ctrl+K` opens the
+full action list on every screen.
+
+| Command | What it is for |
 | --- | --- |
-| **Perguntar ao Hermes** | Pergunta rápida com resposta na hora. Dá para continuar a conversa, ramificar, renomear, copiar e abrir no Hermes Desktop. |
-| **Conversas do Hermes** | Lista, busca e continua suas conversas — inclusive as que nasceram no Hermes Desktop. Permite renomear, fixar e arquivar. |
-| **Executar tarefa no Hermes** | Para pedidos mais longos: mostra cada etapa até o resultado final, com aprovações quando o Hermes pede permissão. |
-| **Execuções do Hermes** | O painel do que está em andamento: acompanhar, responder aprovações, parar, e reabrir resultados recentes. |
-| **Modelos do Hermes** | Vê os modelos disponíveis no seu Hermes e escolhe qual a extensão usa por padrão. |
-| **Verificar conexão com Hermes** | Diagnóstico: o Hermes está ligado? A chave funciona? Qual endereço está sendo usado? |
-| **Configurar Hermes** | Conectar ou reconectar a extensão ao Hermes, com detecção automática ou configuração manual. |
+| **Perguntar ao Hermes** | Quick question, answer on the spot. Continue the conversation, branch it, rename, copy, open in Hermes Desktop. |
+| **Conversas do Hermes** | List, search and continue your conversations — including the ones born in Hermes Desktop. Rename, pin, archive. |
+| **Executar tarefa no Hermes** | For longer requests: shows every step through to the final result, with approval prompts when Hermes asks for permission. |
+| **Execuções do Hermes** | The panel of what is in flight: follow along, answer approvals, stop, and reopen recent results. |
+| **Modelos do Hermes** | See the models available in your Hermes and pick the default the extension uses. |
+| **Skills do Hermes** | See which skills are enabled in your Hermes and what each one does. |
+| **Ferramentas do Hermes** | See your Hermes toolsets and which ones are ready to use. |
+| **Automações do Hermes** | Follow Hermes automations; pause, resume or run one right now. |
+| **Perguntar sobre seleção** | Ask about the text you selected or copied, without leaving what you were doing. |
+| **Resumir clipboard** | Summarize the text you just copied, as bullet points. |
+| **Corrigir texto do clipboard** | Fix spelling, grammar and punctuation of copied text, no commentary. |
+| **Traduzir clipboard** | Translate copied text between Portuguese and English, or into a language you name. |
+| **Colar última resposta** | Paste the most recent Hermes answer into whatever app you are in. |
+| **Verificar conexão com Hermes** | Diagnostics: is Hermes up? Does the key work? Which address is in use? |
+| **Configurar Hermes** | Connect or reconnect the extension to Hermes, auto-detected or manual. |
 
-Tudo é acessível pelo teclado. Nenhuma ação existe apenas como atalho: `Ctrl+K` abre a
-lista completa de ações de cada tela.
+### How the conversation list refreshes
 
-## Limitações conhecidas (o que ainda não existe)
+While **Conversas do Hermes** is open, the 4-second poll revalidates only the first page. Older
+pages you already loaded stay as they are; use the **Atualizar lista** action to revalidate that
+part of the history too.
 
-Vale ser honesto sobre o que está fora desta versão:
+## Known limitations
 
-- **Automações (jobs), habilidades (skills) e conjuntos de ferramentas (toolsets) não têm
-  comando.** O suporte a essas rotas existe na camada de API da extensão, mas **nenhuma
-  tela foi construída** para elas. Elas ficam para uma fase seguinte.
-- **`jobs_admin` está desligado neste servidor Hermes** (`GET /v1/capabilities` responde
-  `"jobs_admin": false`, verificado na versão 0.20.4). Mesmo quando as telas de automação
-  existirem, elas só devem aparecer se o seu Hermes habilitar esse recurso.
-- **Ramificar uma conversa não sincroniza como o resto.** Ao usar **Ramificar**, o Hermes
-  cria a conversa filha com origem `api_server`, e ela **não aparece na lista principal do
-  Hermes Desktop** (a conversa original continua aparecendo normalmente). A extensão avisa
-  isso na hora.
-- **O modelo padrão escolhido em Modelos do Hermes vale só para a extensão.** O Hermes
-  Desktop continua com o modelo dele.
-- **Quem configura os provedores de modelo é o Hermes Desktop.** Se nenhum provedor estiver
-  autenticado, a extensão explica o problema mas não resolve por você.
-- **Só Windows, só Hermes local.** A extensão fala exclusivamente com `127.0.0.1` e não tem
-  modo remoto.
-- **Voz, memória de longo prazo e recursos de sessão** expostos pelo Hermes não têm
-  interface aqui.
-- **A extensão ainda não está publicada na Raycast Store.** Até lá, a instalação depende de
-  alguém rodar a etapa de desenvolvedor abaixo uma vez nesta máquina.
+Worth being honest about what is outside this version:
 
-Se algo der errado, a extensão sempre mostra uma mensagem em português explicando o que
-aconteceu e o que fazer, com **Copiar detalhes técnicos** para quando você precisar pedir
-ajuda.
+- **Portuguese-only interface.** Every string is pt-BR. There is no i18n layer yet.
+- **Automations, skills and toolsets have screens, but availability depends on your Hermes.** An
+  HTTP `501` marks Automações as unavailable — it does not hide the command or pretend the list is
+  empty.
+- **`jobs_admin` is off on this Hermes server** (`GET /v1/capabilities` answers
+  `"jobs_admin": false`, verified on 0.20.4). That does not hide the screen: the command queries
+  the real route and reports unavailability only when the server answers `501`.
+- **Branching a conversation does not sync like the rest.** With **Ramificar**, Hermes creates the
+  child conversation with origin `api_server`, and it **does not appear in the Hermes Desktop main
+  list** (the original conversation still does). The extension warns you at that moment.
+- **The default model picked in Modelos do Hermes applies to the extension only.** Hermes Desktop
+  keeps its own.
+- **Model providers are configured by Hermes Desktop.** If no provider is authenticated, the
+  extension explains the problem but does not solve it for you.
+- **Windows only, local Hermes only.** The extension talks exclusively to `127.0.0.1` and has no
+  remote mode.
+- **Actions that depend on a live Hermes still need manual validation per machine.** The automated
+  suite covers contracts, safety, queueing, persistence and parsing; the keyboard checklist and the
+  streaming/approval scenarios live in [docs/CHECKLIST-MANUAL.md](docs/CHECKLIST-MANUAL.md).
+- **Voice, long-term memory and session features** exposed by Hermes have no interface here.
+- **Not on the Raycast Store yet.** Until then, installing means running the developer step below
+  once on this machine.
 
-## Para desenvolvedores
+When something goes wrong, the extension always shows a message in Portuguese explaining what
+happened and what to do, with **Copiar detalhes técnicos** for when you need to ask for help.
 
-Requisitos: Node.js e o Raycast para Windows instalados.
+## Development
+
+Requirements: Node.js 24+ and Raycast for Windows installed.
 
 ```bash
-npm install       # instala as dependências
-npx ray develop   # roda a extensão em modo de desenvolvimento dentro do Raycast
-npx ray build     # compila os 7 pontos de entrada
-npx ray lint      # ESLint + Prettier + validação do manifest
+npm install
 ```
-
-Testes (Node.js nativo, sem framework externo — os tipos são removidos pelo próprio Node):
 
 ```bash
-node --test "tests/**/*.test.ts"
+npm run dev
 ```
 
-Verificação de tipos:
+```bash
+npm run build
+```
+
+```bash
+npm run lint
+```
+
+> **Windows gotcha:** the build **must** use `--target release` (every npm script here already
+> does). Without it the output lands in the old Raycast X path and Raycast reports
+> `Missing executable`.
+
+Tests run on the Node.js test runner with no external framework — types are stripped by Node
+itself, which is why **Node 24 is a hard requirement**. Older Node fails on the type annotations
+with a syntax error that does not look like a version problem.
+
+```bash
+npm test
+```
+
+The suite currently has 291 deterministic tests. Type checking, lint and build are separate gates:
 
 ```bash
 npx tsc --noEmit -p tsconfig.json
+```
+
+```bash
 npx tsc --noEmit -p tests/tsconfig.json
 ```
 
-### Organização
+### Layout
 
-- `src/lib/` — as regras: descoberta do servidor (`discovery`), cliente HTTP e rotas
-  (`hermes-api`), leitura de eventos SSE (`hermes-events`), catálogo de erros (`errors`),
-  rótulos de estado (`status`), preferências (`preferences`), armazenamento local
-  (`storage`) e tipos (`types`).
-- `src/hooks/` e `src/components/` — a lógica de acompanhamento de execuções e as telas
-  compartilhadas (aprovações, progresso, primeiro uso).
-- `src/<nome>.tsx` — um arquivo por comando declarado em `package.json`.
-- `docs/` — os documentos que mandam no projeto, nesta ordem de prioridade:
-  `DECISOES-VERIFICADAS.md` (decisões provadas contra o Hermes real) →
-  `UX-SPEC.md` (telas, textos em pt-BR, atalhos) →
-  `ARCHITECTURE.md` (contratos dos módulos, catálogo de erros, armadilhas) →
-  `docs/research/` (a pesquisa da API que sustenta tudo).
+- `src/lib/` — the rules: server discovery (`discovery`), HTTP client and routes (`hermes-api`),
+  SSE event reading (`hermes-events`), error catalog (`errors`), state labels (`status`),
+  preferences (`preferences`), local storage (`storage`) and types (`types`).
+- `src/hooks/` and `src/components/` — run-tracking logic and the shared screens (approvals,
+  progress, first run).
+- `src/<name>.tsx` — one file per command declared in `package.json`.
+- `docs/` — the documents that govern the project, in priority order:
+  [`DECISOES-VERIFICADAS.md`](docs/DECISOES-VERIFICADAS.md) (decisions proven against a real
+  Hermes) → [`UX-SPEC.md`](docs/UX-SPEC.md) (screens, pt-BR copy, shortcuts) →
+  [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (module contracts, error catalog, traps) →
+  `docs/research/` (the API research everything rests on). These documents are written in
+  Portuguese.
 
-Duas regras que não são detalhe: **nunca** use o modificador `cmd` em atalhos (no Windows
-ele é ignorado silenciosamente) e **nunca** chame o endpoint de parada de uma execução na
-limpeza de um `useEffect` — desmontar a tela cancela apenas o leitor local, e a tarefa
-continua viva no Hermes.
+Two rules that are not details: **never** use the `cmd` modifier in shortcuts (Windows silently
+ignores it) and **never** call a run's stop endpoint from a `useEffect` cleanup — unmounting a
+screen cancels only the local reader, while the task stays alive inside Hermes.
+
+## Contributing
+
+Bug reports and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first — it
+covers the gates a change has to pass and the conventions this codebase actually follows.
+
+Security issues: [SECURITY.md](SECURITY.md). Where the project is headed: [ROADMAP.md](ROADMAP.md).
+What changed: [CHANGELOG.md](CHANGELOG.md).
+
+## License
+
+[MIT](LICENSE) © Savio Aglio (Chacal)

@@ -39,6 +39,7 @@ import { respondToApproval, stopRun } from "../lib/hermes-api";
 import { RUN_STATUS_APPEARANCE, runStatusLabel } from "../lib/status";
 import { tagTone } from "./run-progress";
 import type { ApprovalChoice, ApprovalRequestFields } from "../lib/types";
+import { approvalActionHint, approvalDetailsLostHint } from "../lib/approval-copy";
 import { SHORTCUTS } from "./shortcuts";
 
 /**
@@ -99,9 +100,11 @@ const TIMEOUT_NOTE =
 
 const DETAILS_LOST = `# Aprovação pendente
 
-O Hermes está esperando uma resposta sua para continuar, mas os detalhes do pedido se perderam quando o Raycast foi fechado.
+O Hermes está esperando uma resposta sua para continuar.
 
-Sem ver o comando, a escolha segura é negar. Você pode pedir a tarefa de novo e deixar o Raycast aberto para ver o pedido completo.
+${approvalDetailsLostHint()}
+
+${approvalActionHint()} Você pode pedir a tarefa de novo e deixar o Raycast aberto para ver o pedido completo.
 `;
 
 export interface ApprovalViewProps {
@@ -204,6 +207,8 @@ ${fence}
 
 ${risk}
 
+${approvalActionHint()}
+
 Se você não reconhece este comando ou não pediu nada parecido, escolha **Negar**.
 ${queueWarning}
 ${TIMEOUT_NOTE}
@@ -275,7 +280,7 @@ export function ApprovalView(props: ApprovalViewProps) {
   // conhecemos é ignorado: sem rótulo confiável, botão nenhum. O `?? []` é defesa contra o
   // fio: `choices` chega de um cast do frame do stream, sem validação de forma, e um
   // `undefined` aqui derrubaria a tela — deixando o usuário sem conseguir nem negar.
-  const known = (fields.choices ?? []).filter((c) => c in CHOICE_SPECS);
+  const known = (fields.choices ?? []).filter((c) => Object.hasOwn(CHOICE_SPECS, c));
   // Se sobrar zero opção conhecida — `choices` veio vazio, ou só com rótulos que não
   // reconhecemos — a tela ficaria SEM nenhuma saída: nem aprovar, nem negar, nem parar,
   // com a tarefa travada esperando resposta. `deny` é o mesmo default que
@@ -327,26 +332,6 @@ export function ApprovalView(props: ApprovalViewProps) {
                 />
               );
             })}
-            {detailsLost ? (
-              /* Decisão P4: a UX-SPEC §7.6 mantém a saída de emergência, atrás de um alerta
-                 destrutivo e com `Negar` como ação primária. Se P4 for negada, remova esta ação. */
-              <Action
-                title="Aprovar mesmo sem ver os detalhes"
-                icon={Icon.ExclamationMark}
-                style={Action.Style.Destructive}
-                shortcut={SHORTCUTS.approveSession}
-                onAction={() =>
-                  void respond("once", {
-                    title: "Aprovar sem ver o comando?",
-                    message:
-                      "Você vai autorizar um comando que não está sendo exibido. Só faça isso se tiver certeza do que pediu ao Hermes.",
-                    primaryAction: { title: "Aprovar", style: Alert.ActionStyle.Destructive },
-                    dismissAction: { title: "Cancelar", style: Alert.ActionStyle.Cancel },
-                    rememberUserChoice: false,
-                  })
-                }
-              />
-            ) : null}
           </ActionPanel.Section>
           <ActionPanel.Section>
             {fields.command ? (

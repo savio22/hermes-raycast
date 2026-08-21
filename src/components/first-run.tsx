@@ -191,9 +191,7 @@ export function BackAction() {
 
 /* ─────────────────── Tela 2: primeiro uso, sem chave (§3.4) ───────────────── */
 
-const FIRST_RUN_MARKDOWN = [
-  "# Conecte o Raycast ao seu Hermes",
-  "",
+const FIRST_RUN_BODY = [
   "Para usar esta extensão, o Raycast precisa de uma chave de acesso do Hermes que está instalado neste computador. Isso é feito uma única vez.",
   "",
   '**O jeito mais fácil:** pressione Enter em "Detectar configuração automaticamente". O Raycast procura a chave no seu Hermes, testa a conexão e guarda a chave em segurança. A chave não é exibida em nenhum momento.',
@@ -202,15 +200,77 @@ const FIRST_RUN_MARKDOWN = [
 ].join("\n");
 
 /**
+ * O que a tela de boas-vindas já sabe ANTES de o usuário apertar Enter (§3.4).
+ *
+ * Só presença: `resolveBaseUrl()` lê `config.yaml`/`gateway.pid` para achar a porta e
+ * chama `/health` — exatamente o que TODO comando já faz em toda requisição. O que
+ * continua trancado atrás da ação explícita da §3.1 é a linha `API_SERVER_KEY=` do
+ * `.env`: nenhum segredo é lido aqui, nem por acidente.
+ *
+ * Existe porque sem isto a tela pedia um Enter às cegas: com o Hermes desligado o
+ * usuário só descobria depois da detecção falhar — tendo a chave sido encontrada e
+ * descartada no caminho, já que a §3.6 só grava depois de validar.
+ */
+export type HermesPresence =
+  | { kind: "procurando" }
+  | { kind: "encontrado"; host: string; version: string }
+  | { kind: "outroServidor" }
+  | { kind: "ausente" };
+
+export async function probeHermesPresence(): Promise<HermesPresence> {
+  try {
+    const endpoint = await resolveBaseUrl();
+    return { kind: "encontrado", host: hostOf(endpoint.baseUrl), version: endpoint.version };
+  } catch (err) {
+    const error = toHermesError(err, "procura pelo Hermes");
+    return error instanceof HermesWrongServerError ? { kind: "outroServidor" } : { kind: "ausente" };
+  }
+}
+
+/** A primeira linha muda com o que a sondagem achou; o convite ao Enter é sempre o mesmo. */
+export function firstRunMarkdown(presence: HermesPresence): string {
+  return ["# Conecte o Raycast ao seu Hermes", "", presenceLine(presence), "", FIRST_RUN_BODY].join("\n");
+}
+
+function presenceLine(presence: HermesPresence): string {
+  switch (presence.kind) {
+    case "procurando":
+      return "_Procurando o Hermes neste computador…_";
+    case "encontrado":
+      return `**Achei o Hermes ${presence.version} aqui**, em ${presence.host}. Falta só a chave de acesso.`;
+    case "outroServidor":
+      return '**Tem um programa respondendo nesse endereço, mas não é o Hermes.** Confira o endereço em "Abrir configurações" antes de continuar.';
+    case "ausente":
+      return (
+        "**O Hermes não respondeu neste computador.** Ligue o Hermes antes de continuar: sem ele no ar a " +
+        'conexão não pode ser testada. Se o seu Hermes usa outro endereço, ajuste em "Abrir configurações".'
+      );
+  }
+}
+
+/**
  * §3.4 — renderizada por QUALQUER comando quando não há chave (guarda de §2.2).
  * `navigationTitle` é o título do comando que o usuário abriu.
  */
 export function FirstRunScreen({ navigationTitle, onDone }: { navigationTitle: string; onDone?: () => void }) {
   const { push } = useNavigation();
+  const [presence, setPresence] = useState<HermesPresence>({ kind: "procurando" });
+
+  useEffect(() => {
+    let alive = true;
+    void probeHermesPresence().then((result) => {
+      if (alive) setPresence(result);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   return (
     <Detail
+      isLoading={presence.kind === "procurando"}
       navigationTitle={navigationTitle}
-      markdown={FIRST_RUN_MARKDOWN}
+      markdown={firstRunMarkdown(presence)}
       actions={
         <ActionPanel>
           <AutoDetectAction onDone={onDone} />

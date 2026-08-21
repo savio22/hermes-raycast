@@ -386,6 +386,13 @@ export interface SessionModelLockResponse {
 export type RunStatus =
   "queued" | "running" | "waiting_for_approval" | "stopping" | "completed" | "cancelled" | "failed";
 
+export type TransportPhase = "not_sent" | "starting" | "accepted" | "streaming" | "reconciling";
+
+export interface RunDiagnostic {
+  kind: "provider_authentication" | "connection" | "expired" | "storage" | "other";
+  message: string;
+}
+
 /** GET /v1/runs/{run_id}. Campos ACUMULAM entre transições. */
 export interface Run {
   object: "hermes.run";

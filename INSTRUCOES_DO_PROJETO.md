@@ -6,6 +6,13 @@ Criar uma extensão do Raycast para Windows que ofereça acesso rápido, visual,
 
 O usuário deve conseguir abrir o Raycast, pedir algo ao Hermes, acompanhar a execução e usar o resultado sem precisar abrir terminal, decorar comandos ou compreender detalhes internos da API.
 
+### Estado atual da implementação (2026-08-20)
+
+Os sete fluxos-base do MVP e os oito comandos antes previstos para a segunda fase já estão
+implementados no checkout atual, totalizando 15 comandos no manifesto. A ordem das fases abaixo
+continua sendo a prioridade de produto; não deve ser lida como ausência das telas já entregues.
+A validação visual e contra um Hermes ligado continua no `docs/CHECKLIST-MANUAL.md`.
+
 ## Resultado esperado
 
 A extensão deve funcionar como uma interface compacta para o Hermes, não como uma cópia completa do Hermes Desktop.
@@ -157,7 +164,7 @@ A chave do API Server deve ser armazenada como preferência protegida. Nunca reg
 - permitir definir modelo padrão;
 - permitir override por tarefa sem alterar o default global.
 
-### Segunda fase
+### Segunda fase — já implementada no checkout atual
 
 #### Contexto rápido
 
@@ -267,7 +274,7 @@ POST   /api/jobs/{job_id}/run
 
 ## Comandos da extensão
 
-Nomes sugeridos:
+Nomes dos comandos entregues:
 
 ```text
 Perguntar ao Hermes
@@ -280,6 +287,9 @@ Ferramentas do Hermes
 Automações do Hermes
 Perguntar sobre seleção
 Resumir clipboard
+Corrigir texto do clipboard
+Traduzir clipboard
+Colar última resposta
 Verificar conexão com Hermes
 Configurar Hermes
 ```

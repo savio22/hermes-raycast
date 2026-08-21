@@ -19,31 +19,29 @@ código-fonte do Hermes.
 
 **Invariantes de segurança (valem em todo o código):**
 
-1. O valor de `API_SERVER_KEY` **nunca** é lido de disco, logado, colocado em mensagem de erro,
-   fixture, README, commit ou screenshot. Vem exclusivamente da preferência `password`.
+1. O valor de `API_SERVER_KEY` **nunca** é exposto, logado, colocado em mensagem de erro,
+   fixture, README, commit ou screenshot. Ele vem da preferência `password` ou, somente após
+   ação explícita do usuário, da única linha `API_SERVER_KEY` do `.env`; em ambos os casos vai
+   apenas para autenticação e armazenamento protegido.
 2. Nenhuma função pode retornar/serializar `RequestInit.headers`. `errors.ts` aplica
    `sanitizeTechnical()` que remove `Bearer <algo>` de qualquer string técnica.
-3. `discovery.ts` pode ler `config.yaml` e (em último caso) **uma única linha** de `.env`
-   (`API_SERVER_PORT`). Nunca lê `auth.json`, nunca devolve outras linhas do `.env`.
-   *(Escopo desta invariante está sob decisão **P1** — a UX-SPEC §3 especifica uma leitura adicional,
-   de `API_SERVER_KEY`, sob ação explícita do usuário. Enquanto P1 não for decidida, `discovery.ts`
-   fica como está e nada da UX-SPEC §3.5 é implementado.)*
+3. `discovery.ts` pode ler `config.yaml`, `gateway.pid` e as linhas autorizadas de `.env`:
+   `API_SERVER_PORT` para descoberta e `API_SERVER_KEY` somente na ação explícita de detecção.
+   Nunca lê `auth.json`, `state.db` ou qualquer outra linha do `.env`.
 
 ---
 
-## Decisões pendentes
+## Histórico de decisões arquiteturais
 
-Quatro pontos **não podem ser decididos por um agente**: mudam a postura de segurança ou o
-comportamento verificável do produto. Até que sejam decididos, `ARCHITECTURE.md` e `UX-SPEC.md`
-apontam para esta seção em vez de se contradizerem. Nada abaixo pode ser implementado "escolhendo
-um lado" sem aprovação humana.
+Os pontos abaixo foram resolvidos pelo usuário e por verificações contra o Hermes real. A tabela
+fica como registro de contexto; ela não contém bloqueios de implementação pendentes.
 
 | # | Pendência | Estado nos dois documentos | Recomendação |
 |---|---|---|---|
-| ~~**P1**~~ **RESOLVIDA — ver `DECISOES-VERIFICADAS.md` D-08: aprovado ler só a linha `API_SERVER_KEY` sob ação explícita do usuário.** | **Ler `API_SERVER_KEY` do `.env` do usuário?** A pesquisa 01 §2.7 recomenda explicitamente parsear `<HERMES_HOME>\.env`; a pesquisa 06 R1 sugere apenas *instruir* o usuário a copiar. O brief proíbe "ler arquivos internos do Hermes" mas também proíbe "exigir terminal". | `ARCHITECTURE` (invariante 3) **proíbe** ler qualquer linha que não seja `API_SERVER_PORT`. `UX-SPEC` §3 **especifica** a ação `Detectar configuração automaticamente`, que lê a chave e a guarda em `LocalStorage`. **Conflito direto.** | Adotar o fluxo da UX-SPEC §3 **com as travas dela** (só por ação explícita do usuário, nunca em background, nunca exibida, só a linha `API_SERVER_KEY`), e então relaxar a invariante 3 desta ARCHITECTURE para: "`discovery.ts` lê `API_SERVER_PORT`; um módulo separado `key-detect.ts` lê `API_SERVER_KEY` **apenas** sob ação do usuário". Se a decisão for NÃO, apagar a UX-SPEC §3.1/§3.5/§3.6 inteira e manter só o caminho manual da §3.7 — o onboarding continua sem terminal, só fica mais longo. Não implemente nada da §3 antes desta decisão. |
-| **P2** | **Qual transporte usa `Perguntar ao Hermes`?** Depende do teste V-1 (UX-SPEC §0.2): `POST /v1/runs` com `session_id` grava as mensagens do turno em `state.db`? A pesquisa não verifica isso. | `ARCHITECTURE` §13 usa `createSessionAndStreamFirstTurn()` (stream de sessão). `UX-SPEC` §0.2 elege `/v1/runs` como motor padrão. **Conflito direto.** | **Default conservador até V-1 ser executado: `ARCHITECTURE` §13 vence** — `Perguntar ao Hermes` em `/api/sessions/{id}/chat/stream` (sincronia com o Desktop é verificada; é a manchete do produto) e `Executar tarefa` em `/v1/runs`. Isso é exatamente a variante V-1b da UX-SPEC §6.5, que já tem todos os textos escritos. Se V-1 der "sim", migrar `Perguntar ao Hermes` para `/v1/runs` e usar o texto principal da §6.5 — telas, estados e atalhos não mudam. |
-| **P3** | **Onde vive o "modelo padrão da extensão"?** Existe a preferência `defaultModel` (texto digitado) e a ação `Usar como modelo padrão` da UX-SPEC §2.6, que grava em `LocalStorage` porque o Raycast não permite escrever preferências. Duas fontes de verdade. | `ARCHITECTURE` §7.6 lê **só** `prefs.defaultModel`. `UX-SPEC` §2.6 grava **só** em `LocalStorage`. Resultado hoje: a ação da UI não teria efeito nenhum. | Precedência: `override da tarefa` > `LocalStorage (hermes.defaultModel.v1)` > `preferência defaultModel`. Já registrado em §9.1; `chatBody()`/`createRun()` precisam ler o LocalStorage antes da preferência. Confirmar que essa ordem é a desejada (o alternativo é remover a ação da UI e deixar só a preferência). |
-| **P4** | **Aprovação sem detalhes**: a UX-SPEC §7.6 oferece `Aprovar mesmo sem ver os detalhes`. A armadilha 24 desta ARCHITECTURE diz "ofereça apenas `deny`". | Conflito de postura de segurança, não de fato. | Manter a opção de aprovar às cegas **atrás** do `confirmAlert` destrutivo já escrito na §7.6, com `Negar` como ação primária. Se o produto quiser postura estrita, remover a ação e alinhar a armadilha 24. |
+| ~~**P1**~~ | Ler `API_SERVER_KEY` do `.env` | **RESOLVIDA — D-08**: somente sob ação explícita, apenas a linha autorizada, nunca exibida e nunca em background. | Implementação em `discovery.ts` + onboarding; preferência manual continua vencendo. |
+| ~~**P2**~~ | Transporte de `Perguntar ao Hermes` | **RESOLVIDA — D-01**: sessão `source:"desktop"` + `/v1/runs` com `session_id`; sobrevive ao fechamento e sincroniza com o Desktop. | Não reintroduzir `chat/stream` como transporte da conversa. |
+| ~~**P3**~~ | Modelo padrão da extensão | **RESOLVIDA**: override do próximo envio > `LocalStorage` > preferência. | A escolha da tela de Modelos não altera a preferência global do Raycast. |
+| ~~**P4**~~ | **Aprovação sem detalhes**: a UX-SPEC §7.6 oferecia `Aprovar mesmo sem ver os detalhes`, enquanto a armadilha 24 exige `deny`. | **RESOLVIDA por D-12:** postura estrita, sem autorização às cegas. | Quando o payload se perde, oferecer apenas `deny` e explicar a limitação; não inventar uma aprovação nem reabrir o pedido sem dados. |
 
 Já **resolvidas** e removidas da lista de dúvidas: `hermes://open/<sessionId>` foi confirmado ao vivo
 nesta máquina (a pendência V-2 da UX-SPEC §12 está fechada). V-3, V-4 e V-5 continuam válidas como
@@ -2477,7 +2475,9 @@ export function setSessionModel(
 
 ```ts
 /**
- * Cria a sessão e JÁ abre o stream do primeiro turno. Se o stream não abrir,
+ * Compatibilidade do cliente HTTP para o stream de sessão. As telas atuais usam
+ * `startConversation()` + `/v1/runs` (D-01); esta função não é o transporte da conversa contínua.
+ * Se o stream não abrir,
  * apaga a sessão recém-criada para não deixar uma linha vazia (invisível no Desktop,
  * mas real no banco).
  */
@@ -2614,13 +2614,19 @@ POST /v1/runs/{id}/stop       (sem corpo)
 200 {"run_id":"run_9f4c...","status":"stopping"}
 ```
 
-### 7.8 Skills e toolsets — **FASE 2, não implementar no MVP**
+### 7.8 Skills e toolsets — **IMPLEMENTADO em 2026-08-20**
 
-> YAGNI (regra do brief: "criar apenas quando uma funcionalidade exigir"). Os comandos `skills` e
-> `toolsets` são fase 2 no brief e na UX-SPEC §1.2. As funções abaixo e os tipos `Skill`, `Toolset`,
-> `SkillListResponse`, `ToolsetListResponse` ficam especificados aqui para quando a fase 2 começar —
-> **não devem existir em `src/lib/` no MVP.** O mesmo vale para as entradas de `CacheTtl.skills` e
-> `CacheTtl.toolsets`.
+> A nota de YAGNI abaixo cumpriu o papel dela e **caducou**: a fase 2 começou e o código existe em
+> `src/lib/hermes-api.ts` (`listSkills`, `listToolsets`, `toolsetAvailability`), em `src/lib/status.ts`
+> (`TOOLSET_AVAILABILITY_LABEL`, `TOOLSET_AVAILABILITY_APPEARANCE`) e nas telas `src/skills.tsx` e
+> `src/toolsets.tsx`. **Duas divergências do bloco abaixo, e o código vence:** `listToolsets` usa
+> `TOOLSETS_TIMEOUT_MS` (12 s), não `SLOW_TIMEOUT_MS`; e `CacheTtl.toolsets` é de 10 min, não 15 —
+> o handler pode travar o Hermes inteiro por ~8 s, e o corte curto é proteção, não impaciência.
+> Os rótulos moram em `status.ts`, não em `hermes-api.ts`, pela mesma regra que vale para os 7
+> estados de execução: nenhuma tela monta rótulo por conta própria.
+
+> **Contrato vigente:** os comandos `skills` e `toolsets` já estão no manifesto e usam as funções
+> abaixo. A origem histórica como Fase 2 explica a pesquisa, mas não é uma pendência de código.
 
 ```ts
 /** Devolve SOMENTE skills habilitadas; não existe campo `enabled` nem paginação nem filtro. */
@@ -2651,12 +2657,15 @@ export const TOOLSET_AVAILABILITY_LABEL: Record<ToolsetAvailability, string> = {
 };
 ```
 
-### 7.9 Jobs (automações) — **FASE 2, não implementar no MVP**
+### 7.9 Jobs (automações) — **IMPLEMENTADO em 2026-08-20**
 
-> Idem §7.8: `Automações do Hermes` é fase 2 no brief e na UX-SPEC §1.2. Nada desta seção (nem os
-> tipos `Job*`, nem `JOB_FIELD_MESSAGES`/`HermesScheduleError`/`HermesJobRegistrationError` de §4,
-> nem `JOB_STATE_LABEL` de §3) entra no bundle do MVP. Está aqui porque a pesquisa 05 já foi feita e
-> re-derivar custaria caro; escrever o código antes da hora violaria o YAGNI do brief.
+> Idem §7.8: a nota de YAGNI abaixo caducou. A tela é `src/jobs.tsx`, os tipos `Job*` e
+> `JOB_STATE_LABEL` estão em uso, e o gate é o HTTP (`200` lista, `501` estado vazio, `401`
+> primeiro uso) — **nunca** `features.jobs_admin`, conforme a D-04 revisada.
+
+> **Contrato vigente:** `Automações do Hermes` já está no manifesto. O comando usa o gate HTTP real:
+> `200` lista, `501` informa indisponibilidade e `401` leva ao primeiro uso; `features.jobs_admin`
+> não é usado como gate.
 
 ```ts
 const JOB_ID_RE = /^[a-f0-9]{12}$/;
@@ -3432,7 +3441,7 @@ data: {"event": "message.delta", "run_id": "run_9f4c...", "timestamp": 175563120
 | `capabilities` | Cache | 5 min | Feature-detection; muda só com upgrade do Hermes |
 | `/api/model/options` | Cache | 10 min | Payload grande e caro |
 | `/v1/skills` | Cache | 5 min | O servidor já tem cache de 30 s |
-| `/v1/toolsets` | Cache | 15 min | Endpoint lento (27+ toolsets resolvidos no event loop) |
+| `/v1/toolsets` | Cache | **10 min** | Endpoint lento E perigoso: pode travar o Hermes inteiro por ~8 s. Corte de 12 s, nunca em segundo plano |
 | Primeira página de `/api/sessions` | Cache | 30 s | Só para pintura instantânea; **sempre** revalidar |
 | **Transcrições completas** (`/api/sessions/{id}/messages`) | **em lugar nenhum** | — | Regra do brief: "não cachear transcripts completos por padrão" |
 | Conteúdo de mensagens, previews longos, argumentos de ferramentas | **em lugar nenhum** | — | idem |
@@ -3513,7 +3522,7 @@ export const CacheTtl = {
   capabilities: 5 * 60_000,
   modelOptions: 10 * 60_000,
   skills: 5 * 60_000,
-  toolsets: 15 * 60_000,
+  toolsets: 10 * 60_000,
   sessionsFirstPage: 30_000,
 } as const;
 
@@ -3648,6 +3657,36 @@ export async function clearAllLocalData(): Promise<void> {
 }
 ```
 
+### 9.3 Contratos de otimização incremental
+
+- **Derivações de turnos:** `createTurnDerivationCache()` mantém uma LRU de no máximo
+  128 entradas. A troca de `sessionId` chama `clear()`; dentro da mesma conversa, a
+  identidade do objeto e `revision` do turno (junto de modo e janela de pensamento)
+  evitam remontar pergunta, resposta e etapas a cada delta.
+- **Cache e retry:** `cachedFetch` compartilha o loader em voo por chave, grava no
+  `Cache` somente após sucesso e libera a entrada quando a Promise termina. Como a Promise
+  é COMPARTILHADA, o loader nunca recebe o `AbortSignal` de uma tela: cancelar uma tela
+  rejeitaria o pedido de outra. Quem precisa cancelar guarda o próprio `cancelled`. O atraso do
+  retry HTTP observa o `AbortSignal`, de modo que cancelar a ação interrompe a espera e
+  não dispara a segunda chamada.
+- **Lista de conversas:** o polling de 4 s consulta somente a primeira página e a
+  mescla na frente do feed, preservando páginas antigas já carregadas. A fronteira da
+  primeira página anterior (fixadas + limite de não-fixadas) é removida antes da mescla,
+  para que uma sessão removida não sobreviva na cauda quando outra subir de página. A
+  carga inicial, **Atualizar lista**/atualização manual revalidam a janela inteira;
+  `loadMore` apenas acrescenta a próxima página. Com mais de uma página carregada, o
+  `has_more` da primeira só pode DERRUBAR o flag do feed: ele fala do que vem depois da
+  página 1, não depois da última carregada, e religá-lo reexibiria "carregar mais" numa
+  lista completa a cada ciclo.
+- **Títulos das execuções:** os `sessionId` são deduplicados antes dos `GET` de
+  enriquecimento; no máximo três requisições rodam em paralelo. O `AbortSignal` do
+  efeito cancela os pedidos e o cleanup impede que respostas tardias gravem títulos ou
+  atualizem a tela.
+- **Aprovações:** gravação, leitura e limpeza do pedido pendente passam pelo
+  `withStorageLock` da própria chave, para que uma aprovação automática (pedido e resposta
+  no mesmo burst do stream) não deixe registro órfão. A chave é o `run_id` DO PEDIDO,
+  guardado à parte: `runIdRef` aponta para a run viva e já mudou quando a fila avança.
+
 ---
 
 ## 10. O CONTRATO DE SINCRONIZAÇÃO (R1–R10)
@@ -3688,8 +3727,8 @@ do Desktop; a conversa vai parar na seção "Messaging" com o rótulo "API". Val
 A barra lateral consulta `min_messages=1`. Uma sessão criada e abandonada é uma linha invisível no
 banco — exatamente o lixo "Untitled" que o Desktop passou a evitar criando linhas preguiçosamente.
 *Código:* nunca chame `createSession()` isolado a partir de um botão "Nova conversa". Use
-`createSessionAndStreamFirstTurn()`, que já apaga a sessão se o stream não abrir; e chame
-`deleteSessionIfEmpty()` quando o usuário cancelar antes do primeiro delta.
+`startConversation()`, que cria a sessão `source:"desktop"`, inicia a run em `/v1/runs` e limpa
+a sessão se a criação da run falhar; a tela só nasce no primeiro envio.
 
 **R5 — Metadados duráveis só por `PATCH /api/sessions/{id}`; nunca escrever no `state.db`.**
 Campos aceitos: exatamente `title, end_reason, pinned, archived, hidden, unread`. Qualquer outro ⇒
@@ -3979,11 +4018,11 @@ Primeiro uso
 Todo comando
   requireApiKey() → resolveBaseUrl() → (Cache) getCapabilities()
 
-Perguntar ao Hermes (pergunta nova)   ← transporte sob decisão P2; abaixo, o default conservador
-  resolveModelChoice() (P3: nextTurnModel → defaultModel → preferência)
-  createSessionAndStreamFirstTurn({title, message})
-    → consumeSessionChatStream(...) com createTextBuffer
-    → persistir result.sessionId (EFETIVO) em lastSessionId
+Perguntar ao Hermes (pergunta nova)
+  resolveModelChoice() (override do próximo envio → default local → preferência)
+  createConversation({source:"desktop"}) + POST /v1/runs({session_id, input})
+    → openRunEventStream() com createTextBuffer; queda cai para polling
+    → persistir run_id e sessionId efetivo antes de pintar a execução
   Ações: Copiar · Colar · Continuar · Nova conversa · Abrir no Hermes Desktop
 
 Conversas

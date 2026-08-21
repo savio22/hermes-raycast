@@ -101,9 +101,11 @@ export default function Command(): ReactElement {
       try {
         const fresh = forceRefresh
           ? await getModelOptions(true, controller.signal)
-          : await cachedFetch(CacheKeys.modelOptions, CacheTtl.modelOptions, () =>
-              getModelOptions(false, controller.signal),
-            );
+          : // SEM `controller.signal`: este loader é COMPARTILHADO por chave com quem mais pedir
+            // `modelOptions`. Amarrá-lo ao ciclo de vida desta tela faria o cancelamento daqui
+            // rejeitar a Promise de outro consumidor, que perderia a lista em silêncio.
+            // A guarda contra `setState` tardio é o `cancelled` logo abaixo.
+            await cachedFetch(CacheKeys.modelOptions, CacheTtl.modelOptions, () => getModelOptions(false));
         if (cancelled) return;
         // O resultado do `refresh` também alimenta o cache: quem abrir o seletor do
         // `Perguntar ao Hermes` logo depois vê a lista nova, não a de 10 minutos atrás.

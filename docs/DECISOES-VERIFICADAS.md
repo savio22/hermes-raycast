@@ -209,3 +209,144 @@ com as travas já implementadas:
 ("`discovery.ts` só pode ler `API_SERVER_PORT`") está relaxada exatamente nestes
 termos e não deve ser reinstaurada. Nenhuma outra leitura de arquivo interno do
 Hermes fica autorizada por esta decisão.
+
+## D-09 — Duas execuções na mesma conversa: o servidor ACEITA, e é por isso que a fila existe
+
+**Status: PROVADO** em 2026-08-19, contra o Hermes real. Fecha a pergunta 2 do
+apêndice do desenho da conversa contínua.
+
+A regra R9 ("no máximo um turno vivo por conversa") vivia só num comentário, sem
+que ninguém soubesse o que o servidor faz quando ela é violada. Agora sabemos, e
+o resultado é pior do que a suposição.
+
+### Experimento 1 — as duas rodam
+
+```
+POST /api/sessions  {"source":"desktop", id:"raycast_probe_…"}   -> 201
+POST /v1/runs       {"input":"Conte devagar de 1 ate 20…"}       -> 202 run A
+POST /v1/runs       {"input":"Responda apenas: DOIS"}  (1,2 s depois, MESMO session_id)
+                                                                 -> 202 run B
+t+2s   A=running    B=running
+t+4s   A=completed  B=running
+t+6s   A=completed  B=completed
+```
+
+**Não há 409, não há fila do lado de lá, não há trava nenhuma.** As duas execuções
+foram aceitas e rodaram ao mesmo tempo na mesma conversa.
+
+### Experimento 2 — a ordem gravada é a ordem de TÉRMINO, não a de envio
+
+Segunda rodada, com A propositalmente longa e B instantânea:
+
+```
+run A (texto de 400 palavras)  -> terminou em 75.152 ms
+run B ("Responda apenas: B")   -> terminou em 79.169 ms
+```
+
+Duas consequências, as duas visíveis no banco:
+
+1. **A mensagem do usuário só é gravada quando a execução termina.** A pergunta de
+   B (`#14639`) recebeu um `id` MAIOR que toda a troca de A (`#14629`…`#14638`),
+   embora tenha sido enviada 0,7 s depois de A começar. Quem terminar primeiro
+   aparece primeiro na transcrição, independentemente de quem perguntou primeiro.
+2. **A contenção é brutal.** Uma pergunta cuja resposta é a letra "B" levou
+   **79 segundos** por disputar a conversa com a outra execução. Sozinha, a mesma
+   pergunta responde em ~4 s.
+
+E há um terceiro efeito, inevitável pelo desenho do agente: a segunda execução lê
+o passado da conversa ANTES de a primeira gravar a resposta dela, então ela
+responde sem enxergar a troca que está acontecendo ao lado.
+
+**Consequência:** a fila local da §7 do desenho não é conforto de interface, é a
+ÚNICA trava que existe. `pickTurnToRun()` em `src/lib/turns.ts` é onde ela mora;
+nenhum caminho pode disparar uma execução com outra viva na mesma conversa.
+
+## D-10 — A fila de aprovação é por EXECUÇÃO, nunca por conversa
+
+**Status: PROVADO na fonte** do Hermes 0.20.4. Fecha a pergunta 3 do apêndice do
+desenho, que o experimento ao vivo não conseguiu responder (ver abaixo).
+
+`gateway/platforms/api_server.py:6762-6774`, na criação de toda run:
+
+```python
+# Approval queues gate host-side tool execution and must be isolated
+# per API run.  Client-provided session IDs and memory session keys are
+# conversation/memory scopes, not authorization namespaces: multiple
+# concurrent runs can intentionally share them, and resolving an
+# approval for one run must not unblock another run's dangerous command.
+approval_session_key = run_id
+```
+
+E `POST /v1/runs/{run_id}/approval` resolve pelo mapa `_run_approval_sessions[run_id]`
+(`:7188`), devolvendo 409 `approval_not_active` quando não há entrada.
+
+**Consequência:** contar aprovações pendentes por execução — o que o código já
+fazia no antigo `use-run-stream.ts` e continua fazendo em `use-conversation.ts` — está
+correto, e continua correto na segunda, terceira e enésima execução da mesma
+conversa. Uma aprovação respondida numa execução **não** destrava outra.
+
+**Por que o experimento ao vivo não bastou:** duas tentativas de provocar um
+`approval.request` (um `echo`, depois um `taskkill /F` — que está em
+`DANGEROUS_PATTERNS`, `tools/approval.py:830`) foram AUTO-APROVADAS pelo
+`_smart_approve` (`tools/approval.py:3322`), o avaliador que libera comandos de
+baixo risco sem perguntar. O stream mostrou `tool.started` → `tool.completed`
+sem nenhum pedido. Forçar um pedido exigiria rodar um comando de fato destrutivo
+nesta máquina, o que não se faz para testar interface. A fonte responde melhor.
+
+## D-11 — O primeiro pedaço de texto demora ~5,5 s em conversa longa
+
+**Status: MEDIDO** em 2026-08-19, na conversa `20260818_173215_4af30a`
+(330 mensagens). Fecha a pergunta 4 do apêndice do desenho.
+
+```
+POST /v1/runs                -> 202 em 6 ms
+GET  /v1/runs/{id}/events    -> headers em 114 ms
+primeiro message.delta       -> 5.554 ms
+run.completed                -> 5.554 ms
+```
+
+O envio é instantâneo; o custo está no agente recarregando o passado antes de
+escrever a primeira letra. Numa conversa curta a mesma pergunta responde em ~4 s,
+então o passado longo custa mais de um segundo — e o piso de ~4 s existe sempre.
+
+**Consequências para a interface:**
+
+1. **O `Preparando…` → `O Hermes está pensando…` de 3 s (UX-SPEC §6.1) não é um
+   caso raro: é o caminho normal.** Ele precisa funcionar por turno, e funciona.
+2. **Os deltas chegam em rajada, não pingando.** Numa das capturas, 22
+   `message.delta` chegaram dentro do MESMO milissegundo. O agrupamento de 80 ms
+   de `createTextBuffer` é o que impede uma rajada dessas de virar 22 travessias
+   da ponte IPC.
+3. Nada de barra de progresso falsa nem de mensagens rotativas: o estado
+   **Preparando** por 5 s é a verdade.
+
+## D-12 — Aprovações no Raycast usam Actions, não botões inline
+
+**Status: PROVADO na API e no fluxo da extensão.** O Raycast para Windows não
+oferece uma superfície própria de múltipla escolha dentro da lista. As escolhas
+do Hermes continuam sendo exibidas no `Detail` de aprovação e respondidas pelas
+ações do painel (`Actions`, `Ctrl+K`), exatamente na ordem enviada pelo servidor.
+
+Não há endpoint para listar novamente uma aprovação pendente nem replay dos
+eventos SSE. Se a janela for fechada antes de o payload ser salvo, a extensão
+mantém somente a saída segura de negar o pedido e explica essa limitação ao
+usuário; ela não inventa escolhas nem aprova automaticamente.
+
+## D-13 — O destino de um turno é imutável durante a escolha do modelo
+
+**Status: IMPLEMENTADO E COBERTO POR TESTE** em 2026-08-20.
+
+`useConversation` captura o `sessionId` no contexto do turno antes do primeiro `await`.
+Se o usuário trocar de conversa enquanto `resolveModelChoice()` está pendente, o pedido
+continua pertencendo à conversa original; ele nunca usa o `sessionId` que passou a estar na
+tela depois. Os patches posteriores continuam protegidos pela época e pelo identificador do
+turno.
+
+## D-14 — Continuar uma conversa exige execução terminal
+
+**Status: IMPLEMENTADO E COBERTO POR TESTE** em 2026-08-20.
+
+As telas de progresso e de execuções não oferecem `Continuar esta conversa` enquanto a run está
+`Preparando`, `Executando`, `Aguardando aprovação` ou `Interrompendo`. A ação só reaparece após
+`Concluído`, `Cancelado`, `Falhou` ou `Execução expirada`, preservando a trava local de uma run
+viva por conversa.

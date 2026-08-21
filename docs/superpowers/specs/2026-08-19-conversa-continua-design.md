@@ -1,9 +1,13 @@
 # Conversa contínua — a tela principal vira uma conversa de verdade
 
 **Data:** 2026-08-19
-**Estado:** desenho aprovado, aguardando plano de implementação
+**Estado:** desenho aprovado e implementado; referências ao fluxo anterior são históricas
 **Precedência:** este documento fica ABAIXO de `docs/DECISOES-VERIFICADAS.md` e ACIMA
 de `docs/UX-SPEC.md` nas seções que ele declara substituir (§13).
+
+O código atual usa `src/hooks/use-conversation.ts` e `src/components/conversation-view.tsx`.
+Referências a `use-run-stream`, `AnswerView` e à pilha antiga abaixo descrevem o problema que
+motivou este desenho e não são instruções para reintroduzir aquela arquitetura.
 
 ---
 
@@ -584,7 +588,7 @@ só por teclado), que nunca foi exercitado.
 | `selectedItemId` brigando com a navegação por setas | Corrida conhecida (raycast/extensions#10844) | Sem `onSelectionChange`; soltar `selectedItemId` no estado terminal; exercitar à mão |
 | Latência de `askInSession` em conversa longa | O agente recarrega o passado do lado dele; não medimos | Medir num turno de conversa longa antes de fechar o desenho da fila |
 | Duas execuções na mesma conversa | Não há trava programática, só a regra R9 | A fila é a trava. Nunca disparar com um turno vivo |
-| Aprovação numa conversa com vários turnos | O código assume fila de aprovação por execução (`use-run-stream.ts:252`); não sabemos se é por conversa | Verificar ao vivo antes de implementar a §7 |
+| Aprovação numa conversa com vários turnos | A fila de aprovação é por execução (`run_id`), não por conversa (`D-10`) | Implementado e coberto na extensão atual (`use-conversation.ts`) |
 
 ---
 
