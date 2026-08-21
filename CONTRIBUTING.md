@@ -11,10 +11,16 @@ something already went wrong once.
   against a real Hermes) → [`docs/UX-SPEC.md`](docs/UX-SPEC.md) (screens, copy, shortcuts) →
   [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (module contracts, error catalog, traps) →
   `docs/research/` (the API research everything rests on). They are written in Portuguese.
-- **The interface language is Brazilian Portuguese.** Every user-visible string — command titles,
-  screen copy, toasts, error messages — is pt-BR. Code identifiers and comments follow the
-  surrounding file (comments are pt-BR too). Do not introduce English UI strings; if you want to
-  add i18n, open an issue first, because that is a product decision, not a refactor.
+- **The interface language is English. The comments are Portuguese.** Every user-visible string —
+  command titles, screen copy, toasts, error messages — is English, hard-coded at the call site.
+  It was Brazilian Portuguese until the release described in [CHANGELOG.md](CHANGELOG.md). The
+  comments follow the surrounding file, and the surrounding file is Portuguese: that is
+  deliberate, and translating them is not an improvement. Do not add an i18n layer without
+  opening an issue first — Raycast does not localize an extension, so a layer would still have to
+  ship one language, which makes it a product decision rather than a refactor.
+- **Action titles are Title Case; screen prose is a sentence.** `@raycast/prefer-title-case` is on
+  for the whole of `src`, with no file-level disable left anywhere. If it flags a title, fix the
+  title — do not silence the rule.
 - **The extension is local-only.** It talks to `127.0.0.1` and nothing else. A change that adds a
   remote mode needs a discussion before code.
 - **One code base, two systems.** The manifest declares `"platforms": ["macOS", "Windows"]`.
@@ -117,7 +123,7 @@ Bug fixes come with a regression test that fails before the fix.
 ## Reporting bugs
 
 Include your operating system and its version, your Raycast version, the Hermes Agent version
-(`GET /health` reports it, and **Verificar conexão com Hermes** shows it), and the output of
-**Copiar detalhes técnicos** if a screen offered it. That payload is already redacted — check it once before pasting anyway.
+(`GET /health` reports it, and **Check Hermes Connection** shows it), and the output of
+**Copy Technical Details** if a screen offered it. That payload is already redacted — check it once before pasting anyway.
 
 Security issues do not go in the issue tracker. See [SECURITY.md](SECURITY.md).

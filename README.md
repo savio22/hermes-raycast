@@ -5,11 +5,12 @@
 Talk to the **Hermes Agent already running on your machine** — without opening another app,
 without leaving what you were doing. One shortcut, one question, the answer shows up right there.
 
-> **Heads up on language.** The extension's entire interface — commands, screens, error messages —
-> is in **Brazilian Portuguese**. This README is in English so the code is browsable by anyone, but
-> the product itself is not localized yet. If you want to use it day to day, you'll want to read
-> Portuguese. [README.pt-BR.md](README.pt-BR.md) is the Portuguese version of this document, and
-> [ROADMAP.md](ROADMAP.md) says where i18n stands.
+> **On language.** The extension's interface — commands, screens, error messages — is in
+> **English**. It was Brazilian Portuguese until the release described in
+> [CHANGELOG.md](CHANGELOG.md). There is no i18n layer and there is no plan for one: Raycast does
+> not localize an extension, so the strings shipped in the package are what everyone sees, and one
+> language has to win. [README.pt-BR.md](README.pt-BR.md) is the Portuguese version of this
+> document, and the documents under `docs/` are written in Portuguese.
 
 - **Platforms:** macOS and Windows (`"platforms": ["macOS", "Windows"]` in the manifest). Same code
   base on both; see [Platform support](#platform-support) for what that means today.
@@ -28,15 +29,15 @@ place Hermes Desktop keeps its conversations.
 In practice:
 
 - You ask something from Raycast while working. Later you open Hermes Desktop and the conversation
-  is there, under **Recentes**, question and answer complete.
-- The reverse holds too: conversations started in Hermes Desktop show up under **Conversas do
-  Hermes** and can be continued from Raycast.
-- Every conversation has an **Abrir no Hermes Desktop** action that focuses that exact conversation
+  is there among its recent conversations, question and answer complete.
+- The reverse holds too: conversations started in Hermes Desktop show up under **Hermes
+  Conversations** and can be continued from Raycast.
+- Every conversation has an **Open in Hermes Desktop** action that focuses that exact conversation
   in the app.
 
 And the promise that makes this usable day to day: **closing the Raycast window cancels nothing.**
 If you ask something long and the window disappears, the task keeps running inside Hermes. It comes
-back in **Execuções do Hermes** with the answer ready. Only the **Parar** button actually cancels.
+back in **Hermes Tasks** with the answer ready. Only the **Stop** action actually cancels.
 
 ## Requirements
 
@@ -53,13 +54,13 @@ differs is small and lives in three places:
 | --- | --- | --- |
 | Default Hermes folder | `%LOCALAPPDATA%\hermes` | `~/.hermes` |
 | Shortcut modifier | `Ctrl` / `Alt` | `Cmd` / `Opt` |
-| Names in the manual setup screen | Explorador de Arquivos, Bloco de Notas | Finder, TextEdit |
+| Names in the manual setup screen | File Explorer, Notepad | Finder, TextEdit |
 
 Discovery order is the same on both and does not change: `HERMES_HOME` from the environment →
 `hermes_home` inside `gateway.pid` → the platform default above. So a non-standard install is found
 on either system without touching preferences.
 
-> **Honest status:** every automated gate (309 tests, types, lint, release build) runs on both code
+> **Honest status:** every automated gate (316 tests, types, lint, release build) runs on both code
 > paths, but this branch has only been exercised **by hand on Windows 11**. The macOS run — the
 > keyboard, the `hermes://` deep link into Hermes Desktop, and Finder/TextEdit in the manual setup
 > screen — still needs a first pass on real hardware. See
@@ -69,26 +70,26 @@ on either system without touching preferences.
 
 1. Install the extension in Raycast (from source for now — see [Development](#development)).
 2. Keep **Hermes** running on this machine.
-3. Open Raycast and run any Hermes command — for example **Perguntar ao Hermes**.
+3. Open Raycast and run any Hermes command — for example **Ask Hermes**.
 
 On first run the extension shows a welcome screen that already knows what it found: it looks for
-the Hermes on this machine, discovers the right port, and states it on the first line ("Achei o
-Hermes 0.20.4 aqui, em 127.0.0.1:8642") or tells you it is off. Then it is one Enter on **Detectar
-configuração automaticamente**: the extension reads the local access key, tests the connection and
+the Hermes on this machine, discovers the right port, and states it on the first line ("Found
+Hermes 0.20.4 here, at 127.0.0.1:8642") or tells you it is off. Then it is one Enter on **Detect
+the Setup Automatically**: the extension reads the local access key, tests the connection and
 stores the key securely.
 
 That Enter is deliberate. The Hermes key is a secret sitting in a file of yours, and the extension
 does not go reading your files looking for secrets unless you tell it to. Discovering the **port**
 is a different matter and always happens on its own.
 
-If auto-detection finds nothing, use the **Configurar Hermes** command. It walks you through where
+If auto-detection finds nothing, use the **Configure Hermes** command. It walks you through where
 the Hermes config file lives, opens the folder for you, and lets you paste the key manually. The
 same command fixes the configuration later — for example if the Hermes key gets rotated.
 
-The instructions on that screen name the programs of the system you are on: Explorador de Arquivos
-and Bloco de Notas on Windows, Finder and TextEdit on macOS.
+The instructions on that screen name the programs of the system you are on: File Explorer and
+Notepad on Windows, Finder and TextEdit on macOS.
 
-To check things are working at any time, run **Verificar conexão com Hermes**.
+To check things are working at any time, run **Check Hermes Connection**.
 
 ### About the key
 
@@ -103,43 +104,45 @@ macOS) opens the full action list on every screen.
 
 | Command | What it is for |
 | --- | --- |
-| **Perguntar ao Hermes** | Quick question, answer on the spot. Continue the conversation, branch it, rename, copy, open in Hermes Desktop. |
-| **Conversas do Hermes** | List, search and continue your conversations — including the ones born in Hermes Desktop. Rename, pin, archive. |
-| **Executar tarefa no Hermes** | For longer requests: shows every step through to the final result, with approval prompts when Hermes asks for permission. |
-| **Execuções do Hermes** | The panel of what is in flight: follow along, answer approvals, stop, and reopen recent results. |
-| **Modelos do Hermes** | See the models available in your Hermes and pick the default the extension uses. |
-| **Skills do Hermes** | See which skills are enabled in your Hermes and what each one does. |
-| **Ferramentas do Hermes** | See your Hermes toolsets and which ones are ready to use. |
-| **Automações do Hermes** | Follow Hermes automations; pause, resume or run one right now. |
-| **Perguntar sobre seleção** | Ask about the text you selected or copied, without leaving what you were doing. |
-| **Resumir clipboard** | Summarize the text you just copied, as bullet points. |
-| **Corrigir texto do clipboard** | Fix spelling, grammar and punctuation of copied text, no commentary. |
-| **Traduzir clipboard** | Translate copied text between Portuguese and English, or into a language you name. |
-| **Colar última resposta** | Paste the most recent Hermes answer into whatever app you are in. |
-| **Verificar conexão com Hermes** | Diagnostics: is Hermes up? Does the key work? Which address is in use? |
-| **Configurar Hermes** | Connect or reconnect the extension to Hermes, auto-detected or manual. |
+| **Ask Hermes** | Quick question, answer on the spot. Continue the conversation, branch it, rename, copy, open in Hermes Desktop. |
+| **Hermes Conversations** | List, search and continue your conversations — including the ones born in Hermes Desktop. Rename, pin, archive. |
+| **Run a Task in Hermes** | For longer requests: shows every step through to the final result, with approval prompts when Hermes asks for permission. |
+| **Hermes Tasks** | The panel of what is in flight: follow along, answer approvals, stop, and reopen recent results. |
+| **Hermes Models** | See the models available in your Hermes and pick the default the extension uses. |
+| **Hermes Skills** | See which skills are enabled in your Hermes and what each one does. |
+| **Hermes Tools** | See your Hermes tool groups and which ones are ready to use. |
+| **Hermes Automations** | Follow Hermes automations; pause, resume or run one right now. |
+| **Ask About Selection** | Ask about the text you selected or copied, without leaving what you were doing. |
+| **Summarize Clipboard** | Summarize the text you just copied, as bullet points. |
+| **Fix Clipboard Text** | Fix spelling, grammar and punctuation of copied text, no commentary. Keeps the original language. |
+| **Translate Clipboard** | Translate copied text between English and Portuguese, or into a language you name. |
+| **Paste Latest Answer** | Paste the most recent Hermes answer into whatever app you are in. |
+| **Check Hermes Connection** | Diagnostics: is Hermes up? Does the key work? Which address is in use? |
+| **Configure Hermes** | Connect or reconnect the extension to Hermes, auto-detected or manual. |
 
 ### How the conversation list refreshes
 
-While **Conversas do Hermes** is open, the 4-second poll revalidates only the first page. Older
-pages you already loaded stay as they are; use the **Atualizar lista** action to revalidate that
-part of the history too.
+While **Hermes Conversations** is open, the 4-second poll revalidates only the first page. Older
+pages you already loaded stay as they are; use the **Refresh the List** action to revalidate that
+part of the list too.
 
 ## Known limitations
 
 Worth being honest about what is outside this version:
 
-- **Portuguese-only interface.** Every string is pt-BR. There is no i18n layer yet.
+- **English-only interface.** Every string is hard-coded English. Raycast does not localize an
+  extension, so there is no i18n layer — and adding one would not help, because the Store shows
+  whatever single set of strings the package ships.
 - **Automations, skills and toolsets have screens, but availability depends on your Hermes.** An
-  HTTP `501` marks Automações as unavailable — it does not hide the command or pretend the list is
-  empty.
+  HTTP `501` marks **Hermes Automations** as unavailable — it does not hide the command or pretend
+  the list is empty.
 - **`jobs_admin` is off on this Hermes server** (`GET /v1/capabilities` answers
   `"jobs_admin": false`, verified on 0.20.4). That does not hide the screen: the command queries
   the real route and reports unavailability only when the server answers `501`.
-- **Branching a conversation does not sync like the rest.** With **Ramificar**, Hermes creates the
+- **Branching a conversation does not sync like the rest.** With **Branch the Conversation**, Hermes creates the
   child conversation with origin `api_server`, and it **does not appear in the Hermes Desktop main
   list** (the original conversation still does). The extension warns you at that moment.
-- **The default model picked in Modelos do Hermes applies to the extension only.** Hermes Desktop
+- **The default model picked in Hermes Models applies to the extension only.** Hermes Desktop
   keeps its own.
 - **Model providers are configured by Hermes Desktop.** If no provider is authenticated, the
   extension explains the problem but does not solve it for you.
@@ -154,8 +157,8 @@ Worth being honest about what is outside this version:
 - **Not on the Raycast Store yet.** Until then, installing means running the developer step below
   once on this machine.
 
-When something goes wrong, the extension always shows a message in Portuguese explaining what
-happened and what to do, with **Copiar detalhes técnicos** for when you need to ask for help.
+When something goes wrong, the extension always shows a message explaining what happened and what
+to do, with **Copy Technical Details** for when you need to ask for help.
 
 ## Development
 
@@ -189,7 +192,7 @@ with a syntax error that does not look like a version problem.
 npm test
 ```
 
-The suite currently has 309 deterministic tests, including the platform-default resolution for
+The suite currently has 316 deterministic tests, including the platform-default resolution for
 macOS and Windows (`tests/platform.test.ts` and the discovery block in `tests/discovery.test.ts`).
 Those tests inject the platform instead of reading `process.platform`, so the macOS cases pass
 while running on Windows and vice versa. Type checking, lint and build are separate gates:
@@ -213,7 +216,7 @@ npx tsc --noEmit -p tests/tsconfig.json
 - `src/<name>.tsx` — one file per command declared in `package.json`.
 - `docs/` — the documents that govern the project, in priority order:
   [`DECISOES-VERIFICADAS.md`](docs/DECISOES-VERIFICADAS.md) (decisions proven against a real
-  Hermes) → [`UX-SPEC.md`](docs/UX-SPEC.md) (screens, pt-BR copy, shortcuts) →
+  Hermes) → [`UX-SPEC.md`](docs/UX-SPEC.md) (screens, copy, shortcuts) →
   [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) (module contracts, error catalog, traps) →
   `docs/research/` (the API research everything rests on). These documents are written in
   Portuguese.

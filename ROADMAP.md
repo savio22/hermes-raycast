@@ -3,21 +3,24 @@
 Where this project is and where it is going. Not a release schedule — a statement of priorities, so
 that nobody has to guess whether a missing thing is missing on purpose.
 
-Current state: 15 commands shipped, 291 automated tests, no Raycast Store listing yet.
+Current state: 15 commands shipped, 316 automated tests, no Raycast Store listing yet.
 
 ## Next
 
-**Publish on the Raycast Store.** The blocking item is that the store lints command and preference
-titles for Title Case, and every title here is a Portuguese sentence. Fourteen warnings, all from
-that. This has to be resolved as a naming decision before submission, not silenced.
+**Publish on the Raycast Store.** The Title Case blocker is gone: the interface is in English and
+`ray lint` runs with zero warnings, where it used to report fourteen. What is left before
+submission is the Store metadata — the screenshots in `metadata/`, at 2000x1250 — and one more
+pass of the manual checklist on the translated screens, since every string on them changed.
 
 **Demo GIF and screenshots.** A UI product with no picture in its README is asking a lot of a
 reader.
 
-**Decide on i18n.** Today every user-visible string is Brazilian Portuguese, hard-coded at the call
-site. An English UI means introducing a real string layer, not sprinkling ternaries. Two honest
-options: adopt i18n as actual work, or stay pt-BR and say so up front — which is what the README
-does now. The decision is open.
+**i18n: decided, and the answer is no layer.** The interface is English, hard-coded at the call
+site, and it stays that way. Raycast does not localize an extension: the command titles, the
+descriptions the Store shows and every screen string are fixed strings in the package, so a
+string layer would still have to pick one language to ship. English is the one that reaches the
+most people. The Portuguese copy is preserved in the git history and the documents under `docs/`
+remain in Portuguese, because they are for whoever works on the code, not for whoever uses it.
 
 **Long-conversation performance.** The derivation cache is a fixed 128-entry LRU while the render
 cap grows in steps of 40 with no ceiling. Conversations past roughly 160 exchanges will start

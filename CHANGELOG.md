@@ -1,74 +1,101 @@
-# Changelog do Hermes
+# Hermes Changelog
 
-## [macOS e Windows] - {PR_MERGE_DATE}
+## [English interface] - {PR_MERGE_DATE}
 
-- A extensão passa a ser declarada para os dois sistemas (`"platforms": ["macOS", "Windows"]`),
-  com a mesma base de código. Nada do comportamento atual do Windows muda.
-- O Hermes é encontrado sozinho em `~/.hermes` no macOS. A ordem da descoberta continua a
-  mesma nos dois sistemas: `HERMES_HOME` → `gateway.pid.hermes_home` → pasta padrão do
-  sistema. O suporte a `%LOCALAPPDATA%\hermes` no Windows segue intacto.
-- A configuração manual passa a citar os programas do sistema em que você está — Finder e
-  TextEdit no Mac, Explorador de Arquivos e Bloco de Notas no Windows —, e o mesmo vale para
-  as teclas nos textos de tela (`Ctrl+C`/`Cmd+C`, `Ctrl+K`/`Cmd+K`, `Ctrl+Enter`/`Cmd+Enter`).
-- Os atalhos customizados passam a declarar as teclas de cada sistema pela forma que a própria
-  API do Raycast oferece (`{ Windows, macOS }`). No Windows continuam letra por letra o que
-  eram; no macOS respeitam o `Cmd`. Onde existe equivalente semântico, `Keyboard.Shortcut.Common.*`
-  continua sendo a primeira escolha.
-- O escopo de memória (`sessionKey`) ganha um padrão por sistema. **Ninguém é migrado:** quem já
-  usa no Windows continua em `raycast:windows:default`, e uma instalação nova de macOS começa em
-  `raycast:macos:default`. O manifesto deixou de fixar um `default` justamente para que trocar
-  esse valor no futuro não mude o escopo de quem nunca tocou no campo.
-- Abrir uma conversa no Hermes Desktop ficou defensivo: se o esquema `hermes://` não estiver
-  registrado, a extensão diz isso em vez de falhar em silêncio.
-- **Validado à mão só no Windows 11.** Os testes automatizados cobrem os dois caminhos de
-  código, mas a primeira passada num Mac — teclado, deep link e configuração manual — ainda
-  precisa ser feita. O roteiro está em `docs/CHECKLIST-MANUAL.md`.
+- **The whole interface is now in English.** Raycast does not localize an extension: the
+  command titles, the descriptions the Store shows, the screen copy and the error messages
+  are fixed strings in the package, and whoever installs it anywhere in the world reads
+  what is written there. Until now that was Brazilian Portuguese.
+- Command names changed with it. **Ask Hermes** was `Perguntar ao Hermes`,
+  **Hermes Conversations** was `Conversas do Hermes`, **Run a Task in Hermes** was
+  `Executar tarefa no Hermes`, **Hermes Tasks** was `Execuções do Hermes`, and the other
+  eleven follow the same rule. The deep link does not change: `raycast://extensions/savio22/hermes/<name>` still
+  points at the same commands, because only the titles were translated.
+- **The clipboard commands answer in English now, and that is a behaviour change.**
+  `Summarize Clipboard` used to ask for a summary in Brazilian Portuguese and now asks for
+  one in English; the same goes for the default question of `Ask About Selection`.
+  `Fix Clipboard Text` is the exception and does not change: it always told Hermes to keep
+  the original language, and it still does.
+- `Translate Clipboard` keeps detecting the language, and the Portuguese↔English pair still
+  works both ways. What changed is the tie-break: when the text is too short or too mixed
+  to tell, the automatic request now translates into English instead of Portuguese.
+- Numbers and dates leave the Brazilian format. A tool that took four tenths of a second
+  reads `0.4 s` rather than `0,4 s`, the technical-details stamp is `yyyy-mm-dd`, and the
+  relative date in the conversation picker reads `2 h ago`.
+- Nothing else moved. The screens, the shortcuts, the queue, the approval flow and the
+  discovery order are exactly what they were.
 
-## [Correções de confiabilidade] - {PR_MERGE_DATE}
+## [macOS and Windows] - {PR_MERGE_DATE}
 
-- Impede que uma troca de conversa durante a escolha do modelo desvie uma pergunta para o
-  destino errado.
-- Esconde `Continuar esta conversa` enquanto a execução ainda está ativa, evitando duas runs
-  simultâneas no mesmo histórico.
-- Persiste a fila local, reanexa execuções não terminais e mantém a retenção sem expulsar runs
-  ativas.
-- Entrega as telas de Skills, Ferramentas, Automações e os quatro comandos de clipboard com
-  limites de entrada e proteção contra instruções copiadas.
-- Testes, tipos e build de produção verificados. O checklist manual do Windows foi percorrido
-  à mão, mais de uma vez, em Windows 11 com Raycast 2.0.3 e Hermes 0.20.4 — os cenários de
-  streaming, aprovação e teclado que nenhum teste automatizado alcança.
+- The extension is now declared for both systems (`"platforms": ["macOS", "Windows"]`), on
+  the same code base. Nothing about the current Windows behaviour changes.
+- Hermes is found on its own at `~/.hermes` on macOS. The discovery order stays the same on
+  both systems: `HERMES_HOME` → `gateway.pid.hermes_home` → the platform default folder.
+  Support for `%LOCALAPPDATA%\hermes` on Windows is untouched.
+- The manual setup screen now names the programs of the system you are on — Finder and
+  TextEdit on a Mac, File Explorer and Notepad on Windows — and the same goes for the keys
+  in the screen copy (`Ctrl+C`/`Cmd+C`, `Ctrl+K`/`Cmd+K`, `Ctrl+Enter`/`Cmd+Enter`).
+- Custom shortcuts now declare the keys of each system through the shape the Raycast API
+  itself offers (`{ Windows, macOS }`). On Windows they are letter for letter what they
+  were; on macOS they respect `Cmd`. Where a semantic equivalent exists,
+  `Keyboard.Shortcut.Common.*` is still the first choice.
+- The memory scope (`sessionKey`) gains a per-system default. **Nobody is migrated:** anyone
+  already using it on Windows stays on `raycast:windows:default`, and a fresh macOS install
+  starts on `raycast:macos:default`. The manifest stopped fixing a `default` precisely so
+  that changing this value later does not move the scope of someone who never touched the
+  field.
+- Opening a conversation in Hermes Desktop became defensive: if the `hermes://` scheme is
+  not registered, the extension says so instead of failing silently.
+- **Validated by hand on Windows 11 only.** The automated tests cover both code paths, but
+  the first pass on a Mac — keyboard, deep link and manual setup — still has to be done. The
+  script is in `docs/CHECKLIST-MANUAL.md`.
 
-## [Versão inicial] - {PR_MERGE_DATE}
+## [Reliability fixes] - {PR_MERGE_DATE}
 
-Primeira versão pública da extensão do Hermes Agent para Raycast no Windows. (O suporte a
-macOS chegou depois; veja a entrada [macOS e Windows] acima.)
+- Stops a conversation switch during the model choice from sending a question to the wrong
+  destination.
+- Hides `Continue This Conversation` while the task is still active, avoiding two tasks
+  going at once in the same conversation.
+- Persists the local queue, reattaches non-terminal tasks and keeps the retention rule from
+  evicting active ones.
+- Ships the Skills, Tools and Automations screens and the four clipboard commands with input
+  limits and protection against copied instructions.
+- Tests, types and a production build verified. The Windows manual checklist was walked by
+  hand, more than once, on Windows 11 with Raycast 2.0.3 and Hermes 0.20.4 — the streaming,
+  approval and keyboard scenarios no automated test reaches.
 
-### A ideia
+## [First version] - {PR_MERGE_DATE}
 
-As conversas do Raycast e as do Hermes Desktop são as mesmas conversas. O que você pergunta
-aqui aparece lá, e o que começou lá pode ser continuado aqui. Fechar a janela do Raycast não
-cancela nada: a tarefa continua rodando no Hermes e reaparece pronta em **Execuções do Hermes**.
+First public version of the Hermes Agent extension for Raycast on Windows. (macOS support
+arrived later; see the [macOS and Windows] entry above.)
 
-### Primeiro uso
+### The idea
 
-- A extensão descobre sozinha o endereço do Hermes instalado neste computador — porta do
-  `config.yaml`, variável de ambiente, `.env` e, por último, a porta padrão — e confirma que
-  respondeu o Hermes mesmo, não outro programa.
-- A tela de boas-vindas já diz o que encontrou antes de você apertar Enter: a versão do Hermes
-  e o endereço, ou que ele está desligado.
-- A chave de acesso é lida do seu Hermes com **uma ação sua**, nunca em silêncio. Ela é testada
-  antes de ser guardada, fica no armazenamento protegido do Raycast e não aparece em nenhuma
-  tela, mensagem de erro ou detalhe técnico.
-- Se preferir, **Configurar manualmente** explica passo a passo, sem terminal.
+The Raycast conversations and the Hermes Desktop conversations are the same conversations.
+What you ask here shows up there, and what started there can be continued here. Closing the
+Raycast window cancels nothing: the task keeps going inside Hermes and comes back ready in
+**Hermes Tasks**.
 
-### Os comandos
+### First run
 
-Perguntar ao Hermes, Conversas do Hermes, Executar tarefa no Hermes, Execuções do Hermes,
-Modelos do Hermes, Skills do Hermes, Ferramentas do Hermes, Automações do Hermes,
-Perguntar sobre seleção, Resumir clipboard, Corrigir texto do clipboard, Traduzir clipboard,
-Colar última resposta, Verificar conexão com Hermes e Configurar Hermes.
+- The extension discovers on its own the address of the Hermes installed on this computer —
+  the port from `config.yaml`, the environment variable, the `.env` and, last, the default
+  port — and confirms it was really Hermes that answered, not another program.
+- The welcome screen says what it found before you press Enter: the Hermes version and the
+  address, or that it is off.
+- The access key is read from your Hermes **through an action of yours**, never silently. It
+  is tested before being stored, it lives in the protected Raycast storage, and it never
+  appears on a screen, in an error message or in a technical detail.
+- If you would rather, **Manual Setup** walks you through it step by step, with no terminal.
 
-### Privacidade
+### The commands
 
-A extensão fala apenas com `127.0.0.1` — o Hermes que roda na sua própria máquina. Nada é
-enviado para servidores externos.
+Ask Hermes, Hermes Conversations, Run a Task in Hermes, Hermes Tasks, Hermes Models, Hermes
+Skills, Hermes Tools, Hermes Automations, Ask About Selection, Summarize Clipboard, Fix
+Clipboard Text, Translate Clipboard, Paste Latest Answer, Check Hermes Connection and
+Configure Hermes.
+
+### Privacy
+
+The extension talks only to `127.0.0.1` — the Hermes running on your own machine. Nothing is
+sent to external servers.

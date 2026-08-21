@@ -7,7 +7,13 @@ aplicativo, sem sair do que você estava fazendo. Um atalho, uma pergunta, a res
 aparece ali mesmo.
 
 > Esta é a versão em português deste documento. O [README.md](README.md) em inglês tem o mesmo
-> conteúdo, para quem chega pelo GitHub. A interface da extensão é toda em português.
+> conteúdo, para quem chega pelo GitHub.
+>
+> **A interface da extensão é em inglês.** Era em português até a versão descrita no
+> [CHANGELOG.md](CHANGELOG.md). O Raycast não localiza extensão: os títulos dos comandos, as
+> descrições que a Store mostra e todo texto de tela são string fixa no pacote, então um idioma
+> tem que vencer, e o inglês é o que alcança mais gente. Os documentos em `docs/` continuam em
+> português, porque são para quem mexe no código, não para quem usa.
 
 - **Sistemas:** macOS e Windows (`"platforms": ["macOS", "Windows"]` no manifesto), com a mesma
   base de código. Veja [Os dois sistemas](#os-dois-sistemas).
@@ -21,16 +27,16 @@ gravado no mesmo lugar onde o Hermes Desktop guarda as conversas dele.
 Na prática:
 
 - Você pergunta algo pelo Raycast enquanto trabalha. Depois abre o Hermes Desktop e a
-  conversa está lá, em **Recentes**, com a pergunta e a resposta completas.
+  conversa está lá, entre as recentes, com a pergunta e a resposta completas.
 - O contrário também vale: as conversas que você começou no Hermes Desktop aparecem em
-  **Conversas do Hermes** e podem ser continuadas daqui.
-- Qualquer conversa tem a ação **Abrir no Hermes Desktop**, que foca exatamente aquela
+  **Hermes Conversations** e podem ser continuadas daqui.
+- Qualquer conversa tem a ação **Open in Hermes Desktop**, que foca exatamente aquela
   conversa no aplicativo.
 
 E a promessa que sustenta isso no dia a dia: **fechar a janela do Raycast não cancela
 nada**. Se você fizer uma pergunta longa e a janela sumir, a tarefa continua rodando no
-Hermes. Ela reaparece em **Execuções do Hermes**, com a resposta pronta. Só o botão
-**Parar** cancela de verdade.
+Hermes. Ela reaparece em **Hermes Tasks**, com a resposta pronta. Só a ação
+**Stop** cancela de verdade.
 
 ## Os dois sistemas
 
@@ -40,13 +46,13 @@ A extensão roda o mesmo código no macOS e no Windows. O que muda é pouco, e m
 | --- | --- | --- |
 | Pasta padrão do Hermes | `%LOCALAPPDATA%\hermes` | `~/.hermes` |
 | Modificador dos atalhos | `Ctrl` / `Alt` | `Cmd` / `Opt` |
-| Nomes na configuração manual | Explorador de Arquivos, Bloco de Notas | Finder, TextEdit |
+| Nomes na configuração manual | File Explorer, Notepad | Finder, TextEdit |
 
 A ordem da descoberta é a mesma nos dois e não muda: `HERMES_HOME` do ambiente → `hermes_home`
 dentro do `gateway.pid` → a pasta padrão do sistema. Uma instalação fora do lugar continua sendo
 encontrada sozinha, sem mexer em preferência nenhuma.
 
-> **O que ainda não foi testado à mão:** os portões automatizados (309 testes, tipos, lint e build
+> **O que ainda não foi testado à mão:** os portões automatizados (316 testes, tipos, lint e build
 > de release) cobrem os dois caminhos de código, mas esta versão só foi exercitada de verdade **no
 > Windows 11**. Falta a primeira passada num Mac: o teclado, o link `hermes://` abrindo o Hermes
 > Desktop e a tela de configuração manual com Finder e TextEdit. O roteiro está em
@@ -57,28 +63,28 @@ encontrada sozinha, sem mexer em preferência nenhuma.
 1. Instale a extensão no Raycast.
 2. Deixe o **Hermes** ligado neste computador (o Hermes API Server precisa estar no ar).
 3. Abra o Raycast e execute qualquer comando do Hermes — por exemplo
-   **Perguntar ao Hermes**.
+   **Ask Hermes**.
 
 Na primeira vez a extensão mostra a tela de boas-vindas — e ela já chega sabendo: procura o
 Hermes deste computador, descobre a porta certa e diz na primeira linha o que encontrou
-("Achei o Hermes 0.20.4 aqui, em 127.0.0.1:8642") ou que ele está desligado. Aí é um Enter em
-**Detectar configuração automaticamente**: a extensão lê a chave de acesso local, testa a
+("Found Hermes 0.20.4 here, at 127.0.0.1:8642") ou que ele está desligado. Aí é um Enter em
+**Detect the Setup Automatically**: a extensão lê a chave de acesso local, testa a
 conexão e guarda a chave em segurança. Acabou — você já pode perguntar.
 
 Esse Enter é de propósito. A chave do Hermes é um segredo que está num arquivo seu, e a
 extensão não lê arquivo seu procurando segredo sem você mandar. Descobrir a **porta** é
 diferente e acontece sozinho, sempre.
 
-Se a detecção automática não achar nada, use o comando **Configurar Hermes**. Ele explica,
-em português e passo a passo, onde fica o arquivo de configuração do Hermes, abre a pasta
+Se a detecção automática não achar nada, use o comando **Configure Hermes**. Ele explica,
+passo a passo, onde fica o arquivo de configuração do Hermes, abre a pasta
 para você e permite colar a chave manualmente. O mesmo comando serve para consertar a
 configuração depois — por exemplo se a chave do Hermes for trocada.
 
-As instruções dessa tela citam os programas do sistema em que você está: Explorador de Arquivos e
-Bloco de Notas no Windows, Finder e TextEdit no macOS.
+As instruções dessa tela citam os programas do sistema em que você está: File Explorer e
+Notepad no Windows, Finder e TextEdit no macOS.
 
 Para conferir se está tudo funcionando a qualquer momento, use
-**Verificar conexão com Hermes**.
+**Check Hermes Connection**.
 
 ### Sobre a chave
 
@@ -91,46 +97,49 @@ sempre censurada.
 
 | Comando | Para quê |
 | --- | --- |
-| **Perguntar ao Hermes** | Pergunta rápida com resposta na hora. Dá para continuar a conversa, ramificar, renomear, copiar e abrir no Hermes Desktop. |
-| **Conversas do Hermes** | Lista, busca e continua suas conversas — inclusive as que nasceram no Hermes Desktop. Permite renomear, fixar e arquivar. |
-| **Executar tarefa no Hermes** | Para pedidos mais longos: mostra cada etapa até o resultado final, com aprovações quando o Hermes pede permissão. |
-| **Execuções do Hermes** | O painel do que está em andamento: acompanhar, responder aprovações, parar, e reabrir resultados recentes. |
-| **Modelos do Hermes** | Vê os modelos disponíveis no seu Hermes e escolhe qual a extensão usa por padrão. |
-| **Skills do Hermes** | Mostra quais skills estão habilitadas no seu Hermes e o que cada uma faz. |
-| **Ferramentas do Hermes** | Mostra os grupos de ferramentas do seu Hermes e quais estão prontos para usar. |
-| **Automações do Hermes** | Acompanha as automações do Hermes; pausa, retoma ou roda uma delas na hora. |
-| **Perguntar sobre seleção** | Pergunta sobre o texto que você selecionou ou copiou, sem sair do que estava fazendo. |
-| **Resumir clipboard** | Resume em tópicos o texto que você acabou de copiar. |
-| **Corrigir texto do clipboard** | Corrige ortografia, gramática e pontuação do texto copiado, sem comentários. |
-| **Traduzir clipboard** | Traduz o texto copiado entre português e inglês, ou para o idioma que você pedir. |
-| **Colar última resposta** | Cola a resposta mais recente do Hermes no aplicativo em que você está. |
-| **Verificar conexão com Hermes** | Diagnóstico: o Hermes está ligado? A chave funciona? Qual endereço está sendo usado? |
-| **Configurar Hermes** | Conectar ou reconectar a extensão ao Hermes, com detecção automática ou configuração manual. |
+| **Ask Hermes** | Pergunta rápida com resposta na hora. Dá para continuar a conversa, ramificar, renomear, copiar e abrir no Hermes Desktop. |
+| **Hermes Conversations** | Lista, busca e continua suas conversas — inclusive as que nasceram no Hermes Desktop. Permite renomear, fixar e arquivar. |
+| **Run a Task in Hermes** | Para pedidos mais longos: mostra cada etapa até o resultado final, com aprovações quando o Hermes pede permissão. |
+| **Hermes Tasks** | O painel do que está em andamento: acompanhar, responder aprovações, parar, e reabrir resultados recentes. |
+| **Hermes Models** | Vê os modelos disponíveis no seu Hermes e escolhe qual a extensão usa por padrão. |
+| **Hermes Skills** | Mostra quais skills estão habilitadas no seu Hermes e o que cada uma faz. |
+| **Hermes Tools** | Mostra os grupos de ferramentas do seu Hermes e quais estão prontos para usar. |
+| **Hermes Automations** | Acompanha as automações do Hermes; pausa, retoma ou roda uma delas na hora. |
+| **Ask About Selection** | Pergunta sobre o texto que você selecionou ou copiou, sem sair do que estava fazendo. A pergunta padrão pede a explicação em inglês. |
+| **Summarize Clipboard** | Resume em tópicos, em inglês, o texto que você acabou de copiar. |
+| **Fix Clipboard Text** | Corrige ortografia, gramática e pontuação do texto copiado, sem comentários. Preserva o idioma original: texto em português sai corrigido em português. |
+| **Translate Clipboard** | Traduz o texto copiado entre inglês e português, ou para o idioma que você pedir. No empate, traduz para inglês. |
+| **Paste Latest Answer** | Cola a resposta mais recente do Hermes no aplicativo em que você está. |
+| **Check Hermes Connection** | Diagnóstico: o Hermes está ligado? A chave funciona? Qual endereço está sendo usado? |
+| **Configure Hermes** | Conectar ou reconectar a extensão ao Hermes, com detecção automática ou configuração manual. |
 
 Tudo é acessível pelo teclado. Nenhuma ação existe apenas como atalho: `Ctrl+K` (`Cmd+K` no
 macOS) abre a lista completa de ações de cada tela.
 
 ### Atualização da lista de conversas
 
-Enquanto **Conversas do Hermes** está aberta, o polling de 4 segundos revalida somente a
+Enquanto **Hermes Conversations** está aberta, o polling de 4 segundos revalida somente a
 primeira página. As páginas antigas que você já carregou permanecem na lista; use a ação
-**Atualizar lista** (ou uma atualização manual) para revalidar também essa parte do histórico.
+**Refresh the List** (ou uma atualização manual) para revalidar também essa parte da lista.
 
 ## Limitações conhecidas
 
 Vale ser honesto sobre o que está fora desta versão:
 
+- **A interface é só em inglês.** Todo texto de tela é string fixa em inglês. Como o Raycast não
+  localiza extensão, não existe camada de i18n — e criar uma não ajudaria, porque a Store mostra
+  o único conjunto de strings que o pacote publica.
 - **Automações, habilidades e conjuntos de ferramentas já têm telas.** A disponibilidade
-  depende do que o Hermes expõe: uma resposta HTTP `501` deixa Automações como indisponível,
-  sem esconder o comando nem fingir que a lista está vazia.
+  depende do que o Hermes expõe: uma resposta HTTP `501` deixa **Hermes Automations** como
+  indisponível, sem esconder o comando nem fingir que a lista está vazia.
 - **`jobs_admin` está desligado neste servidor Hermes** (`GET /v1/capabilities` responde
   `"jobs_admin": false`, verificado na versão 0.20.4). Isso não esconde a tela: o comando
   consulta a rota real e mostra a indisponibilidade somente quando o servidor responde `501`.
-- **Ramificar uma conversa não sincroniza como o resto.** Ao usar **Ramificar**, o Hermes
+- **Ramificar uma conversa não sincroniza como o resto.** Ao usar **Branch the Conversation**, o Hermes
   cria a conversa filha com origem `api_server`, e ela **não aparece na lista principal do
   Hermes Desktop** (a conversa original continua aparecendo normalmente). A extensão avisa
   isso na hora.
-- **O modelo padrão escolhido em Modelos do Hermes vale só para a extensão.** O Hermes
+- **O modelo padrão escolhido em Hermes Models vale só para a extensão.** O Hermes
   Desktop continua com o modelo dele.
 - **Quem configura os provedores de modelo é o Hermes Desktop.** Se nenhum provedor estiver
   autenticado, a extensão explica o problema mas não resolve por você.
@@ -148,8 +157,8 @@ Vale ser honesto sobre o que está fora desta versão:
 - **A extensão ainda não está publicada na Raycast Store.** Até lá, a instalação depende de
   alguém rodar a etapa de desenvolvedor abaixo uma vez nesta máquina.
 
-Se algo der errado, a extensão sempre mostra uma mensagem em português explicando o que
-aconteceu e o que fazer, com **Copiar detalhes técnicos** para quando você precisar pedir
+Se algo der errado, a extensão sempre mostra uma mensagem em inglês explicando o que
+aconteceu e o que fazer, com **Copy Technical Details** para quando você precisar pedir
 ajuda.
 
 ## Para desenvolvedores
@@ -171,7 +180,7 @@ Testes (Node.js nativo, sem framework externo — os tipos são removidos pelo p
 node --test "tests/**/*.test.ts"
 ```
 
-O conjunto atual tem 309 testes determinísticos, incluindo a resolução da pasta padrão do Hermes
+O conjunto atual tem 316 testes determinísticos, incluindo a resolução da pasta padrão do Hermes
 no macOS e no Windows (`tests/platform.test.ts` e o bloco de descoberta em
 `tests/discovery.test.ts`). Esses testes **injetam** a plataforma em vez de ler `process.platform`,
 então os casos do macOS passam rodando no Windows e vice-versa. A checagem de tipos é feita com
@@ -195,7 +204,7 @@ npx tsc --noEmit -p tests/tsconfig.json
 - `src/<nome>.tsx` — um arquivo por comando declarado em `package.json`.
 - `docs/` — os documentos que mandam no projeto, nesta ordem de prioridade:
   `DECISOES-VERIFICADAS.md` (decisões provadas contra o Hermes real) →
-  `UX-SPEC.md` (telas, textos em pt-BR, atalhos) →
+  `UX-SPEC.md` (telas, textos, atalhos) →
   `ARCHITECTURE.md` (contratos dos módulos, catálogo de erros, armadilhas) →
   `docs/research/` (a pesquisa da API que sustenta tudo).
 
