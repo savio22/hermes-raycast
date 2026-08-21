@@ -6,6 +6,11 @@
  * quem copiou um texto em inglês quer português, e quem copiou em português quer inglês.
  * Um idioma fixo nas preferências erraria metade das vezes, em silêncio. Quem quiser outro
  * idioma diz no argumento do comando, que é onde a exceção custa um segundo.
+ *
+ * **O desempate mudou junto com a interface.** A detecção continua a mesma, e o par
+ * português↔inglês continua indo nos dois sentidos. O que mudou é o caso em que
+ * `inferTranslationDirection` não consegue decidir — texto curto ou misto: antes o pedido
+ * automático levava para português, agora leva para inglês, que é o idioma do produto.
  */
 
 import type { LaunchProps } from "@raycast/api";
@@ -14,22 +19,22 @@ import { type ReactElement } from "react";
 import { TextCommand, copyFirstHint } from "./components/text-command";
 import { buildUntrustedPrompt, inferTranslationDirection } from "./lib/input-safety";
 
-const COMMAND_TITLE = "Traduzir clipboard";
+const COMMAND_TITLE = "Translate Clipboard";
 const AUTO = [
-  "Traduza o texto abaixo para português do Brasil.",
-  "Se ele já estiver em português, traduza para inglês.",
+  "Translate the text below into English.",
+  "If it is already in English, translate it into Brazilian Portuguese.",
 ].join(" ");
-const TAIL = "Responda **apenas** com a tradução, sem comentário e sem repetir o texto original.";
+const TAIL = "Answer with **only** the translation: no commentary, and do not repeat the original text.";
 
 type Arguments = { idioma?: string };
 
 export default function Command(props: LaunchProps<{ arguments: Arguments }>): ReactElement {
   const language = (props.arguments?.idioma ?? "").trim();
   const instructionFor = (text: string): string => {
-    if (language !== "") return `Traduza o texto abaixo para ${language}.`;
+    if (language !== "") return `Translate the text below into ${language}.`;
     const direction = inferTranslationDirection(text).direction;
-    if (direction === "pt-en") return "Traduza o texto abaixo para inglês.";
-    if (direction === "en-pt") return "Traduza o texto abaixo para português do Brasil.";
+    if (direction === "pt-en") return "Translate the text below into English.";
+    if (direction === "en-pt") return "Translate the text below into Brazilian Portuguese.";
     return AUTO;
   };
 
@@ -41,12 +46,12 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>): R
       confirmBeforeSend={(text) => {
         if (language !== "" || inferTranslationDirection(text).direction !== "ambiguous") return undefined;
         return {
-          title: "Não identifiquei o idioma com segurança",
+          title: "I could not tell the language for sure",
           description:
-            "O texto é curto ou misto. Confirme para pedir a tradução automática, ou copie outro texto e tente novamente.",
+            "The text is short or mixed. Confirm to ask for the automatic translation, or copy another text and try again.",
         };
       }}
-      emptyTitle="Não há nada copiado"
+      emptyTitle="Nothing is copied"
       emptyDescription={copyFirstHint()}
     />
   );

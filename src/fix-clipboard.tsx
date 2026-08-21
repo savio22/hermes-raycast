@@ -11,10 +11,10 @@ import { type ReactElement } from "react";
 import { TextCommand, copyFirstHint } from "./components/text-command";
 import { buildUntrustedPrompt } from "./lib/input-safety";
 
-const COMMAND_TITLE = "Corrigir texto do clipboard";
+const COMMAND_TITLE = "Fix Clipboard Text";
 const INSTRUCTION = [
-  "Corrija ortografia, gramática e pontuação do texto abaixo, preservando o sentido, o tom e o idioma original.",
-  "Responda **apenas** com o texto corrigido, sem comentário, sem explicação e sem aspas em volta.",
+  "Fix the spelling, grammar and punctuation of the text below, keeping its meaning, its tone and its original language.",
+  "Answer with **only** the corrected text: no commentary, no explanation, no quotes around it.",
 ].join(" ");
 
 export default function Command(): ReactElement {
@@ -23,7 +23,7 @@ export default function Command(): ReactElement {
       commandTitle={COMMAND_TITLE}
       source="area-de-transferencia"
       buildMessage={(text) => buildUntrustedPrompt(INSTRUCTION, text)}
-      emptyTitle="Não há nada copiado"
+      emptyTitle="Nothing is copied"
       emptyDescription={copyFirstHint()}
     />
   );

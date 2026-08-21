@@ -14,8 +14,8 @@ import { TextCommand } from "./components/text-command";
 import { buildUntrustedPrompt } from "./lib/input-safety";
 import { platformCopy } from "./lib/platform";
 
-const COMMAND_TITLE = "Perguntar sobre seleção";
-const DEFAULT_QUESTION = "Explique este texto em português, de forma simples e direta.";
+const COMMAND_TITLE = "Ask About Selection";
+const DEFAULT_QUESTION = "Explain this text in English, simply and directly.";
 
 type Arguments = { pergunta?: string };
 
@@ -28,11 +28,11 @@ export default function Command(props: LaunchProps<{ arguments: Arguments }>): R
       commandTitle={COMMAND_TITLE}
       source="selecao"
       buildMessage={(text) => buildUntrustedPrompt(question === "" ? DEFAULT_QUESTION : question, text)}
-      emptyTitle="Não achei texto nenhum"
+      emptyTitle="I did not find any text"
       emptyDescription={[
-        "Selecione um trecho na janela em que você estava, ou copie o texto, e chame este comando de novo.",
+        "Select a passage in the window you were in, or copy the text, and run this command again.",
         "",
-        `Nem todo aplicativo entrega a seleção ao sistema. Quando isso acontece, copiar (\`${copy.copyKeys}\`) sempre funciona.`,
+        `Not every app hands the selection to the system. When that happens, copying (\`${copy.copyKeys}\`) always works.`,
       ].join("\n")}
     />
   );
