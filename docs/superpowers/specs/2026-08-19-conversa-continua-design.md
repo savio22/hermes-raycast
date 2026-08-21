@@ -395,8 +395,8 @@ Três módulos novos, um que encolhe:
 | `src/ask.tsx` | Encolhe para a casca do comando: guarda de configuração, leitura do `launchContext`, escolha da conversa inicial | as três acima |
 
 `useRunStream` é absorvido por `use-conversation.ts`. O `AnswerView` privado de
-`ask.tsx:399` deixa de existir — o que **cancela o "Passo 0 obrigatório" registrado em
-`docs/PROMPT-PROXIMA-SESSAO.md`** (extrair `AnswerView` para
+`ask.tsx:399` deixa de existir — o que **cancela o "Passo 0 obrigatório"** que o prompt de
+continuidade da época registrava (extrair `AnswerView` para
 `src/components/answer-view.tsx`). Os comandos da fase 2 que precisavam de
 "prompt pronto → resposta escrevendo" passam a montar `ConversationView` com um turno
 inicial já enviado. Este desenho **substitui** aquele passo; não convive com ele.

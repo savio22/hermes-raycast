@@ -269,14 +269,43 @@ e nada avisa.
 - [ ] Faça uma pergunta e confirme no Hermes que o cabeçalho `X-Hermes-Session-Key` chegou como
       `raycast:macos:default`. Uma instalação de macOS não pode herdar `raycast:windows:default`.
 
-## Publicação — as capturas de tela
+## Publicação — o GIF e as capturas de tela
 
-A Store exige capturas em `metadata/`, e **elas não podem ser geradas por automação nesta máquina**:
-a janela do Raycast é desenhada pelo `Raycast.UIAccess.exe` e sai em branco em qualquer captura
-feita por script. Precisa ser você, com a ferramenta de captura do Windows.
+Nada disto pode ser gerado por automação nesta máquina: a janela do Raycast é desenhada pelo
+`Raycast.UIAccess.exe` e sai em branco em qualquer captura feita por script. Precisa ser você, com a
+ferramenta de captura do sistema.
 
-Formato: **PNG, 2000×1250** (proporção 16:10), nomeadas `hermes-1.png` … `hermes-6.png`, na pasta
-`metadata/` na raiz do projeto.
+### O cuidado que nenhum grep pega
+
+Toda gravação e toda captura mostram a tela de verdade. **Antes de gravar, olhe o que está
+visível** — principalmente na lista lateral do Hermes Desktop. Nome de cliente, assunto pessoal,
+qualquer conteúdo real vaza para o arquivo e **fica no histórico do git para sempre**, mesmo que
+você troque a imagem depois. Se der, grave com um perfil limpo do Hermes.
+
+### O GIF da demonstração (README)
+
+30 a 45 segundos, nesta ordem:
+
+- [ ] abrir o Raycast pelo atalho (mostre o atalho acontecendo, não a janela já aberta)
+- [ ] **Perguntar ao Hermes** com uma pergunta curta e de resposta rápida
+- [ ] a resposta chegando em streaming — é o momento que vende a extensão
+- [ ] abrir a **mesma conversa** no Hermes Desktop, provando que é o mesmo histórico
+
+Salve em `assets/demo.gif` e troque o comentário HTML do `README.md` (procure por
+`Demo GIF goes here`) pela linha `![Demo](assets/demo.gif)`. Faça o mesmo no `README.pt-BR.md`.
+
+### Capturas para o README
+
+Três bastam, em `assets/`, com nomes descritivos (`screenshot-ask.png` e afins):
+
+- [ ] **Perguntar ao Hermes** com uma resposta pronta
+- [ ] **Conversas do Hermes** com a lista
+- [ ] **Execuções do Hermes** com uma aprovação pendente
+
+### Capturas para a Raycast Store
+
+Requisitos próprios, diferentes dos do README. Formato: **PNG, 2000×1250** (proporção 16:10),
+nomeadas `hermes-1.png` … `hermes-6.png`, na pasta `metadata/` na raiz do projeto.
 
 - [ ] `hermes-1.png` — `Perguntar ao Hermes` com uma resposta pronta na tela.
 - [ ] `hermes-2.png` — `Conversas do Hermes`, lista com várias conversas e o detalhe aberto.
@@ -287,6 +316,10 @@ Formato: **PNG, 2000×1250** (proporção 16:10), nomeadas `hermes-1.png` … `h
 
 Antes de publicar, confira também que `author` no `package.json` é o **seu nome de usuário do
 Raycast** — hoje está `sam`. Se não bater com a conta, a publicação é recusada.
+
+E há um bloqueio conhecido da Store, que é decisão de nomenclatura e não defeito: o `ray lint` emite
+**14 avisos de Title Case**, todos porque os títulos de comando são frases em português. Precisa ser
+resolvido antes da submissão; está registrado no [ROADMAP.md](../ROADMAP.md).
 
 ---
 
